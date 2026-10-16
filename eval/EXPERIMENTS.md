@@ -43,6 +43,66 @@ Fixed context (change only when noted): golden set = `goldens/golden_retriver_da
 
 ================================================================= -->
 
+## EXP-005 — Push budgets smaller (1000 / 900)
+- **Date:** 2026-10-16
+- **Run dir:** data/chunks/2026-10-16_19-18-24
+- **Result file:** eval/results/2026-10-16_19-18-24_eval_results.json
+- **Hypothesis:** If 1200 beat 1400, maybe even smaller (1000) keeps improving ranking quality.
+- **Change vs EXP-002:** `MAX_CHARS` 1200 → 1000 (TBL_CHARS unchanged at 900).
+
+| MAX_CHARS | TBL_CHARS | Chunks | Hit@5 | MRR@5 | Recall@5 | Prec@5 | nDCG@5 |
+|---|---|---|---|---|---|---|---|
+| 1000 | 900 | 1544 | 0.732 | 0.525 | 0.583 | 0.196 | 0.490 |
+
+- **Observation:** Hypothesis **did not hold** — going below 1200 regressed vs EXP-002 on every
+  metric (nDCG 0.511→0.490, Hit 0.750→0.732, Recall 0.601→0.583). Recall@5 is the lowest of all
+  runs: smaller chunks carry less content, so fewer relevant elements fit in the top-5 (+147
+  chunks vs EXP-002, yet worse recall). Still slightly ahead of the 1400 baseline on MRR/nDCG.
+- **Next step:** Stop shrinking. 1200/900 is the peak; move on from chunk size to other levers
+  (query prefix already set, try a reranker or hybrid lexical+dense for the weak categories).
+
+---
+
+## EXP-004 — Baseline reproducibility check (1400 / 1000)
+- **Date:** 2026-10-16
+- **Run dir:** data/chunks/2026-10-16_19-17-09
+- **Result file:** eval/results/2026-10-16_19-17-09_eval_results.json
+- **Hypothesis:** Re-running the exact baseline config should reproduce EXP-001 — confirms the
+  parse→chunk→embed→eval pipeline is deterministic.
+- **Change vs EXP-001:** none (same 1400 / 1000); fresh run to verify reproducibility.
+
+| MAX_CHARS | TBL_CHARS | Chunks | Hit@5 | MRR@5 | Recall@5 | Prec@5 | nDCG@5 |
+|---|---|---|---|---|---|---|---|
+| 1400 | 1000 | 1254 | 0.732 | 0.521 | 0.592 | 0.200 | 0.476 |
+
+- **Observation:** Identical to EXP-001 on all five metrics and chunk count (1254). Pipeline is
+  deterministic, so metric deltas between experiments are real signal, not run-to-run noise.
+- **Next step:** Safe to compare configs directly without averaging repeats.
+
+---
+
+## EXP-003 — Mild reduction (1300 / 1000)
+- **Date:** 2026-10-16
+- **Run dir:** data/chunks/2026-10-16_19-14-00
+- **Result file:** eval/results/2026-10-16_19-14-00_eval_results.json
+- **Hypothesis:** A gentler cut than EXP-002 (1300 instead of 1200) might capture most of the
+  benefit while keeping chunk count low.
+- **Change vs baseline (EXP-001):** `MAX_CHARS` 1400 → 1300 (TBL_CHARS unchanged at 1000).
+
+| MAX_CHARS | TBL_CHARS | Chunks | Hit@5 | MRR@5 | Recall@5 | Prec@5 | nDCG@5 |
+|---|---|---|---|---|---|---|---|
+| 1300 | 1000 | 1307 | 0.732 | 0.494 | 0.598 | 0.204 | 0.478 |
+
+- **Observation:** Hypothesis **did not hold** — 1300 is essentially flat vs the 1400 baseline on
+  nDCG (0.478 vs 0.476) and actually **worse on MRR** (0.494 vs 0.521), i.e. the first relevant
+  result lands lower on average. Clearly below EXP-002 (1200/900). Shows the gain from EXP-002 is
+  not just "smaller is better" — the 900 table budget likely matters too, since EXP-003 kept
+  TBL_CHARS at 1000.
+- **Next step:** Isolate the table-budget effect — try 1200/1000 vs 1200/900 to see how much of
+  EXP-002's win comes from the smaller table chunks specifically.
+
+---
+
 ## EXP-002 — Smaller chunk + table budgets
 - **Date:** 2026-10-16
 - **Run dir:** data/chunks/2026-10-16_17-03-28

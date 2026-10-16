@@ -1,0 +1,99 @@
+{
+  "run_timestamp": "2026-10-16_19-18-24",
+  "output_directory": "data\\chunks\\2026-10-16_19-18-24",
+  "chunking_config": {
+    "max_chars": 1000,
+    "min_chars": 200,
+    "table_max_chars": 900
+  },
+  "embedding_model": {
+    "name": "BAAI/bge-base-en-v1.5",
+    "dimension": 768,
+    "model_max_tokens": 512,
+    "tokenizer_max_tokens": 512,
+    "effective_max_tokens": 512,
+    "recommended_token_limit": 481
+  },
+  "overall": {
+    "chunks": 1544,
+    "chunks_by_type": {
+      "text": 1207,
+      "table": 337
+    },
+    "tiny_chunks": 121,
+    "over_recommended_limit": 0,
+    "over_model_limit": 0,
+    "token_statistics": {
+      "count": 1544,
+      "mean": 173.0,
+      "std": 66.85,
+      "min": 28,
+      "p25": 129.75,
+      "p50": 175.0,
+      "p75": 210.0,
+      "max": 420
+    }
+  },
+  "documents": {
+    "AAPL_10-K_2025": {
+      "chunks": 351,
+      "chunks_by_type": {
+        "text": 264,
+        "table": 87
+      },
+      "tiny_chunks": 32,
+      "over_recommended_limit": 0,
+      "over_model_limit": 0,
+      "token_statistics": {
+        "count": 351,
+        "mean": 177.54,
+        "std": 72.13,
+        "min": 28,
+        "p25": 129.0,
+        "p50": 180.0,
+        "p75": 215.0,
+        "max": 408
+      }
+    },
+    "MSFT_10-K_2026": {
+      "chunks": 560,
+      "chunks_by_type": {
+        "text": 423,
+        "table": 137
+      },
+      "tiny_chunks": 44,
+      "over_recommended_limit": 0,
+      "over_model_limit": 0,
+      "token_statistics": {
+        "count": 560,
+        "mean": 167.33,
+        "std": 68.2,
+        "min": 31,
+        "p25": 121.0,
+        "p50": 169.0,
+        "p75": 202.0,
+        "max": 399
+      }
+    },
+    "TSLA_10-K_2025": {
+      "chunks": 633,
+      "chunks_by_type": {
+        "text": 520,
+        "table": 113
+      },
+      "tiny_chunks": 45,
+      "over_recommended_limit": 0,
+      "over_model_limit": 0,
+      "token_statistics": {
+        "count": 633,
+        "mean": 175.51,
+        "std": 62.21,
+        "min": 31,
+        "p25": 137.0,
+        "p50": 178.0,
+        "p75": 212.0,
+        "max": 420
+      }
+    }
+  }
+}
