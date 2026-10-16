@@ -1,0 +1,211 @@
+doc_id,table_id,section,kind,title,units,rows,cols,score,n_fact_cells,value_match,period_purity,concept_purity,header_period_agreement,reasons
+AAPL_10-K_2025,AAPL_10-K_2025_t006,Cover Page,textual,,,4,2,0.9,0,,,,,no_title
+AAPL_10-K_2025,AAPL_10-K_2025_t008,Cover Page,textual,,,9,3,0.9,0,,,,,no_title
+AAPL_10-K_2025,AAPL_10-K_2025_t010,Cover Page,textual,,,3,4,0.9,0,,,,,no_title
+AAPL_10-K_2025,AAPL_10-K_2025_t013,Item 5,financial,Purchases of Equity Securities by the Issuer and Affiliated Purchasers,in millions,7,5,1.0,0,,,,,
+AAPL_10-K_2025,AAPL_10-K_2025_t014,Item 5,financial,Company Stock Performance,,3,7,0.9,0,,,,,no_units
+AAPL_10-K_2025,AAPL_10-K_2025_t015,Item 7,financial,Segment Operating Performance,dollars in millions,6,6,1.0,0,,,,,
+AAPL_10-K_2025,AAPL_10-K_2025_t016,Item 7,financial,Products and Services Performance,dollars in millions,6,6,1.0,0,,,,,
+AAPL_10-K_2025,AAPL_10-K_2025_t017,Item 7,financial,Gross Margin,dollars in millions,4,4,1.0,0,,,,,
+AAPL_10-K_2025,AAPL_10-K_2025_t018,Item 7,financial,,,4,4,0.8,0,,,,,no_units;no_title
+AAPL_10-K_2025,AAPL_10-K_2025_t019,Item 7,financial,Operating Expenses,dollars in millions,6,6,1.0,0,,,,,
+AAPL_10-K_2025,AAPL_10-K_2025_t020,Item 7,financial,Provision for Income Taxes,dollars in millions,3,4,1.0,0,,,,,
+AAPL_10-K_2025,AAPL_10-K_2025_t021,Item 7A,financial,Interest Rate Risk,dollars in millions,2,5,1.0,0,,,,,
+AAPL_10-K_2025,AAPL_10-K_2025_t023,Item 8,financial,CONSOLIDATED STATEMENTS OF OPERATIONS,"(In millions, except number of shares, which are reflected in thousands, and per-share amounts)",24,4,1.0,57,1.0,1.0,1.0,1.0,
+AAPL_10-K_2025,AAPL_10-K_2025_t024,Item 8,financial,CONSOLIDATED STATEMENTS OF COMPREHENSIVE INCOME,(In millions),13,4,0.98,30,1.0,1.0,0.9,1.0,concept_purity=0.9
+AAPL_10-K_2025,AAPL_10-K_2025_t025,Item 8,financial,CONSOLIDATED BALANCE SHEETS,"(In millions, except number of shares, which are reflected in thousands, and par value)",35,3,1.0,54,1.0,1.0,1.0,1.0,
+AAPL_10-K_2025,AAPL_10-K_2025_t026,Item 8,financial,CONSOLIDATED STATEMENTS OF SHAREHOLDERS’ EQUITY,"(In millions, except per-share amounts)",20,4,0.859,51,1.0,0.529,1.0,1.0,period_purity=0.529
+AAPL_10-K_2025,AAPL_10-K_2025_t027,Item 8,financial,CONSOLIDATED STATEMENTS OF CASH FLOWS,(In millions),35,4,0.979,87,1.0,0.931,1.0,1.0,period_purity=0.931
+AAPL_10-K_2025,AAPL_10-K_2025_t028,Item 8,financial,,in millions,7,4,0.9,21,1.0,1.0,1.0,1.0,no_title
+AAPL_10-K_2025,AAPL_10-K_2025_t029,Item 8,financial,Note 3 – Earnings Per Share,in millions,8,4,1.0,18,1.0,1.0,1.0,1.0,
+AAPL_10-K_2025,AAPL_10-K_2025_t030,Item 8,financial,"Cash, Cash Equivalents and Marketable Securities",in millions,16,8,0.962,94,1.0,1.0,0.809,,concept_purity=0.809
+AAPL_10-K_2025,AAPL_10-K_2025_t031,Item 8,financial,,in millions,16,8,0.862,94,1.0,1.0,0.809,,no_title;concept_purity=0.809
+AAPL_10-K_2025,AAPL_10-K_2025_t032,Item 8,financial,,in millions,5,3,0.9,6,1.0,1.0,1.0,1.0,no_title
+AAPL_10-K_2025,AAPL_10-K_2025_t033,Item 8,financial,"Note 5 – Property, Plant and Equipment",in millions,6,3,1.0,12,1.0,1.0,1.0,1.0,
+AAPL_10-K_2025,AAPL_10-K_2025_t034,Item 8,financial,Other Non-Current Assets,in millions,3,3,1.0,6,1.0,1.0,1.0,1.0,
+AAPL_10-K_2025,AAPL_10-K_2025_t035,Item 8,financial,Other Current Liabilities,in millions,4,3,1.0,8,1.0,1.0,1.0,1.0,
+AAPL_10-K_2025,AAPL_10-K_2025_t036,Item 8,financial,Provision for Income Taxes and Effective Tax Rate,in millions,13,4,1.0,30,1.0,1.0,1.0,1.0,
+AAPL_10-K_2025,AAPL_10-K_2025_t037,Item 8,financial,,dollars in millions,8,4,0.9,24,1.0,1.0,1.0,1.0,no_title
+AAPL_10-K_2025,AAPL_10-K_2025_t038,Item 8,financial,Deferred Tax Assets and Liabilities,in millions,17,3,1.0,30,1.0,1.0,1.0,1.0,
+AAPL_10-K_2025,AAPL_10-K_2025_t039,Item 8,financial,Uncertain Tax Positions,in millions,7,4,0.914,21,1.0,0.714,1.0,1.0,period_purity=0.714
+AAPL_10-K_2025,AAPL_10-K_2025_t040,Item 8,financial,,in millions,10,4,0.9,16,1.0,1.0,1.0,1.0,no_title
+AAPL_10-K_2025,AAPL_10-K_2025_t041,Item 8,financial,,in millions,9,4,0.767,27,1.0,1.0,0.333,,no_title;concept_purity=0.333
+AAPL_10-K_2025,AAPL_10-K_2025_t042,Item 8,financial,Commercial Paper,in millions,7,4,1.0,15,1.0,1.0,1.0,1.0,
+AAPL_10-K_2025,AAPL_10-K_2025_t043,Item 8,financial,Term Debt,(in millions),10,6,0.967,18,1.0,1.0,0.833,1.0,concept_purity=0.833
+AAPL_10-K_2025,AAPL_10-K_2025_t044,Item 8,financial,,in millions,7,2,0.9,7,1.0,1.0,1.0,,no_title
+AAPL_10-K_2025,AAPL_10-K_2025_t045,Item 8,financial,Shares of Common Stock,in thousands,4,4,0.85,12,1.0,0.5,1.0,1.0,period_purity=0.5
+AAPL_10-K_2025,AAPL_10-K_2025_t046,Item 8,financial,Restricted Stock Units,(in thousands),5,3,0.9,10,1.0,1.0,0.5,,concept_purity=0.5
+AAPL_10-K_2025,AAPL_10-K_2025_t047,Item 8,financial,Share-Based Compensation,in millions,2,4,1.0,6,1.0,1.0,1.0,1.0,
+AAPL_10-K_2025,AAPL_10-K_2025_t048,Item 8,financial,Unconditional Purchase Obligations,in millions,7,2,1.0,7,1.0,1.0,1.0,,
+AAPL_10-K_2025,AAPL_10-K_2025_t049,Item 8,financial,,in millions,6,8,0.9,29,1.0,1.0,1.0,,no_title
+AAPL_10-K_2025,AAPL_10-K_2025_t050,Item 8,financial,,in millions,6,8,0.9,29,1.0,1.0,1.0,,no_title
+AAPL_10-K_2025,AAPL_10-K_2025_t051,Item 8,financial,,in millions,6,8,0.9,29,1.0,1.0,1.0,,no_title
+AAPL_10-K_2025,AAPL_10-K_2025_t052,Item 8,financial,,in millions,5,4,0.9,12,1.0,1.0,1.0,1.0,no_title
+AAPL_10-K_2025,AAPL_10-K_2025_t053,Item 8,financial,,in millions,5,3,0.9,8,1.0,1.0,1.0,1.0,no_title
+AAPL_10-K_2025,AAPL_10-K_2025_t054,Item 8,textual,Critical Audit Matter,,1,2,1.0,0,,,,,
+AAPL_10-K_2025,AAPL_10-K_2025_t055,Item 8,textual,,,1,2,0.9,0,,,,,no_title
+AAPL_10-K_2025,AAPL_10-K_2025_t057,Item 15,textual,(3)Exhibits required by Item 601 of Regulation S-K (1),,10,5,1.0,0,,,,,
+AAPL_10-K_2025,AAPL_10-K_2025_t058,Item 15,textual,,,17,5,0.9,0,,,,,no_title
+AAPL_10-K_2025,AAPL_10-K_2025_t059,Item 15,textual,,,28,5,0.9,0,,,,,no_title
+AAPL_10-K_2025,AAPL_10-K_2025_t060,Item 15,textual,,,2,2,0.9,0,,,,,no_title
+AAPL_10-K_2025,AAPL_10-K_2025_t061,Item 16,textual,SIGNATURES,,4,2,0.667,0,,,,,conflicts=1
+AAPL_10-K_2025,AAPL_10-K_2025_t062,Item 16,textual,Power of Attorney,,18,3,1.0,0,,,,,
+MSFT_10-K_2026,MSFT_10-K_2026_t001,Cover Page,textual,FORM 10-K,,1,2,1.0,0,,,,,
+MSFT_10-K_2026,MSFT_10-K_2026_t003,Cover Page,textual,Commission File Number 001-37845,,2,2,1.0,0,,,,,
+MSFT_10-K_2026,MSFT_10-K_2026_t004,Cover Page,financial,www.microsoft.com/investor,,7,3,0.9,0,,,,,no_units
+MSFT_10-K_2026,MSFT_10-K_2026_t005,Cover Page,textual,,,3,2,0.9,0,,,,,no_title
+MSFT_10-K_2026,MSFT_10-K_2026_t006,Cover Page,financial,INDEX,,31,3,0.9,0,,,,,no_units
+MSFT_10-K_2026,MSFT_10-K_2026_t007,Item 1,financial,,,6,3,0.8,0,,,,,no_units;no_title
+MSFT_10-K_2026,MSFT_10-K_2026_t008,Item 2,financial,ITEM 2. PROPERTIES,(Square feet in millions),3,4,1.0,0,,,,,
+MSFT_10-K_2026,MSFT_10-K_2026_t009,Item 5,financial,,(In millions),4,5,0.9,0,,,,,no_title
+MSFT_10-K_2026,MSFT_10-K_2026_t010,Item 5,textual,,(In millions),1,5,0.9,0,,,,,no_title
+MSFT_10-K_2026,MSFT_10-K_2026_t011,Item 7,textual,Commercial,,3,2,1.0,0,,,,,
+MSFT_10-K_2026,MSFT_10-K_2026_t012,Item 7,textual,Productivity and Business Processes and Intelligent Cloud,,6,2,1.0,0,,,,,
+MSFT_10-K_2026,MSFT_10-K_2026_t013,Item 7,textual,More Personal Computing,,3,2,1.0,0,,,,,
+MSFT_10-K_2026,MSFT_10-K_2026_t014,Item 7,financial,,"(In millions, except percentages and per share amounts)",7,4,0.9,0,,,,,no_title
+MSFT_10-K_2026,MSFT_10-K_2026_t015,Item 7,financial,,"(In millions, except percentages)",20,4,0.9,0,,,,,no_title
+MSFT_10-K_2026,MSFT_10-K_2026_t016,Item 7,financial,Research and Development,"(In millions, except percentages)",2,4,1.0,0,,,,,
+MSFT_10-K_2026,MSFT_10-K_2026_t017,Item 7,financial,Sales and Marketing,"(In millions, except percentages)",2,4,1.0,0,,,,,
+MSFT_10-K_2026,MSFT_10-K_2026_t018,Item 7,financial,General and Administrative,"(In millions, except percentages)",2,4,1.0,0,,,,,
+MSFT_10-K_2026,MSFT_10-K_2026_t019,Item 7,financial,,(In millions),7,3,0.9,0,,,,,no_title
+MSFT_10-K_2026,MSFT_10-K_2026_t020,Item 7,financial,,"(In millions, except percentages and per share amounts)",9,6,0.9,0,,,,,no_title
+MSFT_10-K_2026,MSFT_10-K_2026_t021,Item 7,financial,Unearned Revenue,(In millions),7,2,1.0,0,,,,,
+MSFT_10-K_2026,MSFT_10-K_2026_t022,Item 7,financial,Contractual Obligations,(In millions),7,4,1.0,0,,,,,
+MSFT_10-K_2026,MSFT_10-K_2026_t024,Item 7A,textual,Equity,(In millions),5,4,1.0,0,,,,,
+MSFT_10-K_2026,MSFT_10-K_2026_t025,Item 8,financial,INCOME STATEMENTS,"(In millions, except per share amounts)",23,4,1.0,57,1.0,1.0,1.0,1.0,
+MSFT_10-K_2026,MSFT_10-K_2026_t026,Item 8,financial,COMPREHENSIVE INCOME STATEMENTS,(In millions),7,4,1.0,18,1.0,1.0,1.0,1.0,
+MSFT_10-K_2026,MSFT_10-K_2026_t027,Item 8,financial,BALANCE SHEETS,(In millions),39,3,1.0,66,1.0,1.0,1.0,1.0,
+MSFT_10-K_2026,MSFT_10-K_2026_t028,Item 8,financial,CASH FLOWS STATEMENTS,(In millions),39,4,0.982,102,1.0,0.941,1.0,1.0,period_purity=0.941
+MSFT_10-K_2026,MSFT_10-K_2026_t029,Item 8,financial,STOCKHOLDERS’ EQUITY STATEMENTS,"(In millions, except per share amounts)",19,4,0.869,48,1.0,0.562,1.0,1.0,period_purity=0.562
+MSFT_10-K_2026,MSFT_10-K_2026_t030,Item 8,financial,,"(In millions, except per share amounts)",7,4,0.9,18,1.0,1.0,1.0,1.0,no_title
+MSFT_10-K_2026,MSFT_10-K_2026_t031,Item 8,financial,,(In millions),7,4,0.9,21,1.0,1.0,1.0,1.0,no_title
+MSFT_10-K_2026,MSFT_10-K_2026_t032,Item 8,financial,Net Recognized Gains (Losses) on Investments,(In millions),4,4,1.0,12,1.0,1.0,1.0,1.0,
+MSFT_10-K_2026,MSFT_10-K_2026_t033,Item 8,financial,,(In millions),4,4,0.9,12,1.0,1.0,1.0,1.0,no_title
+MSFT_10-K_2026,MSFT_10-K_2026_t034,Item 8,financial,Investment Components,(In millions),20,9,0.988,101,1.0,1.0,0.941,,concept_purity=0.941
+MSFT_10-K_2026,MSFT_10-K_2026_t035,Item 8,financial,,(In millions),20,9,0.888,101,1.0,1.0,0.941,,no_title;concept_purity=0.941
+MSFT_10-K_2026,MSFT_10-K_2026_t036,Item 8,financial,Unrealized Losses on Debt Investments,(In millions),7,7,1.0,36,1.0,1.0,1.0,,
+MSFT_10-K_2026,MSFT_10-K_2026_t037,Item 8,financial,,(In millions),7,7,0.9,36,1.0,1.0,1.0,,no_title
+MSFT_10-K_2026,MSFT_10-K_2026_t038,Item 8,financial,Debt Investment Maturities,(In millions),6,3,0.9,10,1.0,1.0,0.5,,concept_purity=0.5
+MSFT_10-K_2026,MSFT_10-K_2026_t039,Item 8,financial,Credit-Risk-Related Contingent Features,(In millions),10,3,1.0,16,1.0,1.0,1.0,1.0,
+MSFT_10-K_2026,MSFT_10-K_2026_t040,Item 8,financial,Fair Values of Derivative Instruments,(In millions),19,5,0.923,52,1.0,1.0,0.615,1.0,concept_purity=0.615
+MSFT_10-K_2026,MSFT_10-K_2026_t041,Item 8,financial,,(In millions),6,5,0.9,16,1.0,1.0,1.0,,no_title
+MSFT_10-K_2026,MSFT_10-K_2026_t042,Item 8,financial,,(In millions),11,4,0.9,18,1.0,1.0,1.0,1.0,no_title
+MSFT_10-K_2026,MSFT_10-K_2026_t043,Item 8,financial,,(In millions),3,4,0.9,3,1.0,1.0,1.0,1.0,no_title
+MSFT_10-K_2026,MSFT_10-K_2026_t044,Item 8,financial,,(In millions),8,3,0.9,16,1.0,1.0,1.0,1.0,no_title
+MSFT_10-K_2026,MSFT_10-K_2026_t045,Item 8,financial,"Activision Blizzard, Inc.",(In millions),9,2,1.0,9,1.0,1.0,1.0,,
+MSFT_10-K_2026,MSFT_10-K_2026_t046,Item 8,financial,,"(In millions, except average life)",4,3,0.9,4,1.0,1.0,1.0,,no_title
+MSFT_10-K_2026,MSFT_10-K_2026_t047,Item 8,financial,,"(In millions, except per share amounts)",3,3,0.9,6,1.0,1.0,1.0,1.0,no_title
+MSFT_10-K_2026,MSFT_10-K_2026_t048,Item 8,financial,,(In millions),4,8,0.786,28,1.0,1.0,1.0,0.429,no_title;header_period_agreement=0.429
+MSFT_10-K_2026,MSFT_10-K_2026_t049,Item 8,financial,,(In millions),5,7,0.767,30,1.0,1.0,1.0,0.333,no_title;header_period_agreement=0.333
+MSFT_10-K_2026,MSFT_10-K_2026_t050,Item 8,financial,,(In millions),5,5,0.9,10,1.0,1.0,1.0,1.0,no_title
+MSFT_10-K_2026,MSFT_10-K_2026_t051,Item 8,financial,,(In millions),8,2,0.9,7,1.0,1.0,1.0,,no_title
+MSFT_10-K_2026,MSFT_10-K_2026_t052,Item 8,financial,,"(In millions, issuance by calendar year)",20,12,0.738,84,1.0,1.0,0.857,0.333,no_title;concept_purity=0.857;header_period_agreement=0.333
+MSFT_10-K_2026,MSFT_10-K_2026_t053,Item 8,financial,,(In millions),8,2,0.9,7,1.0,1.0,1.0,,no_title
+MSFT_10-K_2026,MSFT_10-K_2026_t054,Item 8,financial,Provision for Income Taxes,(In millions),11,4,1.0,27,1.0,1.0,1.0,1.0,
+MSFT_10-K_2026,MSFT_10-K_2026_t055,Item 8,financial,,(In millions),3,4,0.9,9,1.0,1.0,1.0,1.0,no_title
+MSFT_10-K_2026,MSFT_10-K_2026_t056,Item 8,financial,Effective Tax Rate,"(In millions, except percentages)",19,3,0.9,28,1.0,1.0,0.5,,concept_purity=0.5
+MSFT_10-K_2026,MSFT_10-K_2026_t057,Item 8,financial,,,10,3,0.8,18,1.0,1.0,1.0,1.0,no_units;no_title
+MSFT_10-K_2026,MSFT_10-K_2026_t058,Item 8,financial,,(In millions),25,3,0.9,44,1.0,1.0,1.0,1.0,no_title
+MSFT_10-K_2026,MSFT_10-K_2026_t059,Item 8,financial,,(In millions),6,2,0.9,5,1.0,1.0,1.0,,no_title
+MSFT_10-K_2026,MSFT_10-K_2026_t060,Item 8,financial,Uncertain Tax Positions,(In millions),7,4,0.914,21,1.0,0.714,1.0,1.0,period_purity=0.714
+MSFT_10-K_2026,MSFT_10-K_2026_t061,Item 8,financial,,(In millions),4,3,0.9,8,1.0,1.0,1.0,1.0,no_title
+MSFT_10-K_2026,MSFT_10-K_2026_t062,Item 8,financial,,(In millions),5,2,0.9,4,1.0,1.0,1.0,,no_title
+MSFT_10-K_2026,MSFT_10-K_2026_t063,Item 8,financial,,(In millions),5,4,0.9,12,1.0,1.0,1.0,1.0,no_title
+MSFT_10-K_2026,MSFT_10-K_2026_t064,Item 8,financial,,(In millions),7,4,0.9,15,1.0,1.0,1.0,1.0,no_title
+MSFT_10-K_2026,MSFT_10-K_2026_t065,Item 8,financial,,"(In millions, except lease term and discount rate)",18,3,0.9,24,1.0,1.0,1.0,1.0,no_title
+MSFT_10-K_2026,MSFT_10-K_2026_t066,Item 8,financial,,(In millions),9,3,0.8,18,1.0,1.0,0.5,,no_title;concept_purity=0.5
+MSFT_10-K_2026,MSFT_10-K_2026_t067,Item 8,financial,Shares Outstanding,(In millions),4,4,0.85,12,1.0,0.5,1.0,1.0,period_purity=0.5
+MSFT_10-K_2026,MSFT_10-K_2026_t068,Item 8,financial,Share Repurchases,(In millions),5,7,0.8,30,1.0,0.333,1.0,,period_purity=0.333
+MSFT_10-K_2026,MSFT_10-K_2026_t069,Item 8,financial,Dividends,(In millions),11,5,1.0,20,1.0,1.0,1.0,,
+MSFT_10-K_2026,MSFT_10-K_2026_t070,Item 8,financial,,(In millions),21,4,0.783,54,1.0,0.611,1.0,1.0,no_title;period_purity=0.611
+MSFT_10-K_2026,MSFT_10-K_2026_t071,Item 8,financial,,(In millions),2,4,0.9,6,1.0,1.0,1.0,1.0,no_title
+MSFT_10-K_2026,MSFT_10-K_2026_t072,Item 8,financial,Activity for All Stock Plans,,2,7,0.9,6,,1.0,1.0,1.0,no_units
+MSFT_10-K_2026,MSFT_10-K_2026_t073,Item 8,financial,,(In millions),6,3,0.8,10,1.0,1.0,0.5,,no_title;concept_purity=0.5
+MSFT_10-K_2026,MSFT_10-K_2026_t074,Item 8,financial,Employee Stock Purchase Plan,(Shares in millions),2,4,1.0,6,1.0,1.0,1.0,1.0,
+MSFT_10-K_2026,MSFT_10-K_2026_t075,Item 8,financial,,(In millions),20,4,0.9,48,1.0,1.0,1.0,1.0,no_title
+MSFT_10-K_2026,MSFT_10-K_2026_t076,Item 8,financial,,(In millions),3,4,0.9,9,1.0,1.0,1.0,1.0,no_title
+MSFT_10-K_2026,MSFT_10-K_2026_t077,Item 8,financial,,(In millions),11,4,0.9,33,1.0,1.0,1.0,1.0,no_title
+MSFT_10-K_2026,MSFT_10-K_2026_t078,Item 8,financial,,(In millions),3,4,0.9,9,1.0,1.0,1.0,1.0,no_title
+MSFT_10-K_2026,MSFT_10-K_2026_t079,Item 15,financial,Financial Statements and Schedules,,7,2,0.9,0,,,,,no_units
+MSFT_10-K_2026,MSFT_10-K_2026_t080,Item 15,textual,Exhibit Listing,,5,5,1.0,0,,,,,
+MSFT_10-K_2026,MSFT_10-K_2026_t081,Item 15,textual,,,5,5,0.9,0,,,,,no_title
+MSFT_10-K_2026,MSFT_10-K_2026_t082,Item 15,textual,,,4,5,0.9,0,,,,,no_title
+MSFT_10-K_2026,MSFT_10-K_2026_t083,Item 15,textual,,,6,5,0.9,0,,,,,no_title
+MSFT_10-K_2026,MSFT_10-K_2026_t084,Item 15,textual,,,13,6,0.9,0,,,,,no_title
+MSFT_10-K_2026,MSFT_10-K_2026_t085,Item 15,textual,,,20,7,0.9,0,,,,,no_title
+MSFT_10-K_2026,MSFT_10-K_2026_t086,Item 15,textual,,,3,3,0.9,0,,,,,no_title
+MSFT_10-K_2026,MSFT_10-K_2026_t088,Item 16,textual,,,30,2,0.9,0,,,,,no_title
+TSLA_10-K_2025,TSLA_10-K_2025_t002,Cover Page,textual,(Mark One),,1,2,1.0,0,,,,,
+TSLA_10-K_2025,TSLA_10-K_2025_t003,Cover Page,textual,OR,,1,2,1.0,0,,,,,
+TSLA_10-K_2025,TSLA_10-K_2025_t004,Cover Page,textual,(Exact name of registrant as specified in its charter),,2,2,1.0,0,,,,,
+TSLA_10-K_2025,TSLA_10-K_2025_t005,Cover Page,financial,,,2,2,0.8,0,,,,,no_units;no_title
+TSLA_10-K_2025,TSLA_10-K_2025_t006,Cover Page,textual,Securities registered pursuant to Section 12(b) of the Act:,,2,3,1.0,0,,,,,
+TSLA_10-K_2025,TSLA_10-K_2025_t008,Cover Page,textual,,,3,4,0.9,0,,,,,no_title
+TSLA_10-K_2025,TSLA_10-K_2025_t011,Item 2,textual,ITEM 2. PROPERTIES,,8,3,1.0,0,,,,,
+TSLA_10-K_2025,TSLA_10-K_2025_t012,Item 7,financial,Revenues,(Dollars in millions),8,8,1.0,0,,,,,
+TSLA_10-K_2025,TSLA_10-K_2025_t013,Item 7,financial,Cost of Revenues and Gross Margin,(Dollars in millions),16,8,1.0,0,,,,,
+TSLA_10-K_2025,TSLA_10-K_2025_t014,Item 7,financial,Research and Development Expense,(Dollars in millions),2,8,1.0,0,,,,,
+TSLA_10-K_2025,TSLA_10-K_2025_t015,Item 7,financial,"Selling, General and Administrative Expense",(Dollars in millions),2,8,1.0,0,,,,,
+TSLA_10-K_2025,TSLA_10-K_2025_t016,Item 7,textual,Restructuring and Other,(Dollars in millions),1,8,1.0,0,,,,,
+TSLA_10-K_2025,TSLA_10-K_2025_t017,Item 7,financial,Interest Income,(Dollars in millions),1,8,1.0,0,,,,,
+TSLA_10-K_2025,TSLA_10-K_2025_t018,Item 7,financial,"Other Income (Expense), Net",(Dollars in millions),1,8,1.0,0,,,,,
+TSLA_10-K_2025,TSLA_10-K_2025_t019,Item 7,financial,Provision for (Benefit from) Income Taxes,(Dollars in millions),2,8,1.0,0,,,,,
+TSLA_10-K_2025,TSLA_10-K_2025_t020,Item 7,financial,Summary of Cash Flows,(Dollars in millions),3,4,1.0,0,,,,,
+TSLA_10-K_2025,TSLA_10-K_2025_t022,Item 8,financial,Consolidated Balance Sheets,"(in millions, except per share data)",39,3,1.0,64,1.0,1.0,1.0,1.0,
+TSLA_10-K_2025,TSLA_10-K_2025_t023,Item 8,financial,Consolidated Statements of Operations,"(in millions, except per share data)",36,4,1.0,93,1.0,1.0,1.0,1.0,
+TSLA_10-K_2025,TSLA_10-K_2025_t024,Item 8,financial,Consolidated Statements of Comprehensive Income,(in millions),9,4,1.0,24,1.0,1.0,1.0,1.0,
+TSLA_10-K_2025,TSLA_10-K_2025_t025,Item 8,financial,Consolidated Statements of Redeemable Noncontrolling Interests and Equity,(in millions),24,10,0.964,106,1.0,1.0,0.821,,concept_purity=0.821
+TSLA_10-K_2025,TSLA_10-K_2025_t026,Item 8,financial,Consolidated Statements of Cash Flows,(in millions),44,4,0.984,111,1.0,0.946,1.0,1.0,period_purity=0.946
+TSLA_10-K_2025,TSLA_10-K_2025_t027,Item 8,financial,,in millions,8,4,0.9,24,1.0,1.0,1.0,1.0,no_title
+TSLA_10-K_2025,TSLA_10-K_2025_t028,Item 8,financial,,in millions,5,3,0.78,10,1.0,0.6,1.0,1.0,no_title;period_purity=0.6
+TSLA_10-K_2025,TSLA_10-K_2025_t029,Item 8,financial,,in millions,3,4,0.9,9,1.0,1.0,1.0,1.0,no_title
+TSLA_10-K_2025,TSLA_10-K_2025_t030,Item 8,financial,,in millions,6,4,0.9,15,1.0,1.0,1.0,1.0,no_title
+TSLA_10-K_2025,TSLA_10-K_2025_t031,Item 8,financial,,in millions,1,4,0.9,3,1.0,1.0,1.0,1.0,no_title
+TSLA_10-K_2025,TSLA_10-K_2025_t032,Item 8,financial,,in millions,4,4,0.9,12,1.0,1.0,1.0,1.0,no_title
+TSLA_10-K_2025,TSLA_10-K_2025_t033,Item 8,textual,,,5,2,0.9,0,,,,,no_title
+TSLA_10-K_2025,TSLA_10-K_2025_t034,Item 8,financial,,in millions,5,4,0.78,15,1.0,0.6,1.0,1.0,no_title;period_purity=0.6
+TSLA_10-K_2025,TSLA_10-K_2025_t035,Item 8,financial,,in millions,5,4,0.833,9,1.0,1.0,1.0,0.667,no_title;header_period_agreement=0.667
+TSLA_10-K_2025,TSLA_10-K_2025_t036,Item 8,financial,Note 3 – Digital Assets,in millions,4,7,1.0,14,1.0,1.0,1.0,1.0,
+TSLA_10-K_2025,TSLA_10-K_2025_t037,Item 8,financial,,in millions,3,3,0.75,6,1.0,0.5,1.0,,no_title;period_purity=0.5
+TSLA_10-K_2025,TSLA_10-K_2025_t038,Item 8,financial,Note 4 – Fair Value of Financial Instruments,in millions,7,9,1.0,56,1.0,1.0,1.0,1.0,
+TSLA_10-K_2025,TSLA_10-K_2025_t039,Item 8,financial,,in millions,7,7,0.862,32,1.0,1.0,0.812,,no_title;concept_purity=0.812
+TSLA_10-K_2025,TSLA_10-K_2025_t040,Item 8,financial,,in millions,7,7,0.862,32,1.0,1.0,0.812,,no_title;concept_purity=0.812
+TSLA_10-K_2025,TSLA_10-K_2025_t041,Item 8,financial,Note 5 – Inventory,in millions,5,3,1.0,10,1.0,1.0,1.0,1.0,
+TSLA_10-K_2025,TSLA_10-K_2025_t042,Item 8,financial,"Note 6 – Property, Plant and Equipment, Net",in millions,10,3,1.0,20,1.0,1.0,1.0,1.0,
+TSLA_10-K_2025,TSLA_10-K_2025_t043,Item 8,financial,Note 7 – Accrued Liabilities and Other,in millions,9,3,1.0,18,1.0,1.0,1.0,1.0,
+TSLA_10-K_2025,TSLA_10-K_2025_t044,Item 8,financial,Note 8 – Other Long-Term Liabilities,in millions,4,3,1.0,8,1.0,1.0,1.0,1.0,
+TSLA_10-K_2025,TSLA_10-K_2025_t045,Item 8,financial,Note 9 – Debt,in millions,13,7,0.982,45,1.0,1.0,0.911,,concept_purity=0.911
+TSLA_10-K_2025,TSLA_10-K_2025_t046,Item 8,financial,,in millions,13,7,0.882,45,1.0,1.0,0.911,,no_title;concept_purity=0.911
+TSLA_10-K_2025,TSLA_10-K_2025_t047,Item 8,financial,Schedule of Principal Maturities of Debt,in millions,7,4,1.0,21,1.0,1.0,1.0,,
+TSLA_10-K_2025,TSLA_10-K_2025_t048,Item 8,financial,,in millions,12,3,0.9,20,1.0,1.0,1.0,1.0,no_title
+TSLA_10-K_2025,TSLA_10-K_2025_t049,Item 8,financial,,in millions,7,4,0.9,15,1.0,1.0,1.0,1.0,no_title
+TSLA_10-K_2025,TSLA_10-K_2025_t050,Item 8,financial,,,6,3,0.8,4,1.0,1.0,1.0,1.0,no_units;no_title
+TSLA_10-K_2025,TSLA_10-K_2025_t051,Item 8,financial,,in millions,5,4,0.9,12,1.0,1.0,1.0,1.0,no_title
+TSLA_10-K_2025,TSLA_10-K_2025_t052,Item 8,financial,,in millions,11,3,0.8,22,1.0,1.0,0.5,,no_title;concept_purity=0.5
+TSLA_10-K_2025,TSLA_10-K_2025_t053,Item 8,financial,Operating Lease and Sales-type Lease Receivables,in millions,7,3,0.9,14,1.0,1.0,0.5,,concept_purity=0.5
+TSLA_10-K_2025,TSLA_10-K_2025_t054,Item 8,financial,Net Investment in Sales-type Leases,in millions,8,3,1.0,14,1.0,1.0,1.0,1.0,
+TSLA_10-K_2025,TSLA_10-K_2025_t055,Item 8,financial,,(in thousands),7,7,0.752,29,1.0,0.966,0.31,,no_title;period_purity=0.966;concept_purity=0.31
+TSLA_10-K_2025,TSLA_10-K_2025_t056,Item 8,financial,2025 CEO Performance Award,,13,5,0.7,25,1.0,1.0,1.0,0.0,no_units;header_period_agreement=0.0
+TSLA_10-K_2025,TSLA_10-K_2025_t057,Item 8,financial,,in billions,12,2,0.9,12,,1.0,1.0,,no_title
+TSLA_10-K_2025,TSLA_10-K_2025_t058,Item 8,financial,Fair Value Assumptions,,5,4,0.9,12,1.0,1.0,1.0,1.0,no_units
+TSLA_10-K_2025,TSLA_10-K_2025_t059,Item 8,financial,,,7,2,0.8,6,1.0,1.0,1.0,,no_units;no_title
+TSLA_10-K_2025,TSLA_10-K_2025_t060,Item 8,financial,Summary Stock-Based Compensation Information,in millions,5,4,1.0,15,1.0,1.0,1.0,1.0,
+TSLA_10-K_2025,TSLA_10-K_2025_t061,Item 8,financial,Note 12 – Income Taxes,in millions,4,4,1.0,12,1.0,1.0,1.0,1.0,
+TSLA_10-K_2025,TSLA_10-K_2025_t062,Item 8,financial,,in millions,11,4,0.9,27,1.0,1.0,1.0,1.0,no_title
+TSLA_10-K_2025,TSLA_10-K_2025_t063,Item 8,financial,,in millions,18,3,0.8,28,1.0,1.0,0.5,,no_title;concept_purity=0.5
+TSLA_10-K_2025,TSLA_10-K_2025_t064,Item 8,financial,,in millions,11,3,0.9,22,1.0,1.0,1.0,1.0,no_title
+TSLA_10-K_2025,TSLA_10-K_2025_t065,Item 8,financial,,in millions,8,2,0.9,6,1.0,1.0,1.0,,no_title
+TSLA_10-K_2025,TSLA_10-K_2025_t066,Item 8,financial,,in millions,19,3,0.9,34,1.0,1.0,1.0,1.0,no_title
+TSLA_10-K_2025,TSLA_10-K_2025_t067,Item 8,financial,Uncertain Tax Positions,in millions,18,2,1.0,18,1.0,1.0,1.0,,
+TSLA_10-K_2025,TSLA_10-K_2025_t068,Item 8,financial,,in millions,19,3,0.9,30,1.0,1.0,1.0,1.0,no_title
+TSLA_10-K_2025,TSLA_10-K_2025_t069,Item 8,financial,Note 16 – Segment Reporting and Information about Geographic Areas,in millions,8,4,1.0,18,1.0,1.0,1.0,1.0,
+TSLA_10-K_2025,TSLA_10-K_2025_t070,Item 8,financial,,in millions,4,4,0.9,12,1.0,1.0,1.0,1.0,no_title
+TSLA_10-K_2025,TSLA_10-K_2025_t071,Item 8,financial,,in millions,4,3,0.9,8,1.0,1.0,1.0,1.0,no_title
+TSLA_10-K_2025,TSLA_10-K_2025_t072,Item 8,financial,,in millions,3,3,0.9,6,1.0,1.0,1.0,1.0,no_title
+TSLA_10-K_2025,TSLA_10-K_2025_t073,Item 15,textual,,,8,6,0.9,0,,,,,no_title
+TSLA_10-K_2025,TSLA_10-K_2025_t074,Item 15,textual,,,11,7,0.9,0,,,,,no_title
+TSLA_10-K_2025,TSLA_10-K_2025_t075,Item 15,textual,,,15,7,0.9,0,,,,,no_title
+TSLA_10-K_2025,TSLA_10-K_2025_t076,Item 15,textual,,,13,7,0.9,0,,,,,no_title
+TSLA_10-K_2025,TSLA_10-K_2025_t077,Item 15,textual,,,6,7,0.9,0,,,,,no_title
+TSLA_10-K_2025,TSLA_10-K_2025_t078,Item 16,textual,SIGNATURES,,5,2,1.0,0,,,,,
+TSLA_10-K_2025,TSLA_10-K_2025_t079,Item 16,textual,,,19,3,0.9,0,,,,,no_title
