@@ -1,0 +1,239 @@
+{
+  "timestamp": "2026-10-16_22-41-08",
+  "directly_comparable": false,
+  "compatibility_fields": [
+    "golden_path",
+    "selected_case_count",
+    "filters",
+    "system_prompt_sha256",
+    "fact_threshold"
+  ],
+  "runs": [
+    {
+      "run_id": "2026-10-16_22-18-27_ollama_qwen2.5-7b-instruct_latest",
+      "provider": "ollama",
+      "model": "qwen2.5-7b-instruct:latest",
+      "prompt_version": "v1_strict_grounded",
+      "temperature": 0.0,
+      "cases": 5,
+      "answer_correct": 1,
+      "numeric_faithfulness": 1.0,
+      "abstention_correct": 1,
+      "hallucinated_answer": 0,
+      "false_abstention": 0,
+      "citation_precision": 1.0,
+      "citation_validity": 1.0,
+      "average_latency_seconds": 2.2058249950408935,
+      "prompt_tokens": 5005,
+      "completion_tokens": 402,
+      "error_cases": 0,
+      "comparison_signature": {
+        "golden_path": "goldens\\golden_generation_dataset_claude.jsonl",
+        "selected_case_count": 5,
+        "filters": {
+          "variants": [
+            "oracle"
+          ],
+          "case_ids": null,
+          "limit": 5
+        },
+        "system_prompt_sha256": "db6cdda1e9313ff12835061d74104c82d3bf77aaacf9eaf739af0ea4ba71c835",
+        "fact_threshold": 0.6
+      }
+    },
+    {
+      "run_id": "2026-10-16_22-23-07_ollama_qwen2.5-7b-instruct_latest",
+      "provider": "ollama",
+      "model": "qwen2.5-7b-instruct:latest",
+      "prompt_version": "v1_strict_grounded",
+      "temperature": 0.0,
+      "cases": 60,
+      "answer_correct": 0.5333333333333333,
+      "numeric_faithfulness": 0.94,
+      "abstention_correct": 0.9666666666666667,
+      "hallucinated_answer": 0,
+      "false_abstention": 0.03333333333333333,
+      "citation_precision": 0.9619883040935673,
+      "citation_validity": 1.0,
+      "average_latency_seconds": 3.632230536142985,
+      "prompt_tokens": 110969,
+      "completion_tokens": 7281,
+      "error_cases": 0,
+      "comparison_signature": {
+        "golden_path": "goldens\\golden_generation_dataset_claude.jsonl",
+        "selected_case_count": 60,
+        "filters": {
+          "variants": [
+            "oracle_plus_distractors"
+          ],
+          "case_ids": null,
+          "limit": null
+        },
+        "system_prompt_sha256": "db6cdda1e9313ff12835061d74104c82d3bf77aaacf9eaf739af0ea4ba71c835",
+        "fact_threshold": 0.6
+      }
+    },
+    {
+      "run_id": "2026-10-16_22-26-59_ollama_llama3.2_latest",
+      "provider": "ollama",
+      "model": "llama3.2:latest",
+      "prompt_version": "v1_strict_grounded",
+      "temperature": 0.0,
+      "cases": 60,
+      "answer_correct": 0.4666666666666667,
+      "numeric_faithfulness": 0.9089366515837104,
+      "abstention_correct": 0.95,
+      "hallucinated_answer": 0,
+      "false_abstention": 0.05,
+      "citation_precision": 0.8011904761904762,
+      "citation_validity": 1.0,
+      "average_latency_seconds": 2.2125215689341227,
+      "prompt_tokens": 100783,
+      "completion_tokens": 6481,
+      "error_cases": 0,
+      "comparison_signature": {
+        "golden_path": "goldens\\golden_generation_dataset_claude.jsonl",
+        "selected_case_count": 60,
+        "filters": {
+          "variants": [
+            "oracle_plus_distractors"
+          ],
+          "case_ids": null,
+          "limit": null
+        },
+        "system_prompt_sha256": "db6cdda1e9313ff12835061d74104c82d3bf77aaacf9eaf739af0ea4ba71c835",
+        "fact_threshold": 0.6
+      }
+    },
+    {
+      "run_id": "2026-10-16_22-30-59_ollama_qwen2.5-7b-instruct_latest",
+      "provider": "ollama",
+      "model": "qwen2.5-7b-instruct:latest",
+      "prompt_version": "v1_strict_grounded",
+      "temperature": 0.0,
+      "cases": 60,
+      "answer_correct": 0.6166666666666667,
+      "numeric_faithfulness": 0.9530529953917051,
+      "abstention_correct": 1,
+      "hallucinated_answer": 0,
+      "false_abstention": 0,
+      "citation_precision": 1.0,
+      "citation_validity": 1.0,
+      "average_latency_seconds": 3.338626293341319,
+      "prompt_tokens": 65256,
+      "completion_tokens": 7633,
+      "error_cases": 0,
+      "comparison_signature": {
+        "golden_path": "goldens\\golden_generation_dataset_claude.jsonl",
+        "selected_case_count": 60,
+        "filters": {
+          "variants": [
+            "oracle"
+          ],
+          "case_ids": null,
+          "limit": null
+        },
+        "system_prompt_sha256": "db6cdda1e9313ff12835061d74104c82d3bf77aaacf9eaf739af0ea4ba71c835",
+        "fact_threshold": 0.6
+      }
+    },
+    {
+      "run_id": "2026-10-16_22-34-23_ollama_llama3.2_latest",
+      "provider": "ollama",
+      "model": "llama3.2:latest",
+      "prompt_version": "v1_strict_grounded",
+      "temperature": 0.0,
+      "cases": 60,
+      "answer_correct": 0.43333333333333335,
+      "numeric_faithfulness": 0.9182608695652174,
+      "abstention_correct": 0.9833333333333333,
+      "hallucinated_answer": 0,
+      "false_abstention": 0.016666666666666666,
+      "citation_precision": 1.0,
+      "citation_validity": 0.9833333333333333,
+      "average_latency_seconds": 1.5078270435333252,
+      "prompt_tokens": 59668,
+      "completion_tokens": 6276,
+      "error_cases": 0,
+      "comparison_signature": {
+        "golden_path": "goldens\\golden_generation_dataset_claude.jsonl",
+        "selected_case_count": 60,
+        "filters": {
+          "variants": [
+            "oracle"
+          ],
+          "case_ids": null,
+          "limit": null
+        },
+        "system_prompt_sha256": "db6cdda1e9313ff12835061d74104c82d3bf77aaacf9eaf739af0ea4ba71c835",
+        "fact_threshold": 0.6
+      }
+    },
+    {
+      "run_id": "2026-10-16_22-35-59_ollama_qwen2.5-7b-instruct_latest",
+      "provider": "ollama",
+      "model": "qwen2.5-7b-instruct:latest",
+      "prompt_version": "v1_strict_grounded",
+      "temperature": 0.0,
+      "cases": 72,
+      "answer_correct": 0.7777777777777778,
+      "numeric_faithfulness": 1.0,
+      "abstention_correct": 0.7777777777777778,
+      "hallucinated_answer": 0.2222222222222222,
+      "false_abstention": 0,
+      "citation_precision": 0.0,
+      "citation_validity": 1.0,
+      "average_latency_seconds": 2.5708411170376673,
+      "prompt_tokens": 119321,
+      "completion_tokens": 6173,
+      "error_cases": 0,
+      "comparison_signature": {
+        "golden_path": "goldens\\golden_generation_dataset_claude.jsonl",
+        "selected_case_count": 72,
+        "filters": {
+          "variants": [
+            "no_gold",
+            "trap"
+          ],
+          "case_ids": null,
+          "limit": null
+        },
+        "system_prompt_sha256": "db6cdda1e9313ff12835061d74104c82d3bf77aaacf9eaf739af0ea4ba71c835",
+        "fact_threshold": 0.6
+      }
+    },
+    {
+      "run_id": "2026-10-16_22-39-09_ollama_llama3.2_latest",
+      "provider": "ollama",
+      "model": "llama3.2:latest",
+      "prompt_version": "v1_strict_grounded",
+      "temperature": 0.0,
+      "cases": 72,
+      "answer_correct": 0.5138888888888888,
+      "numeric_faithfulness": 0.6035714285714285,
+      "abstention_correct": 0.5138888888888888,
+      "hallucinated_answer": 0.4861111111111111,
+      "false_abstention": 0,
+      "citation_precision": 0.0,
+      "citation_validity": 1.0,
+      "average_latency_seconds": 1.6169038944774203,
+      "prompt_tokens": 108907,
+      "completion_tokens": 7057,
+      "error_cases": 0,
+      "comparison_signature": {
+        "golden_path": "goldens\\golden_generation_dataset_claude.jsonl",
+        "selected_case_count": 72,
+        "filters": {
+          "variants": [
+            "no_gold",
+            "trap"
+          ],
+          "case_ids": null,
+          "limit": null
+        },
+        "system_prompt_sha256": "db6cdda1e9313ff12835061d74104c82d3bf77aaacf9eaf739af0ea4ba71c835",
+        "fact_threshold": 0.6
+      }
+    }
+  ]
+}

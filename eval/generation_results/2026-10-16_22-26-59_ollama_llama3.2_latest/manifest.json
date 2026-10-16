@@ -1,0 +1,42 @@
+{
+  "run_id": "2026-10-16_22-26-59_ollama_llama3.2_latest",
+  "timestamp": "2026-10-16_22-26-59",
+  "golden_path": "goldens\\golden_generation_dataset_claude.jsonl",
+  "selected_case_count": 60,
+  "filters": {
+    "variants": [
+      "oracle_plus_distractors"
+    ],
+    "case_ids": null,
+    "limit": null
+  },
+  "generation_config": {
+    "run_directory": "data/chunks/2026-10-16_17-03-28",
+    "alpha": 0.85,
+    "retrieve_k": 50,
+    "reranker_model": "cross-encoder/ettin-reranker-150m-v1",
+    "context_k": 5,
+    "provider": "ollama",
+    "model": "llama3.2:latest",
+    "temperature": 0.0,
+    "max_tokens": 1024,
+    "prompt_version": "v1_strict_grounded",
+    "device": "cuda"
+  },
+  "system_prompt": "You are a financial analyst assistant that answers questions about SEC 10-K filings.\n\nYou will be given:\n1. A question about a company's financial filing\n2. Relevant excerpts from the 10-K filing, labeled as sources [S1], [S2], etc.\n\nSTRICT RULES:\n1. ONLY use information explicitly stated in the provided sources\n2. NEVER use prior knowledge or make assumptions\n3. CITE every factual claim using source IDs: [S1], [S2], etc.\n4. PRESERVE exact values from sources - do not round, convert, or estimate\n5. PRESERVE units (millions, billions), currency ($), and fiscal periods\n6. If sources show different values for different years, use the year asked about\n7. If the sources do not contain enough information, set insufficient_context to true\n\nOUTPUT FORMAT (JSON):\n{\n    \"answer\": \"The direct answer to the question\",\n    \"explanation\": \"Brief explanation of how you found the answer (1-2 sentences)\",\n    \"citations\": [\"S1\", \"S2\"],\n    \"calculation\": \"Show formula if answer requires calculation, otherwise null\",\n    \"insufficient_context\": false\n}\n\nEXAMPLES:\n\nQuestion: What was Apple's total net sales in fiscal 2025?\nSources contain a table showing \"Total net sales: $416,161\" for 2025\nResponse:\n{\n    \"answer\": \"$416,161 million\",\n    \"explanation\": \"The Products and Services Performance table shows total net sales for fiscal 2025.\",\n    \"citations\": [\"S1\"],\n    \"calculation\": null,\n    \"insufficient_context\": false\n}\n\nQuestion: What was the year-over-year change in iPhone revenue?\nSources show iPhone: $209,586 (2025) and $201,183 (2024)\nResponse:\n{\n    \"answer\": \"$8,403 million increase (4.2%)\",\n    \"explanation\": \"Calculated from the Products and Services Performance table.\",\n    \"citations\": [\"S1\"],\n    \"calculation\": \"Change = $209,586 - $201,183 = $8,403 million; Percentage = ($8,403 / $201,183) × 100 = 4.2%\",\n    \"insufficient_context\": false\n}\n\nQuestion: What was Tesla's revenue in 2023?\nSources only contain 2025 and 2024 data\nResponse:\n{\n    \"answer\": null,\n    \"explanation\": \"The provided sources only contain data for fiscal years 2025 and 2024.\",\n    \"citations\": [],\n    \"calculation\": null,\n    \"insufficient_context\": true\n}",
+  "system_prompt_sha256": "db6cdda1e9313ff12835061d74104c82d3bf77aaacf9eaf739af0ea4ba71c835",
+  "fact_threshold": 0.6,
+  "python_version": "3.13.3",
+  "platform": "Windows-11-10.0.26200-SP0",
+  "command": [
+    "eval/generation_eval.py",
+    "--golden-path",
+    "goldens/golden_generation_dataset_claude.jsonl",
+    "--provider",
+    "ollama",
+    "--model",
+    "llama3.2:latest",
+    "--variants",
+    "oracle_plus_distractors"
+  ]
+}

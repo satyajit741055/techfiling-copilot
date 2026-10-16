@@ -23,7 +23,7 @@ from generation.context import format_context
 from generation.prompts import SYSTEM_PROMPT, build_user_prompt
 
 DEFAULT_GOLDEN_PATH = ROOT / "goldens" / "golden_generation_dataset.jsonl"
-DEFAULT_RESULTS_DIR = ROOT / "eval" / "results"
+DEFAULT_RESULTS_DIR = ROOT / "eval" / "generation_results"
 TOKEN_RE = re.compile(r"[a-z0-9]+(?:\.[0-9]+)?")
 NUMBER_RE = re.compile(
     r"(?P<currency>\$)?\s*(?P<negative>\()?"

@@ -1,0 +1,85 @@
+{
+  "run_id": "2026-10-16_22-18-27_ollama_qwen2.5-7b-instruct_latest",
+  "overall": {
+    "answer_correct": 1,
+    "expected_value_coverage": 1.0,
+    "lexical_required_fact_coverage": 0.9111111111111111,
+    "abstention_correct": 1,
+    "hallucinated_answer": 0,
+    "false_abstention": 0,
+    "citation_validity": 1.0,
+    "citation_precision": 1.0,
+    "citation_recall": 1.0,
+    "numeric_faithfulness": 1.0,
+    "cases": 5,
+    "successful_cases": 5,
+    "error_cases": 0,
+    "prompt_tokens": 5005,
+    "completion_tokens": 402,
+    "total_latency_seconds": 11.029124975204468,
+    "average_latency_seconds": 2.2058249950408935
+  },
+  "by_variant": {
+    "oracle": {
+      "answer_correct": 1,
+      "expected_value_coverage": 1.0,
+      "lexical_required_fact_coverage": 0.9111111111111111,
+      "abstention_correct": 1,
+      "hallucinated_answer": 0,
+      "false_abstention": 0,
+      "citation_validity": 1.0,
+      "citation_precision": 1.0,
+      "citation_recall": 1.0,
+      "numeric_faithfulness": 1.0,
+      "cases": 5,
+      "successful_cases": 5,
+      "error_cases": 0,
+      "prompt_tokens": 5005,
+      "completion_tokens": 402,
+      "total_latency_seconds": 11.029124975204468,
+      "average_latency_seconds": 2.2058249950408935
+    }
+  },
+  "by_category": {
+    "exact_numeric": {
+      "answer_correct": 1,
+      "expected_value_coverage": 1.0,
+      "lexical_required_fact_coverage": 0.9111111111111111,
+      "abstention_correct": 1,
+      "hallucinated_answer": 0,
+      "false_abstention": 0,
+      "citation_validity": 1.0,
+      "citation_precision": 1.0,
+      "citation_recall": 1.0,
+      "numeric_faithfulness": 1.0,
+      "cases": 5,
+      "successful_cases": 5,
+      "error_cases": 0,
+      "prompt_tokens": 5005,
+      "completion_tokens": 402,
+      "total_latency_seconds": 11.029124975204468,
+      "average_latency_seconds": 2.2058249950408935
+    }
+  },
+  "by_difficulty": {
+    "easy": {
+      "answer_correct": 1,
+      "expected_value_coverage": 1.0,
+      "lexical_required_fact_coverage": 0.9111111111111111,
+      "abstention_correct": 1,
+      "hallucinated_answer": 0,
+      "false_abstention": 0,
+      "citation_validity": 1.0,
+      "citation_precision": 1.0,
+      "citation_recall": 1.0,
+      "numeric_faithfulness": 1.0,
+      "cases": 5,
+      "successful_cases": 5,
+      "error_cases": 0,
+      "prompt_tokens": 5005,
+      "completion_tokens": 402,
+      "total_latency_seconds": 11.029124975204468,
+      "average_latency_seconds": 2.2058249950408935
+    }
+  }
+}
