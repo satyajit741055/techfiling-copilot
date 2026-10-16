@@ -43,6 +43,114 @@ Fixed context (change only when noted): golden set = `goldens/golden_retriver_da
 
 ================================================================= -->
 
+## EXP-009 — Ettin candidate-depth tuning
+- **Date:** 2026-10-16
+- **Run dir:** data/chunks/2026-10-16_17-03-28
+- **Result files:**
+  - `eval/results/2026-10-16_20-42-50_rerank_a0.85_ettin-reranker-150m-v1_eval_results.json` (`retrieve_k=20`)
+  - `eval/results/2026-10-16_20-45-05_rerank_a0.85_ettin-reranker-150m-v1_eval_results.json` (`retrieve_k=30`)
+  - `eval/results/2026-10-16_20-31-18_rerank_a0.85_ettin-reranker-150m-v1_eval_results.json` (`retrieve_k=50`)
+- **Hypothesis:** A smaller candidate pool will preserve most of Ettin's gain while reducing
+  cross-encoder work and latency.
+- **Change vs EXP-008:** Keep hybrid alpha and reranker fixed; vary only `retrieve_k`.
+
+| Retrieve-k | Hit@5 | MRR@5 | Recall@5 | Prec@5 | nDCG@5 |
+|---:|---:|---:|---:|---:|---:|
+| 20 | 0.750 | 0.574 | 0.598 | 0.211 | 0.526 |
+| 30 | 0.750 | 0.572 | 0.604 | 0.214 | 0.530 |
+| **50** | **0.786** | **0.587** | **0.640** | **0.225** | **0.546** |
+
+- **Observation:** The hypothesis **did not hold for quality**. Moving from 20 to 30 candidates
+  produced only a small gain, while 50 improved every metric. Relevant evidence frequently lies
+  between candidate ranks 31 and 50, and Ettin successfully promotes it into the final top five.
+- **Decision:** Use `retrieve_k=50` for the quality-first configuration. Test 40 only if measured
+  latency requires a compromise; otherwise additional candidate-depth tuning is unnecessary.
+- **Selected pipeline:** 1200/900 chunks → BGE dense + BM25 hybrid (`alpha=0.85`) → top 50
+  candidates → `cross-encoder/ettin-reranker-150m-v1` → final top 5.
+- **Next step:** Fix empty category/difficulty breakdown reporting, measure warm-run latency, and
+  confirm the selected configuration on an untouched held-out query set.
+
+---
+
+## EXP-008 — Cross-encoder reranker comparison
+- **Date:** 2026-10-16
+- **Run dir:** data/chunks/2026-10-16_17-03-28
+- **Result files:**
+  - `eval/results/2026-10-16_20-19-20_rerank_a0.8_ms-marco-MiniLM-L-6-v2_eval_results.json`
+  - `eval/results/2026-10-16_20-24-59_rerank_a0.8_bge-reranker-base_eval_results.json`
+  - `eval/results/2026-10-16_20-31-18_rerank_a0.85_ettin-reranker-150m-v1_eval_results.json`
+- **Hypothesis:** Reranking a high-recall top-50 hybrid candidate pool will improve top-five
+  ordering; models may differ substantially in their fit for SEC financial passages.
+- **Change vs EXP-007:** Fix `alpha=0.85` and `retrieve_k=50`; vary only the cross-encoder.
+
+| Reranker | Hit@5 | MRR@5 | Recall@5 | Prec@5 | nDCG@5 |
+|---|---:|---:|---:|---:|---:|
+| MiniLM-L-6-v2 | 0.661 | 0.468 | 0.521 | 0.175 | 0.431 |
+| BGE reranker base | 0.750 | 0.509 | 0.577 | 0.196 | 0.466 |
+| **Ettin reranker 150M** | **0.786** | **0.587** | **0.640** | **0.225** | **0.546** |
+
+- **Observation:** Ettin was the only reranker to improve every metric over the hybrid input.
+  MiniLM and BGE reordered good candidates incorrectly and were rejected. Against hybrid
+  `alpha=0.85`, Ettin raised Hit 0.750→0.786, MRR 0.558→0.587, Recall 0.598→0.640, Precision
+  0.204→0.225, and nDCG 0.520→0.546.
+- **Decision:** Select `cross-encoder/ettin-reranker-150m-v1`.
+- **Next step:** Tune candidate depth to determine whether 20 or 30 candidates retain the gain
+  with less cross-encoder work (→ EXP-009).
+
+---
+
+## EXP-007 — Dense-heavy alpha and candidate-pool tuning
+- **Date:** 2026-10-16
+- **Run dir:** data/chunks/2026-10-16_17-03-28
+- **Hypothesis:** BM25 is useful only as a small lexical contribution; a dense-heavy hybrid can
+  improve ranking while retaining enough relevant candidates for reranking.
+- **Change vs EXP-006:** Sweep hybrid alpha, then measure candidate recall at k=20 and k=50.
+
+| Alpha | Hit@5 | MRR@5 | Recall@5 | Prec@5 | nDCG@5 | Recall@20 | Recall@50 |
+|---:|---:|---:|---:|---:|---:|---:|---:|
+| 0.80 | 0.750 | 0.540 | **0.616** | **0.207** | 0.509 | **0.771** | **0.932** |
+| **0.85** | 0.750 | 0.558 | 0.598 | 0.204 | 0.520 | 0.759 | **0.932** |
+| 0.90 | 0.750 | **0.575** | 0.589 | 0.200 | **0.524** | 0.759 | 0.911 |
+| Dense (1.00) | 0.750 | 0.551 | 0.601 | **0.207** | 0.511 | — | — |
+
+- **Observation:** `alpha=0.90` gave the best direct top-five ranking, while `0.80` maximized
+  recall. At candidate depth 50, `0.80` and `0.85` tied on Recall (0.932) and Hit (0.982), but
+  `0.85` had better candidate nDCG (0.636 vs 0.625). Alpha 0.90 missed more candidates at 50.
+- **Decision:** Use `alpha=0.85` as the reranker candidate generator and begin with
+  `retrieve_k=50`; ranking inside that pool will be replaced by the cross-encoder.
+- **Next step:** Compare reranker models under the same alpha and candidate pool (→ EXP-008).
+
+---
+
+## EXP-006 — Dense vs BM25 vs equal-weight hybrid
+- **Date:** 2026-10-16
+- **Run dir:** data/chunks/2026-10-16_17-03-28
+- **Result files:**
+  - `eval/results/2026-10-16_20-00-51_dense_eval_results.json`
+  - `eval/results/2026-10-16_20-01-13_bm25_eval_results.json`
+  - `eval/results/2026-10-16_20-01-39_hybrid_a0.5_eval_results.json`
+- **Hypothesis:** BM25's exact-term matching will complement semantic retrieval, so an equal-weight
+  dense/BM25 hybrid will outperform the dense baseline on the frozen 1200/900 chunk run.
+- **Change vs EXP-002:** Keep chunks and embeddings fixed; compare retrieval strategy only.
+
+| Mode | Alpha | Hit@5 | MRR@5 | Recall@5 | Prec@5 | nDCG@5 |
+|---|---:|---:|---:|---:|---:|---:|
+| Dense | — | **0.750** | **0.551** | **0.601** | **0.207** | **0.511** |
+| BM25 | — | 0.536 | 0.365 | 0.443 | 0.143 | 0.361 |
+| Hybrid | 0.5 | 0.625 | 0.437 | 0.515 | 0.175 | 0.428 |
+
+- **Observation:** The hypothesis **did not hold**. Dense retrieval won every metric. BM25 was
+  substantially weaker, and assigning it 50% of the hybrid score pulled strong dense results
+  downward: hybrid nDCG fell from 0.511 to 0.428, MRR from 0.551 to 0.437, and Recall from 0.601
+  to 0.515. This rejects equal weighting, but does not yet reject a dense-heavy hybrid. Category
+  and difficulty sections were unexpectedly empty in this evaluator output and should be fixed
+  before using subgroup performance to choose the final configuration.
+- **Next step:** Tune `alpha` from 0.0 to 1.0 on this same frozen run. Keep hybrid only if a
+  dense-heavy weight beats dense nDCG@5=0.511 without materially reducing Recall@5=0.601;
+  otherwise use dense (`alpha=1.0`) as the candidate generator for cross-encoder reranking.
+
+---
+
 ## EXP-005 — Push budgets smaller (1000 / 900)
 - **Date:** 2026-10-16
 - **Run dir:** data/chunks/2026-10-16_19-18-24
