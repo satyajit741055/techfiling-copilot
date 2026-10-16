@@ -1,0 +1,33 @@
+# Runtime dependencies for the techfiling-copilot generation golden pipeline.
+#
+# Preferred install path is `uv sync` (uses pyproject.toml + uv.lock, including
+# the CUDA-specific torch index). This requirements.txt is a pip-friendly
+# fallback that mirrors pyproject.toml.
+#
+# Install:
+#   pip install -r requirements.txt
+#
+# NOTE on torch: pyproject.toml pins torch from the PyTorch CUDA (cu130) index.
+# With plain pip you get the default (CPU/CUDA) wheel from PyPI. For a specific
+# build see https://pytorch.org/get-started/locally/ , e.g. CPU-only:
+#   pip install torch --index-url https://download.pytorch.org/whl/cpu
+
+# --- Core (building + validating the golden dataset) ---
+# The build and validation scripts use only the Python standard library, so the
+# dataset itself can be produced/validated with no third-party packages. The
+# packages below are needed for ingestion (re-chunking) and running the eval.
+
+beautifulsoup4>=4.15.0
+lxml>=6.1.3
+numpy>=2.5.3
+pandas>=3.0.6
+
+# --- Chunking / embeddings (only needed if you re-run ingestion) ---
+sentence-transformers>=6.1.0
+torch>=2.4.0
+
+# --- LLM providers (only the one you evaluate with is required) ---
+ollama>=0.6.3            # local models (default provider)
+openai>=1.50.0           # provider=openai  (needs OPENAI_API_KEY)
+# anthropic>=0.39.0      # provider=anthropic (needs ANTHROPIC_API_KEY) - uncomment if used
+# google-generativeai>=0.8.0  # provider=google (needs GOOGLE_API_KEY) - uncomment if used
