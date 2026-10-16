@@ -1,0 +1,277 @@
+[
+  {
+    "doc_id": "AAPL_10-K_2025",
+    "source_file": "Apple_Inc__10K_2025_10_31.html",
+    "verdict": "PASS",
+    "confidence": 0.9905,
+    "scores": {
+      "words": 1.0,
+      "blocks": 1.0,
+      "facts": 1.0,
+      "structure": 0.9877,
+      "tables": 0.9354
+    },
+    "words": {
+      "coverage_all_visible": 0.9737,
+      "coverage_adjusted": 1.0,
+      "html_tokens_adjusted": 30011,
+      "covered": 30011,
+      "excluded_by_design_tokens": 875,
+      "excluded_by_design": {
+        "page_furniture_blocks": 60,
+        "toc_tables": 3,
+        "repeated_or_page_number_lines": 13
+      },
+      "top_missing": []
+    },
+    "blocks": {
+      "total": 573,
+      "missing_examples": []
+    },
+    "facts": {
+      "visible": 969,
+      "in_text_only": 98,
+      "linked_value_ok": 871,
+      "missing_examples": []
+    },
+    "structure": {
+      "rows": 1.0,
+      "lost": 1.0,
+      "columns": 1.0,
+      "totals": 0.9384,
+      "tables_paired": 1.0,
+      "parsed_rows": 464,
+      "matched_rows": 464,
+      "html_rows": 524,
+      "column_obs": 1230,
+      "column_pure": 1230,
+      "unaligned_rows": 1,
+      "inherited_label_rows": 2,
+      "lost_html_rows": 0,
+      "html_tables": 51,
+      "html_tables_unpaired": 0,
+      "totals_checked": 146,
+      "totals_passed": 137,
+      "totals_failed": [
+        "AAPL_10-K_2025_t013: Total (1/2 columns add up)",
+        "AAPL_10-K_2025_t026: Total shareholders’ equity, ending balances (0/3 columns add up)",
+        "AAPL_10-K_2025_t042: Maturities greater than 90 days > Total proceeds from/(repayments of) commercial paper, net (0/3 columns add up)",
+        "AAPL_10-K_2025_t043: 2025 debt issuance > Total term debt principal (0/2 columns add up)"
+      ],
+      "problem_tables": []
+    },
+    "tables": {
+      "parsed": 51,
+      "mean_score": 0.9354,
+      "low_confidence": []
+    }
+  },
+  {
+    "doc_id": "MSFT_10-K_2026",
+    "source_file": "Microsoft_Corp__10K_2026_06_30.html",
+    "verdict": "PASS",
+    "confidence": 0.9871,
+    "scores": {
+      "words": 0.9992,
+      "blocks": 1.0,
+      "facts": 1.0,
+      "structure": 0.9828,
+      "tables": 0.9163
+    },
+    "words": {
+      "coverage_all_visible": 0.9883,
+      "coverage_adjusted": 0.9992,
+      "html_tokens_adjusted": 47536,
+      "covered": 47498,
+      "excluded_by_design_tokens": 550,
+      "excluded_by_design": {
+        "repeated_or_page_number_lines": 302
+      },
+      "top_missing": [
+        [
+          "a",
+          7
+        ],
+        [
+          "d",
+          3
+        ],
+        [
+          "b",
+          3
+        ],
+        [
+          "of",
+          2
+        ],
+        [
+          "the",
+          2
+        ],
+        [
+          "c",
+          2
+        ],
+        [
+          "owe",
+          2
+        ],
+        [
+          "securities",
+          1
+        ],
+        [
+          "exchange",
+          1
+        ],
+        [
+          "report",
+          1
+        ]
+      ]
+    },
+    "blocks": {
+      "total": 876,
+      "missing_examples": []
+    },
+    "facts": {
+      "visible": 1581,
+      "in_text_only": 155,
+      "linked_value_ok": 1426,
+      "missing_examples": []
+    },
+    "structure": {
+      "rows": 1.0,
+      "lost": 1.0,
+      "columns": 1.0,
+      "totals": 0.9252,
+      "tables_paired": 0.9886,
+      "parsed_rows": 782,
+      "matched_rows": 782,
+      "html_rows": 917,
+      "column_obs": 2062,
+      "column_pure": 2062,
+      "unaligned_rows": 0,
+      "inherited_label_rows": 5,
+      "lost_html_rows": 0,
+      "html_tables": 88,
+      "html_tables_unpaired": 1,
+      "totals_checked": 147,
+      "totals_passed": 136,
+      "totals_failed": [
+        "MSFT_10-K_2026_t029: Accumulated other comprehensive loss > Total stockholders’ equity (0/3 columns add up)",
+        "MSFT_10-K_2026_t034: June 30, 2026 > Changes in Fair Value Recorded in Net Income > Total (0/4 columns add up)",
+        "MSFT_10-K_2026_t035: June 30, 2025 > Changes in Fair Value Recorded in Net Income > Total (0/4 columns add up)"
+      ],
+      "problem_tables": []
+    },
+    "tables": {
+      "parsed": 85,
+      "mean_score": 0.9163,
+      "low_confidence": []
+    }
+  },
+  {
+    "doc_id": "TSLA_10-K_2025",
+    "source_file": "Tesla_Inc__10K_2026_01_29.html",
+    "verdict": "PASS",
+    "confidence": 0.9924,
+    "scores": {
+      "words": 0.9997,
+      "blocks": 1.0,
+      "facts": 1.0,
+      "structure": 1.0,
+      "tables": 0.9247
+    },
+    "words": {
+      "coverage_all_visible": 0.9917,
+      "coverage_adjusted": 0.9997,
+      "html_tokens_adjusted": 59434,
+      "covered": 59417,
+      "excluded_by_design_tokens": 485,
+      "excluded_by_design": {
+        "page_furniture_blocks": 105,
+        "toc_tables": 2,
+        "repeated_or_page_number_lines": 55
+      },
+      "top_missing": [
+        [
+          "the",
+          3
+        ],
+        [
+          "and",
+          1
+        ],
+        [
+          "to",
+          1
+        ],
+        [
+          "of",
+          1
+        ],
+        [
+          "for",
+          1
+        ],
+        [
+          "related",
+          1
+        ],
+        [
+          "table",
+          1
+        ],
+        [
+          "our",
+          1
+        ],
+        [
+          "details",
+          1
+        ],
+        [
+          "years",
+          1
+        ]
+      ]
+    },
+    "blocks": {
+      "total": 882,
+      "missing_examples": []
+    },
+    "facts": {
+      "visible": 1477,
+      "in_text_only": 240,
+      "linked_value_ok": 1237,
+      "missing_examples": []
+    },
+    "structure": {
+      "rows": 1.0,
+      "lost": 1.0,
+      "columns": 1.0,
+      "totals": 1.0,
+      "tables_paired": 1.0,
+      "parsed_rows": 647,
+      "matched_rows": 647,
+      "html_rows": 753,
+      "column_obs": 1641,
+      "column_pure": 1641,
+      "unaligned_rows": 0,
+      "inherited_label_rows": 0,
+      "lost_html_rows": 0,
+      "html_tables": 75,
+      "html_tables_unpaired": 0,
+      "totals_checked": 180,
+      "totals_passed": 180,
+      "totals_failed": [],
+      "problem_tables": []
+    },
+    "tables": {
+      "parsed": 74,
+      "mean_score": 0.9247,
+      "low_confidence": []
+    }
+  }
+]
