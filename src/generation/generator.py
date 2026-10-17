@@ -16,6 +16,7 @@ Usage:
 
 from __future__ import annotations
 
+import logging
 from datetime import datetime
 from pathlib import Path
 from typing import Any
@@ -26,6 +27,8 @@ from .prompts import SYSTEM_PROMPT, build_user_prompt
 from .schemas import GeneratedAnswer, GenerationResult
 from .llm_client import LLMClient
 from .validation import parse_llm_response, validate_answer
+
+logger = logging.getLogger(__name__)
 
 
 class AnswerGenerator:
@@ -103,7 +106,7 @@ class AnswerGenerator:
             device=self.config.device,
         )
         
-        print(f"Retriever ready with {len(self._retriever.chunks):,} chunks")
+        logger.info(f"Retriever ready with {len(self._retriever.chunks):,} chunks")
     
     def _init_llm_client(self) -> None:
         """Initialize the LLM client from the current configuration."""

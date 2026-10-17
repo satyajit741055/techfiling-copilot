@@ -22,10 +22,13 @@ Usage:
 
 from __future__ import annotations
 
+import logging
 import time
 from typing import Any
 
 from .schemas import LLMResponse
+
+logger = logging.getLogger(__name__)
 
 
 def _get_settings():
@@ -105,7 +108,7 @@ class LLMClient:
             # Use API key from settings if available, otherwise fall back to env var
             api_key = self._settings.OPENAI_API_KEY
             self._client = OpenAI(api_key=api_key) if api_key else OpenAI()
-            print(f"OpenAI client initialized (model: {self.model})")
+            logger.info(f"OpenAI client initialized (model: {self.model})")
         except ImportError:
             raise ImportError("Install openai: pip install openai")
     
@@ -115,7 +118,7 @@ class LLMClient:
             from anthropic import Anthropic
             api_key = self._settings.ANTHROPIC_API_KEY
             self._client = Anthropic(api_key=api_key) if api_key else Anthropic()
-            print(f"Anthropic client initialized (model: {self.model})")
+            logger.info(f"Anthropic client initialized (model: {self.model})")
         except ImportError:
             raise ImportError("Install anthropic: pip install anthropic")
     
@@ -129,7 +132,7 @@ class LLMClient:
             else:
                 genai.configure()  # Uses GOOGLE_API_KEY env var
             self._client = genai.GenerativeModel(self.model)
-            print(f"Google client initialized (model: {self.model})")
+            logger.info(f"Google client initialized (model: {self.model})")
         except ImportError:
             raise ImportError("Install google-generativeai: pip install google-generativeai")
     
@@ -144,7 +147,7 @@ class LLMClient:
                 import os
                 os.environ["OLLAMA_HOST"] = ollama_host
             self._client = ollama
-            print(f"Ollama client initialized (model: {self.model}, host: {ollama_host})")
+            logger.info(f"Ollama client initialized (model: {self.model}, host: {ollama_host})")
         except ImportError:
             raise ImportError("Install ollama: pip install ollama")
     
@@ -157,7 +160,7 @@ class LLMClient:
             self._hf_api_key = self._settings.HUGGINGFACE_API_KEY
             if self._hf_api_key:
                 self._client.headers.update({"Authorization": f"Bearer {self._hf_api_key}"})
-            print(f"Hugging Face client initialized (model: {self.model})")
+            logger.info(f"Hugging Face client initialized (model: {self.model})")
         except ImportError:
             raise ImportError("Install requests: pip install requests")
     
