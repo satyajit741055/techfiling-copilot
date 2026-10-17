@@ -33,7 +33,7 @@ import json
 import math
 import sys
 from collections import defaultdict
-from dataclasses import dataclass, field, asdict
+from dataclasses import asdict, dataclass, field
 from datetime import datetime
 from pathlib import Path
 from typing import Any
@@ -42,13 +42,13 @@ import numpy as np
 
 # Add parent to path for imports
 sys.path.insert(0, str(Path(__file__).resolve().parents[1] / "src"))
-from retriever.retriever import DenseRetriever, SearchResult
+from retriever.bm25s_rrf_retriever import BM25SRRFRetriever, BM25SRRFRetrieverWithReranker
 from retriever.hybrid_retriever import (
     BM25Retriever,
     HybridRetriever,
     HybridRetrieverWithReranker,
-    Reranker,
 )
+from retriever.retriever import DenseRetriever, SearchResult
 
 ROOT = Path(__file__).resolve().parents[1]
 DEFAULT_GOLDEN_PATH = ROOT / "goldens" / "golden_retriever_dataset.jsonl"
@@ -256,6 +256,8 @@ class HybridEvaluator:
     - "bm25": Pure BM25 retrieval
     - "hybrid": Dense + BM25 combined
     - "rerank": Hybrid + cross-encoder reranking
+    - "rrf": Dense + BM25S fused with reciprocal rank fusion
+    - "rrf_rerank": RRF + cross-encoder reranking
     """
 
     def __init__(
@@ -267,6 +269,9 @@ class HybridEvaluator:
         retrieve_k: int = 20,
         reranker_model: str = "cross-encoder/ms-marco-MiniLM-L-6-v2",
         device: str | None = None,
+        rrf_k: int = 60,
+        dense_k: int = 50,
+        bm25_k: int = 50,
     ):
         """Load the golden set and initialize the selected retrieval pipeline.
 
@@ -278,6 +283,9 @@ class HybridEvaluator:
             retrieve_k: Candidate count used before cross-encoder reranking.
             reranker_model: Cross-encoder model used by reranking mode.
             device: Model inference device, such as ``cuda`` or ``cpu``.
+            rrf_k: RRF smoothing constant (rrf modes only).
+            dense_k: Dense candidates fed into RRF (rrf modes only).
+            bm25_k: BM25 candidates fed into RRF (rrf modes only).
 
         Raises:
             ValueError: If ``mode`` is unsupported.
@@ -288,6 +296,7 @@ class HybridEvaluator:
         self.alpha = alpha
         self.retrieve_k = retrieve_k
         self.reranker_model = reranker_model
+        self.rrf_config = {"rrf_k": rrf_k, "dense_k": dense_k, "bm25_k": bm25_k}
 
         print(f"Loading retriever (mode={mode}, alpha={alpha})...")
 
@@ -306,6 +315,16 @@ class HybridEvaluator:
                 retrieve_k=retrieve_k,
                 reranker_model=reranker_model,
                 device=device,
+            )
+        elif mode == "rrf":
+            self.retriever = BM25SRRFRetriever(run_directory, device=device, **self.rrf_config)
+        elif mode == "rrf_rerank":
+            self.retriever = BM25SRRFRetrieverWithReranker(
+                run_directory,
+                retrieve_k=retrieve_k,
+                reranker_model=reranker_model,
+                device=device,
+                **self.rrf_config,
             )
         else:
             raise ValueError(f"Unknown mode: {mode}")
@@ -403,8 +422,11 @@ class HybridEvaluator:
         retrieval_config = {
             "mode": self.mode,
             "alpha": self.alpha if self.mode in ("hybrid", "rerank") else None,
-            "retrieve_k": self.retrieve_k if self.mode == "rerank" else None,
-            "reranker_model": self.reranker_model if self.mode == "rerank" else None,
+            "retrieve_k": self.retrieve_k if self.mode in ("rerank", "rrf_rerank") else None,
+            "reranker_model": (
+                self.reranker_model if self.mode in ("rerank", "rrf_rerank") else None
+            ),
+            "rrf": self.rrf_config if self.mode in ("rrf", "rrf_rerank") else None,
         }
 
         query_results: dict[int, list[QueryResult]] = {k: [] for k in k_values}
@@ -526,7 +548,7 @@ class HybridEvaluator:
         print("RETRIEVAL EVALUATION SUMMARY")
         print("=" * 80)
 
-        print(f"\nConfiguration:")
+        print("\nConfiguration:")
         print(f"  Run directory: {results.run_directory}")
         print(f"  Total chunks: {results.total_chunks}")
         print(f"  Total queries: {results.total_queries} "
@@ -567,7 +589,7 @@ class HybridEvaluator:
         print(f"  nDCG:       {overall['ndcg']:.3f}  (ranking quality score)")
 
         # Metrics by k
-        print(f"\nMetrics by k:")
+        print("\nMetrics by k:")
         header = f"{'Metric':<20} |"
         for k in results.k_values:
             header += f" k={k:>2} |"
@@ -859,10 +881,13 @@ def main():
     )
     parser.add_argument(
         "--mode",
-        choices=["dense", "bm25", "hybrid", "rerank"],
+        choices=["dense", "bm25", "hybrid", "rerank", "rrf", "rrf_rerank"],
         default="hybrid",
         help="Retrieval mode",
     )
+    parser.add_argument("--rrf-k", type=int, default=60, help="RRF smoothing constant")
+    parser.add_argument("--dense-k", type=int, default=50, help="Dense candidates for RRF")
+    parser.add_argument("--bm25-k", type=int, default=50, help="BM25 candidates for RRF")
     parser.add_argument(
         "--alpha",
         type=float,
@@ -920,6 +945,9 @@ def main():
         retrieve_k=args.retrieve_k,
         reranker_model=args.reranker_model,
         device=args.device,
+        rrf_k=args.rrf_k,
+        dense_k=args.dense_k,
+        bm25_k=args.bm25_k,
     )
 
     results = evaluator.evaluate(k_values=args.k)

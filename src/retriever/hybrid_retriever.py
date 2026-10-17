@@ -2,9 +2,11 @@
 Hybrid Retriever: BM25 + Dense retrieval with optional reranking.
 
 This module provides:
-1. BM25Retriever - sparse keyword-based retrieval
+1. BM25Retriever - sparse keyword-based retrieval (via the ``bm25s`` library)
 2. HybridRetriever - combines dense (semantic) and BM25 (keyword) scores
 3. Reranker - cross-encoder reranking of retrieved results
+
+Rank-based fusion (RRF) lives in ``retriever.bm25s_rrf_retriever``.
 
 The hybrid approach addresses limitations of pure dense retrieval:
 - BM25 excels at exact keyword matching (table rows, specific terms)
@@ -18,15 +20,13 @@ from __future__ import annotations
 
 import argparse
 import json
-import math
-import re
-from collections import Counter
 from collections.abc import Iterator, Mapping
 from pathlib import Path
 from typing import Any, NamedTuple
 
+import bm25s
 import numpy as np
-from sentence_transformers import SentenceTransformer, CrossEncoder
+from sentence_transformers import CrossEncoder, SentenceTransformer
 
 
 def _get_settings():
@@ -77,15 +77,15 @@ class SearchResult(NamedTuple):
 
 class BM25:
     """
-    BM25 (Best Matching 25) ranking function.
+    BM25 (Best Matching 25) ranking function backed by the ``bm25s`` library.
 
-    BM25 is a bag-of-words retrieval function that ranks documents based on
-    query term frequencies, document length normalization, and inverse document
-    frequency.
+    ``bm25s`` precomputes a sparse document-term score matrix at index time, so
+    querying is a vectorized sparse lookup instead of a per-document Python loop.
 
-    Formula:
+    Formula (``method="lucene"``):
         score(D, Q) = sum_{i=1}^{n} IDF(q_i) * (f(q_i, D) * (k1 + 1)) /
                       (f(q_i, D) + k1 * (1 - b + b * |D| / avgdl))
+        IDF(q) = ln((N - n(q) + 0.5) / (n(q) + 0.5) + 1)
 
     Where:
         - f(q_i, D) = frequency of term q_i in document D
@@ -100,33 +100,42 @@ class BM25:
             term frequency. Typical range: 1.2-2.0
         b: Length normalization. 0 = no normalization, 1 = full normalization.
             Typical range: 0.5-0.8
+        method: bm25s scoring variant ("lucene", "robertson", "atire", "bm25l", "bm25+")
     """
 
-    def __init__(self, k1: float = 1.5, b: float = 0.75):
+    TOKEN_PATTERN = r"(?u)\b[a-z0-9]+\b"
+
+    def __init__(self, k1: float = 1.5, b: float = 0.75, method: str = "lucene"):
         """Initialize BM25 with term-frequency and length-normalization weights."""
         self.k1 = k1
         self.b = b
+        self.method = method
         self.corpus_size = 0
-        self.avgdl = 0.0
-        self.doc_freqs: dict[str, int] = {}  # term -> number of docs containing term
-        self.idf: dict[str, float] = {}  # term -> IDF score
-        self.doc_lengths: list[int] = []  # length of each document
-        self.doc_term_freqs: list[dict[str, int]] = []  # term frequencies per doc
+        self.model = bm25s.BM25(k1=k1, b=b, method=method)
 
-    @staticmethod
-    def tokenize(text: str) -> list[str]:
+    @classmethod
+    def tokenize(cls, texts: str | list[str]) -> list[list[str]]:
         """
-        Simple tokenization: lowercase, split on non-alphanumeric.
+        Simple tokenization: lowercase, split on non-alphanumeric, no stopwords.
 
         For financial documents, this preserves:
         - Numbers (416161, 2025)
         - Ticker symbols (AAPL, MSFT)
         - Common terms (sales, revenue, net)
         """
-        text = text.lower()
-        # Split on non-alphanumeric, keep tokens with length >= 1
-        tokens = re.findall(r'\b[a-z0-9]+\b', text)
-        return tokens
+        return bm25s.tokenize(
+            texts,
+            lower=True,
+            token_pattern=cls.TOKEN_PATTERN,
+            stopwords=None,
+            return_ids=False,
+            show_progress=False,
+        )
+
+    @property
+    def vocab_size(self) -> int:
+        """Number of unique terms in the index."""
+        return len(self.model.vocab_dict) if self.corpus_size else 0
 
     def fit(self, corpus: list[str]) -> "BM25":
         """
@@ -139,66 +148,12 @@ class BM25:
             self (for method chaining)
         """
         self.corpus_size = len(corpus)
-        self.doc_lengths = []
-        self.doc_term_freqs = []
-        self.doc_freqs = Counter()
-
-        # First pass: compute term frequencies and document frequencies
-        for doc in corpus:
-            tokens = self.tokenize(doc)
-            self.doc_lengths.append(len(tokens))
-
-            term_freqs = Counter(tokens)
-            self.doc_term_freqs.append(dict(term_freqs))
-
-            # Update document frequencies (count each term once per doc)
-            for term in term_freqs:
-                self.doc_freqs[term] += 1
-
-        # Compute average document length
-        self.avgdl = sum(self.doc_lengths) / self.corpus_size if self.corpus_size else 0
-
-        # Compute IDF for each term
-        # IDF(q) = ln((N - n(q) + 0.5) / (n(q) + 0.5) + 1)
-        # This is the "plus 1" variant that avoids negative IDF for common terms
-        for term, df in self.doc_freqs.items():
-            numerator = self.corpus_size - df + 0.5
-            denominator = df + 0.5
-            self.idf[term] = math.log(numerator / denominator + 1)
-
+        self.model.index(self.tokenize(corpus), show_progress=False)
         return self
 
-    def score(self, query: str, doc_idx: int) -> float:
-        """
-        Compute BM25 score for a single document given a query.
-
-        Args:
-            query: Query string
-            doc_idx: Index of the document in the corpus
-
-        Returns:
-            BM25 score (higher = more relevant)
-        """
-        query_tokens = self.tokenize(query)
-        doc_term_freq = self.doc_term_freqs[doc_idx]
-        doc_len = self.doc_lengths[doc_idx]
-
-        score = 0.0
-        for term in query_tokens:
-            if term not in doc_term_freq:
-                continue
-
-            tf = doc_term_freq[term]
-            idf = self.idf.get(term, 0)
-
-            # BM25 term score
-            numerator = tf * (self.k1 + 1)
-            denominator = tf + self.k1 * (1 - self.b + self.b * doc_len / self.avgdl)
-            score += idf * numerator / denominator
-
-        return score
-
-    def score_batch(self, query: str, doc_indices: list[int] | None = None) -> np.ndarray:
+    def score_batch(
+        self, query: str, doc_indices: list[int] | np.ndarray | None = None
+    ) -> np.ndarray:
         """
         Compute BM25 scores for multiple documents.
 
@@ -209,11 +164,12 @@ class BM25:
         Returns:
             Array of BM25 scores
         """
-        if doc_indices is None:
-            doc_indices = list(range(self.corpus_size))
-
-        scores = np.array([self.score(query, idx) for idx in doc_indices])
-        return scores
+        query_tokens = self.tokenize(query)[0]
+        if query_tokens:
+            scores = np.asarray(self.model.get_scores(query_tokens), dtype=np.float64)
+        else:
+            scores = np.zeros(self.corpus_size, dtype=np.float64)
+        return scores if doc_indices is None else scores[np.asarray(doc_indices, dtype=np.int64)]
 
     def search(self, query: str, k: int = 5, doc_indices: list[int] | None = None) -> list[tuple[int, float]]:
         """
@@ -269,7 +225,7 @@ class BM25Retriever:
         self.bm25 = BM25().fit(corpus)
 
         print(f"  BM25 index built: {len(self.chunks)} documents, "
-              f"{len(self.bm25.doc_freqs)} unique terms")
+              f"{self.bm25.vocab_size} unique terms")
 
     @staticmethod
     def _resolve_run_directory(run_directory: str | Path | None) -> Path:
@@ -447,8 +403,20 @@ class HybridRetriever:
 
         print(f"  Loaded {len(self.chunks)} chunks")
         print(f"  Dense model: {self.model_name}")
-        print(f"  BM25 index: {len(self.bm25.doc_freqs)} unique terms")
+        print(f"  BM25 index (bm25s): {self.bm25.vocab_size} unique terms")
+        self._print_fusion_config()
+
+    def _print_fusion_config(self) -> None:
+        """Log how dense and BM25 scores are fused."""
         print(f"  Hybrid alpha: {self.alpha} (dense weight)")
+
+    def _encode_query(self, query: str) -> np.ndarray:
+        """Embed a query with the BGE retrieval prefix."""
+        return self.model.encode(
+            BGE_QUERY_PREFIX + query,
+            normalize_embeddings=True,
+            convert_to_numpy=True,
+        ).astype("float32")
 
     @staticmethod
     def _resolve_run_directory(run_directory: str | Path | None) -> Path:
@@ -589,11 +557,7 @@ class HybridRetriever:
         match_indices = np.asarray(matches, dtype=np.int64)
 
         # Compute dense scores
-        query_embedding = self.model.encode(
-            BGE_QUERY_PREFIX + query,
-            normalize_embeddings=True,
-            convert_to_numpy=True,
-        ).astype("float32")
+        query_embedding = self._encode_query(query)
         dense_scores = self.embeddings[match_indices] @ query_embedding
 
         # Compute BM25 scores
@@ -649,11 +613,7 @@ class HybridRetriever:
         match_indices = np.asarray(matches, dtype=np.int64)
 
         # Compute scores
-        query_embedding = self.model.encode(
-            BGE_QUERY_PREFIX + query,
-            normalize_embeddings=True,
-            convert_to_numpy=True,
-        ).astype("float32")
+        query_embedding = self._encode_query(query)
         dense_scores = self.embeddings[match_indices] @ query_embedding
         bm25_scores = self.bm25.score_batch(query, matches)
 
@@ -720,7 +680,7 @@ class Reranker:
         model_cache_directory: str | Path | None = None,
     ) -> None:
         """Load the configured cross-encoder model for pairwise reranking.
-        
+
         Args:
             model_name: Cross-encoder model. If None, uses settings (env-aware).
             device: Compute device. If None, uses DEVICE from settings.
@@ -733,7 +693,7 @@ class Reranker:
             device = get_device()
         if model_cache_directory is None:
             model_cache_directory = get_model_cache_dir()
-        
+
         self._model_name = model_name
         self.model = CrossEncoder(
             model_name,
@@ -960,10 +920,13 @@ def main() -> None:
     )
     parser.add_argument(
         "--mode",
-        choices=["dense", "bm25", "hybrid", "rerank"],
+        choices=["dense", "bm25", "hybrid", "rerank", "rrf", "rrf_rerank"],
         default="hybrid",
         help="Retrieval mode",
     )
+    parser.add_argument("--rrf-k", type=int, default=60, help="RRF smoothing constant")
+    parser.add_argument("--dense-k", type=int, default=50, help="Dense candidates for RRF")
+    parser.add_argument("--bm25-k", type=int, default=50, help="BM25 candidates for RRF")
     parser.add_argument(
         "--retrieve-k",
         type=int,
@@ -1049,9 +1012,43 @@ def main() -> None:
         )
         show(results, args.width)
 
+    elif args.mode in ("rrf", "rrf_rerank"):
+        from retriever.bm25s_rrf_retriever import (
+            BM25SRRFRetriever,
+            BM25SRRFRetrieverWithReranker,
+        )
+
+        rrf_kwargs = dict(
+            dense_k=args.dense_k,
+            bm25_k=args.bm25_k,
+            rrf_k=args.rrf_k,
+            device=args.device,
+            model_cache_directory=args.model_cache_dir,
+        )
+        if args.mode == "rrf":
+            retriever = BM25SRRFRetriever(args.run_directory, **rrf_kwargs)
+        else:
+            retriever = BM25SRRFRetrieverWithReranker(
+                args.run_directory,
+                retrieve_k=args.retrieve_k,
+                rerank_k=args.k,
+                reranker_model=args.reranker_model,
+                **rrf_kwargs,
+            )
+        results = retriever.search(
+            args.query,
+            k=args.k,
+            doc_id=args.doc_id,
+            section=args.section,
+            type_=args.type_,
+        )
+        show(results, args.width)
+
     else:  # dense
         # Import DenseRetriever for comparison
-        from src.retriver.retriever import DenseRetriever, show as dense_show
+        from retriever.retriever import DenseRetriever
+        from retriever.retriever import show as dense_show
+
         print("Loading dense retriever...")
         retriever = DenseRetriever(
             args.run_directory,
