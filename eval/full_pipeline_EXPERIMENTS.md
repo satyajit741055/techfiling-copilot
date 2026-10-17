@@ -39,7 +39,7 @@ uv run python eval/full_pipeline_triad_eval.py --compare
 
 Fixed context unless an experiment explicitly says otherwise:
 
-- Retrieval golden: `goldens/golden_retriver_dataset.jsonl` (60 queries, 56 positive / 4 negative).
+- Retrieval golden: `goldens/golden_retriever_dataset.jsonl` (60 queries, 56 positive / 4 negative).
 - Generation golden: `goldens/golden_generation_dataset.jsonl` (oracle variants for answer expectations).
 - Chunk run: `data/chunks/2026-10-16_17-03-28`.
 - Retrieval pipeline: hybrid `alpha=0.85`, `retrieve_k=50`, reranker `cross-encoder/ettin-reranker-150m-v1`.

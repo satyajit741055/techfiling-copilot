@@ -93,7 +93,7 @@ class AnswerGenerator:
     
     def _init_retriever(self) -> None:
         """Initialize the hybrid retriever with reranker."""
-        from reteriver.hybrid_retriever import HybridRetrieverWithReranker
+        from retriever.hybrid_retriever import HybridRetrieverWithReranker
         
         run_directory = self.config.resolve_run_directory(self.root)
         

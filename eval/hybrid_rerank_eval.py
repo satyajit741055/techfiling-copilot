@@ -42,8 +42,8 @@ import numpy as np
 
 # Add parent to path for imports
 sys.path.insert(0, str(Path(__file__).resolve().parents[1] / "src"))
-from reteriver.retriever import DenseRetriever, SearchResult
-from reteriver.hybrid_retriever import (
+from retriever.retriever import DenseRetriever, SearchResult
+from retriever.hybrid_retriever import (
     BM25Retriever,
     HybridRetriever,
     HybridRetrieverWithReranker,
@@ -51,7 +51,7 @@ from reteriver.hybrid_retriever import (
 )
 
 ROOT = Path(__file__).resolve().parents[1]
-DEFAULT_GOLDEN_PATH = ROOT / "goldens" / "golden_retriver_dataset.jsonl"
+DEFAULT_GOLDEN_PATH = ROOT / "goldens" / "golden_retriever_dataset.jsonl"
 DEFAULT_RESULTS_DIR = ROOT / "eval" / "results"
 
 
@@ -673,7 +673,7 @@ def tune_alpha(
 
     # Load retriever components once
     print("\nLoading retriever components...")
-    from reteriver.hybrid_retriever import HybridRetriever
+    from retriever.hybrid_retriever import HybridRetriever
 
     # Create a base retriever to reuse
     base_retriever = HybridRetriever(

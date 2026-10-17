@@ -73,7 +73,7 @@ nDCG@5:     +0.035
 
 ### 1.1 Golden dataset
 
-The evaluation uses `goldens/golden_retriver_dataset.jsonl`:
+The evaluation uses `goldens/golden_retriever_dataset.jsonl`:
 
 - 60 labeled questions
 - 56 positive queries
@@ -506,14 +506,14 @@ following limitations:
 | Artifact | Purpose |
 |---|---|
 | `eval/EXPERIMENTS.md` | Chronological hypothesis, result, and decision log |
-| `eval/dense_reteriver_eval.py` | Dense retrieval evaluation harness |
+| `eval/dense_retriever_eval.py` | Dense retrieval evaluation harness |
 | `eval/hybrid_rerank_eval.py` | Dense, BM25, hybrid, and reranker evaluation harness |
 | `eval/results/` | Persisted aggregate and per-query evaluation results |
-| `goldens/golden_retriver_dataset.jsonl` | Labeled retrieval queries |
+| `goldens/golden_retriever_dataset.jsonl` | Labeled retrieval queries |
 | `src/ingestion/chunking/chunker.py` | Structure-aware chunk generation |
 | `src/ingestion/chunking/embedder.py` | BGE embedding generation and manifest creation |
-| `src/reteriver/retriever.py` | Dense retrieval implementation |
-| `src/reteriver/hybrid_retriever.py` | BM25, hybrid fusion, and cross-encoder pipeline |
+| `src/retriever/retriever.py` | Dense retrieval implementation |
+| `src/retriever/hybrid_retriever.py` | BM25, hybrid fusion, and cross-encoder pipeline |
 
 The configuration in this document is the current quality-first selection for the evaluated
 corpus and golden dataset. It should be revised when the corpus, labels, embedding model, or

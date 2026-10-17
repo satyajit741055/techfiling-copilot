@@ -979,7 +979,7 @@ def build_generation_goldens(root: Path) -> tuple[list[dict], list[ReviewItem]]:
     rng = random.Random(RANDOM_SEED)
     
     # Load data
-    retrieval_goldens = load_retrieval_goldens(root / "goldens" / "golden_retriver_dataset.jsonl")
+    retrieval_goldens = load_retrieval_goldens(root / "goldens" / "golden_retriever_dataset.jsonl")
     chunk_dir = root / "data" / "chunks" / CHUNK_RUN
     chunks_by_doc, element_to_chunks = load_chunks(chunk_dir)
     

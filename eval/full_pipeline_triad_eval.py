@@ -15,7 +15,7 @@ TRIAD LEGS (deterministic, golden-label scoring)
 ------------------------------------------------
 
 1. Context Relevance  -- Is the retrieved context relevant to the query?
-   Scored against the retrieval golden (`golden_retriver_dataset.jsonl`) by
+   Scored against the retrieval golden (`golden_retriever_dataset.jsonl`) by
    matching each retrieved chunk's `element_orders` to the graded relevant
    elements. Reuses the IR metric functions from `hybrid_rerank_eval` (hit,
    MRR, recall, precision, nDCG@k).
@@ -93,7 +93,7 @@ from hybrid_rerank_eval import (  # noqa: E402
     load_golden_dataset,
 )
 
-DEFAULT_RETRIEVAL_GOLDEN = ROOT / "goldens" / "golden_retriver_dataset.jsonl"
+DEFAULT_RETRIEVAL_GOLDEN = ROOT / "goldens" / "golden_retriever_dataset.jsonl"
 DEFAULT_GENERATION_GOLDEN = ROOT / "goldens" / "golden_generation_dataset.jsonl"
 DEFAULT_RESULTS_DIR = ROOT / "eval" / "rag_triad_results"
 

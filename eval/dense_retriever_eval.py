@@ -60,9 +60,9 @@ USAGE
 -----
 
 Command line:
-    uv run python eval/dense_reteriver_eval.py
-    uv run python eval/dense_reteriver_eval.py --k 10 --run-directory data/chunks/2026-10-14_15-50-05
-    uv run python eval/dense_reteriver_eval.py --compare  # Compare all logged runs
+    uv run python eval/dense_retriever_eval.py
+    uv run python eval/dense_retriever_eval.py --k 10 --run-directory data/chunks/2026-10-14_15-50-05
+    uv run python eval/dense_retriever_eval.py --compare  # Compare all logged runs
 
 
 OUTPUT
@@ -92,10 +92,10 @@ import numpy as np
 
 # Add parent to path for imports
 sys.path.insert(0, str(Path(__file__).resolve().parents[1] / "src"))
-from reteriver.retriever import DenseRetriever, SearchResult
+from retriever.retriever import DenseRetriever, SearchResult
 
 ROOT = Path(__file__).resolve().parents[1]
-DEFAULT_GOLDEN_PATH = ROOT / "goldens" / "golden_retriver_dataset.jsonl"
+DEFAULT_GOLDEN_PATH = ROOT / "goldens" / "golden_retriever_dataset.jsonl"
 DEFAULT_RESULTS_DIR = ROOT / "eval" / "results"
 
 # =============================================================================
@@ -1001,16 +1001,16 @@ def main() -> None:
         epilog="""
 Examples:
   # Run evaluation with default settings
-  uv run python eval/dense_reteriver_eval.py
+  uv run python eval/dense_retriever_eval.py
 
   # Evaluate specific run at multiple k values
-  uv run python eval/dense_reteriver_eval.py --run-directory data/chunks/2026-10-14_15-50-05 -k 1 3 5 10 20
+  uv run python eval/dense_retriever_eval.py --run-directory data/chunks/2026-10-14_15-50-05 -k 1 3 5 10 20
 
   # Compare all previous runs
-  uv run python eval/dense_reteriver_eval.py --compare
+  uv run python eval/dense_retriever_eval.py --compare
 
   # Analyze failures from last run
-  uv run python eval/dense_reteriver_eval.py --analyze-failures
+  uv run python eval/dense_retriever_eval.py --analyze-failures
         """,
     )
 

@@ -15,12 +15,12 @@ Standard commands:
 # (re)build chunks + embeddings for a config
 uv run python -m ingestion.processor --max-chars <N> --table-max-chars <N>
 # evaluate the latest run against the golden set
-uv run python .\eval\dense_reteriver_eval.py
+uv run python .\eval\dense_retriever_eval.py
 # compare every logged run
-uv run python .\eval\dense_reteriver_eval.py --compare
+uv run python .\eval\dense_retriever_eval.py --compare
 ```
 
-Fixed context (change only when noted): golden set = `goldens/golden_retriver_dataset.jsonl`
+Fixed context (change only when noted): golden set = `goldens/golden_retriever_dataset.jsonl`
 (60 queries, 56 positive / 4 negative) · model = `BAAI/bge-base-en-v1.5` · metrics reported @ k=5.
 
 ---

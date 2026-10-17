@@ -213,7 +213,7 @@ The retrieval pipeline was tuned through controlled experiments:
 | Dense baseline | 0.750 | 0.551 | 0.601 | 0.511 |
 | **Final (Hybrid + Ettin)** | **0.786** | **0.587** | **0.640** | **0.546** |
 
-See `eval/final_retriever_conf.md` for detailed experiment documentation.
+See [eval/final_retriever_conf.md](eval/final_retriever_conf.md) for detailed experiment documentation.
 
 ## Development
 
