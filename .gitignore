@@ -17,13 +17,20 @@ venv/
 .env
 .env.*
 !.env.example
+!web/.env.local.example
 
 .vscode/
 .idea/
 .DS_Store
 Thumbs.db
+nul
 
 models/
 study/
+handoff/
 future_plan.md
+
+# Node.js (web/)
+web/node_modules/
+web/.next/
 
