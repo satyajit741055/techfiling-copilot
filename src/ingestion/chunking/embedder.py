@@ -1,6 +1,7 @@
 """Token-budget validation and embedding of chunks with a sentence-transformers model.
 
 Logic ported from exploration/01_chunking.ipynb (BGE, normalized float32 vectors).
+Configuration is loaded from centralized settings (config.settings).
 """
 
 from __future__ import annotations
@@ -18,6 +19,14 @@ from ingestion.chunking.chunker import (
     MAX_CHARS, MIN_CHARS, ROOT, TABLE_MAX_CHARS,
 )
 
+
+def _get_settings():
+    """Lazy import to avoid circular imports."""
+    from config.settings import settings
+    return settings
+
+
+# Legacy constants for backward compatibility - prefer using settings
 MODEL_NAME = "BAAI/bge-base-en-v1.5"
 EMBEDDINGS_FILENAME = "embeddings_gpu_base.npy"  # name expected by retriver/retriever.py
 MANIFEST_FILENAME = "run_manifest.json"
@@ -25,26 +34,48 @@ CHUNKS_DIR = ROOT / "data" / "chunks"
 MODEL_CACHE_DIR = ROOT / "models" / "sentence_transformers"
 TOKEN_UTILIZATION = 0.94
 
+
+def get_embedding_model_name() -> str:
+    """Get embedding model name from settings."""
+    return _get_settings().EMBEDDING_MODEL
+
+
+def get_model_cache_dir() -> Path:
+    """Get model cache directory from settings."""
+    return _get_settings().MODEL_CACHE_DIR
+
+
+def get_device() -> str:
+    """Get compute device from settings."""
+    return _get_settings().effective_device
+
+
 def load_model(
-    name: str = MODEL_NAME,
+    name: str | None = None,
     device: str | None = None,
-    cache_dir: Path = MODEL_CACHE_DIR,
+    cache_dir: Path | None = None,
 ) -> SentenceTransformer:
     """Load a sentence-transformers model on the requested or best device.
 
     Args:
-        name: Hugging Face model name or local model path.
-        device: Explicit device such as ``cuda`` or ``cpu``. When omitted, CUDA
-            is selected if available; otherwise CPU is used.
-        cache_dir: Directory used to cache downloaded model files.
+        name: Hugging Face model name or local model path. If None, uses
+            EMBEDDING_MODEL from settings.
+        device: Explicit device such as ``cuda`` or ``cpu``. If None, uses
+            DEVICE from settings (with auto-detection).
+        cache_dir: Directory used to cache downloaded model files. If None,
+            uses MODEL_CACHE_DIR from settings.
 
     Returns:
         The initialized sentence-transformers model.
     """
+    # Use settings defaults if not provided
+    if name is None:
+        name = get_embedding_model_name()
     if device is None:
-        import torch
-
-        device = "cuda" if torch.cuda.is_available() else "cpu"
+        device = get_device()
+    if cache_dir is None:
+        cache_dir = get_model_cache_dir()
+    
     return SentenceTransformer(name, device=device, cache_folder=str(cache_dir))
 
 

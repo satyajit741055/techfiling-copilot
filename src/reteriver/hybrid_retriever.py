@@ -11,6 +11,7 @@ The hybrid approach addresses limitations of pure dense retrieval:
 - Dense excels at semantic similarity (paraphrases, conceptual matches)
 - Combining both improves recall and precision on financial documents
 
+Configuration is loaded from centralized settings (config.settings).
 """
 
 from __future__ import annotations
@@ -27,14 +28,41 @@ from typing import Any, NamedTuple
 import numpy as np
 from sentence_transformers import SentenceTransformer, CrossEncoder
 
+
+def _get_settings():
+    """Lazy import to avoid circular imports."""
+    from config.settings import settings
+    return settings
+
+
 BGE_QUERY_PREFIX = "Represent this sentence for searching relevant passages: "
 ROOT = Path(__file__).resolve().parents[2]
 DEFAULT_RUNS_DIRECTORY = ROOT / "data" / "chunks"
 DEFAULT_MODEL_CACHE_DIRECTORY = ROOT / "models" / "sentence_transformers"
 
-# Default models
+# Legacy constants for backward compatibility - prefer using settings
 DEFAULT_EMBEDDING_MODEL = "BAAI/bge-base-en-v1.5"
 DEFAULT_RERANKER_MODEL = "cross-encoder/ms-marco-MiniLM-L-6-v2"
+
+
+def get_embedding_model() -> str:
+    """Get embedding model name from settings."""
+    return _get_settings().EMBEDDING_MODEL
+
+
+def get_reranker_model() -> str:
+    """Get reranker model name from settings (environment-aware)."""
+    return _get_settings().effective_reranker
+
+
+def get_model_cache_dir() -> Path:
+    """Get model cache directory from settings."""
+    return _get_settings().MODEL_CACHE_DIR
+
+
+def get_device() -> str:
+    """Get compute device from settings."""
+    return _get_settings().effective_device
 
 
 class SearchResult(NamedTuple):
@@ -370,9 +398,16 @@ class HybridRetriever:
         alpha: float = 0.5,
         model: SentenceTransformer | None = None,
         device: str | None = None,
-        model_cache_directory: str | Path = DEFAULT_MODEL_CACHE_DIRECTORY,
+        model_cache_directory: str | Path | None = None,
     ) -> None:
         """Load dense artifacts and build BM25 for weighted hybrid retrieval.
+
+        Args:
+            run_directory: Path to chunk directory. If None, uses latest.
+            alpha: Dense weight (0=BM25 only, 1=dense only).
+            model: Pre-loaded embedding model.
+            device: Compute device. If None, uses DEVICE from settings.
+            model_cache_directory: Model cache dir. If None, uses settings.
 
         Raises:
             ValueError: If ``alpha`` is outside the inclusive range 0 to 1 or
@@ -380,6 +415,12 @@ class HybridRetriever:
         """
         if not 0.0 <= alpha <= 1.0:
             raise ValueError(f"alpha must be between 0 and 1, got {alpha}")
+
+        # Use settings defaults if not provided
+        if device is None:
+            device = get_device()
+        if model_cache_directory is None:
+            model_cache_directory = get_model_cache_dir()
 
         self.alpha = alpha
         self.run_directory = self._resolve_run_directory(run_directory)
@@ -673,12 +714,26 @@ class Reranker:
 
     def __init__(
         self,
-        model_name: str = DEFAULT_RERANKER_MODEL,
+        model_name: str | None = None,
         *,
         device: str | None = None,
-        model_cache_directory: str | Path = DEFAULT_MODEL_CACHE_DIRECTORY,
+        model_cache_directory: str | Path | None = None,
     ) -> None:
-        """Load the configured cross-encoder model for pairwise reranking."""
+        """Load the configured cross-encoder model for pairwise reranking.
+        
+        Args:
+            model_name: Cross-encoder model. If None, uses settings (env-aware).
+            device: Compute device. If None, uses DEVICE from settings.
+            model_cache_directory: Model cache dir. If None, uses settings.
+        """
+        # Use settings defaults if not provided
+        if model_name is None:
+            model_name = get_reranker_model()
+        if device is None:
+            device = get_device()
+        if model_cache_directory is None:
+            model_cache_directory = get_model_cache_dir()
+        
         self._model_name = model_name
         self.model = CrossEncoder(
             model_name,
