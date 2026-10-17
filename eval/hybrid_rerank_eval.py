@@ -272,6 +272,8 @@ class HybridEvaluator:
         rrf_k: int = 60,
         dense_k: int = 50,
         bm25_k: int = 50,
+        dense_weight: float = 1.0,
+        bm25_weight: float = 1.0,
     ):
         """Load the golden set and initialize the selected retrieval pipeline.
 
@@ -286,6 +288,8 @@ class HybridEvaluator:
             rrf_k: RRF smoothing constant (rrf modes only).
             dense_k: Dense candidates fed into RRF (rrf modes only).
             bm25_k: BM25 candidates fed into RRF (rrf modes only).
+            dense_weight: Dense ranking weight in RRF (rrf modes only).
+            bm25_weight: BM25 ranking weight in RRF (rrf modes only).
 
         Raises:
             ValueError: If ``mode`` is unsupported.
@@ -296,7 +300,13 @@ class HybridEvaluator:
         self.alpha = alpha
         self.retrieve_k = retrieve_k
         self.reranker_model = reranker_model
-        self.rrf_config = {"rrf_k": rrf_k, "dense_k": dense_k, "bm25_k": bm25_k}
+        self.rrf_config = {
+            "rrf_k": rrf_k,
+            "dense_k": dense_k,
+            "bm25_k": bm25_k,
+            "dense_weight": dense_weight,
+            "bm25_weight": bm25_weight,
+        }
 
         print(f"Loading retriever (mode={mode}, alpha={alpha})...")
 
@@ -642,7 +652,14 @@ class HybridEvaluator:
         reranker = results.retrieval_config.get("reranker_model")
         reranker_str = f"_{reranker.split('/')[-1]}" if reranker else ""
 
-        filename = f"{results.timestamp}_{mode}{alpha_str}{reranker_str}_eval_results.json"
+        rrf = results.retrieval_config.get("rrf")
+        rrf_str = (
+            f"_w{rrf['dense_weight']:g}-{rrf['bm25_weight']:g}_k{rrf['rrf_k']}" if rrf else ""
+        )
+
+        filename = (
+            f"{results.timestamp}_{mode}{alpha_str}{rrf_str}{reranker_str}_eval_results.json"
+        )
         output_path = output_dir / filename
 
         with output_path.open("w", encoding="utf-8") as f:
@@ -888,6 +905,8 @@ def main():
     parser.add_argument("--rrf-k", type=int, default=60, help="RRF smoothing constant")
     parser.add_argument("--dense-k", type=int, default=50, help="Dense candidates for RRF")
     parser.add_argument("--bm25-k", type=int, default=50, help="BM25 candidates for RRF")
+    parser.add_argument("--dense-weight", type=float, default=1.0, help="Dense weight for RRF")
+    parser.add_argument("--bm25-weight", type=float, default=1.0, help="BM25 weight for RRF")
     parser.add_argument(
         "--alpha",
         type=float,
@@ -948,6 +967,8 @@ def main():
         rrf_k=args.rrf_k,
         dense_k=args.dense_k,
         bm25_k=args.bm25_k,
+        dense_weight=args.dense_weight,
+        bm25_weight=args.bm25_weight,
     )
 
     results = evaluator.evaluate(k_values=args.k)
