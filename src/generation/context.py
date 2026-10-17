@@ -109,7 +109,7 @@ def format_context(results: list) -> tuple[str, list[dict[str, Any]]]:
         # Format for prompt
         blocks.append(format_source(i, chunk))
         
-        # Track source metadata for validation
+        # Track source metadata for validation and API response
         sources.append({
             "source_id": f"S{i}",
             "chunk_id": chunk.get("chunk_id"),
@@ -120,6 +120,8 @@ def format_context(results: list) -> tuple[str, list[dict[str, Any]]]:
             "element_orders": chunk.get("element_orders", []),
             "table_id": chunk.get("table_id"),
             "score": score,
+            "text": chunk.get("text", ""),  # Include text for API response
+            "breadcrumb": chunk.get("breadcrumb"),  # Full path for UI display
         })
     
     context = "\n\n".join(blocks)
