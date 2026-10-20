@@ -256,3 +256,64 @@ Two variants:
 do not use this chunking with a no-reranker setup. Possible next refinement: a larger break threshold
 or keeping consecutive one-liners together, to remove the Apple regression for dense/hybrid.
 
+---
+
+## Summary - baseline to final
+
+### Score progression (golden v2, k=5, 56 positive queries)
+
+| Step | Config | Hit@1 | Hit@5 | MRR@5 | Recall@5 | Prec@5 | nDCG@5 | Recall@10 |
+|---|---|---|---|---|---|---|---|---|
+| Baseline | dense, 1200/900 chunks | 0.696 | 0.946 | 0.804 | 0.689 | 0.375 | 0.659 | 0.813 |
+| + BM25 (Exp 3) | hybrid alpha 0.85 | 0.679 | 0.946 | 0.793 | 0.704 | 0.400 | 0.662 | 0.818 |
+| + reranker (Exp 4) | hybrid 0.85 + ettin, retrieve-k 50 | 0.821 | 0.964 | 0.887 | 0.743 | 0.479 | 0.746 | 0.862 |
+| **+ chunking (Exp 5b)** | **same + pseudo-heading chunks** | **0.839** | **0.982** | **0.905** | **0.761** | **0.482** | **0.758** | 0.859 |
+| Total change vs baseline | | +0.143 | +0.036 | +0.101 | +0.072 | +0.107 | +0.099 | +0.046 |
+
+**Final production config:** hybrid retrieval (alpha 0.85) -> top-50 candidates ->
+`cross-encoder/ettin-reranker-150m-v1` -> top 5 chunks, chunk run `data/chunks/2026-10-20_16-33-24`
+(1200 / 200 / 900 chars, pseudo-heading boundaries). Settings: `RETRIEVAL_ALPHA=0.85`,
+`RETRIEVAL_K=50`, `CONTEXT_K=5`, `RERANKER_MODEL=cross-encoder/ettin-reranker-150m-v1`.
+
+In plain terms: the right chunk is now ranked first for 84% of questions (was 70%), at least one
+relevant chunk is in the top 5 for 55 of 56 questions, and nearly half of the 5 chunks passed to the
+LLM are relevant (was 38%).
+
+### What each improvement contributed
+
+| Change | Main effect | Biggest gains |
+|---|---|---|
+| Hybrid (dense + 15% BM25) | Small recall/precision gain; ordering about the same | exact numbers, risk factors, cross-section |
+| ettin cross-encoder reranker | Largest jump; fixes ordering | MRR +0.09, Hit@1 +0.14; exact_numeric, cross_document, tables |
+| Pseudo-heading chunking | Fixes MSFT MD&A subsections; zero regressions with reranker | trend_explanation 0.62 -> 0.75, MSFT recall +0.06 |
+
+Chunk size (Exp 1) was confirmed rather than changed: 1200/900 stayed best.
+Rejected along the way: BM25 alone, hybrid alpha 0.5, MiniLM and bge-reranker (both worse than no
+reranker), and chunking variant 5a.
+
+### Evaluation improvements made (so the numbers are trustworthy)
+
+These do not change the retriever; they make the scores correct and comparable.
+
+- **Golden v2:** rebuilt 60-query golden after the v1 audit found ~25 wrong queries (invented
+  numbers, off-by-one element orders, answerable "negatives", single-copy labels). Every order and
+  number verified against the parsed elements; parsed data verified against the raw SEC HTML.
+- **Equivalent copies grouped:** one relevant item = one fact, listing every place it appears
+  (MD&A table, statements, notes), so retrieving any copy counts.
+- **Scoring fixes:** each fact credited once and `doc_id`-aware (nDCG could exceed 1 before), and
+  precision counted per chunk (precision@1 could exceed hit@1 before).
+- **Validator:** `scripts/eval_scripts/validate_retriever_goldens.py` enforces the golden rules
+  (0 errors on v2).
+- **Tooling:** `--compare` shows chunk sizes, pseudo-heading flag and golden version; empty
+  category/difficulty breakdowns fixed; v1 results archived so they are never mixed with v2.
+
+### Known limitations
+
+- Small test set: 1 query = 0.018 Hit@5, so differences under ~0.02 are noise.
+- Weakest categories: cross_document (Recall@5 0.52) and cross_section (0.56). These need several
+  pieces of evidence, which 5 chunks rarely cover.
+- q014 (MSFT revenue growth factors) still misses, partly a golden label gap (Exp 4b, option A).
+- The adopted chunking is tuned for the reranked pipeline; without a reranker it is worse on Apple.
+- These are retrieval scores only; answer quality is measured separately by the generation and
+  full-pipeline evaluations.
+
