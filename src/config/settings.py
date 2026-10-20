@@ -231,7 +231,7 @@ class Settings(BaseSettings):
         description="Directory containing chunk data"
     )
     RUN_DIRECTORY: str = Field(
-        default="data/chunks/2026-10-16_17-03-28",
+        default="data/chunks/2026-10-20_16-33-24",
         description="Active chunking run directory (relative to project root)"
     )
     

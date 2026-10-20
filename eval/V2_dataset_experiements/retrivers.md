@@ -204,3 +204,55 @@ full reranked top-50 for the worst queries, showing where each labeled chunk lan
 **Status:** C is the current state (this entry). B is the preferred follow-up because it fixes the
 cause; A should be done together with B (or before the next golden version) with documented reasons.
 
+---
+
+## Exp 5 - Chunk boundaries at pseudo-headings (Option B, branch `chunker-experiment`)
+
+**Hypothesis:** The parser emits many sub-headings as short paragraphs ("Intelligent Cloud",
+"Greater China", "Revenue Recognition": 54 AAPL / 61 MSFT / 101 TSLA). Starting a new chunk at them
+keeps each subsection together and fixes MSFT MD&A misses (Exp 4b) without hurting other queries.
+
+**Setup:** New chunker flag `--pseudo-headings` (default off; flag off reproduces the baseline run
+byte-for-byte). Same sizes as baseline (1200 / 200 / 900). A pseudo-heading = paragraph <= 80 chars,
+no ending punctuation, not starting with a digit/bullet/"(", followed by body text in the same
+section. No golden-labeled element is a pseudo-heading. Evaluated dense, hybrid 0.85 and hybrid
+0.85 + ettin (retrieve-k 50) vs baseline run `2026-10-16_17-03-28`.
+
+Two variants:
+- **5a** (`2026-10-20_16-23-16`, 1436 chunks): pseudo-heading treated as a real heading (always
+  breaks; text moves to the breadcrumb).
+- **5b** (`2026-10-20_16-33-24`, 1447 chunks): breaks only if the current chunk already has
+  >= 200 chars; heading text stays in the chunk body.
+
+| Config | Run | Hit@5 | MRR@5 | Recall@5 | Prec@5 | nDCG@5 |
+|---|---|---|---|---|---|---|
+| dense | baseline | **0.946** | 0.804 | **0.689** | **0.375** | **0.659** |
+| dense | 5a | 0.929 | 0.778 | 0.675 | **0.375** | 0.641 |
+| dense | 5b | 0.911 | **0.807** | 0.646 | 0.371 | 0.646 |
+| hybrid 0.85 | baseline | **0.946** | **0.793** | **0.704** | 0.400 | **0.662** |
+| hybrid 0.85 | 5a | 0.875 | 0.731 | 0.634 | 0.389 | 0.607 |
+| hybrid 0.85 | 5b | 0.911 | 0.769 | 0.675 | **0.404** | 0.638 |
+| + ettin | baseline | 0.964 | 0.887 | 0.743 | 0.479 | 0.746 |
+| + ettin | 5a | **0.982** | **0.917** | 0.752 | **0.482** | **0.765** |
+| + ettin | 5b | **0.982** | 0.905 | **0.761** | **0.482** | 0.758 |
+
+**Observations:**
+- MSFT fix works: the "Intelligent Cloud" subsection is now one chunk (#406-412); q016 recall rises
+  in every config.
+- With ettin (production config): 5b improves every headline metric with **zero query regressions**
+  (only q016 up; trend_explanation 0.62 -> 0.75, MSFT recall 0.62 -> 0.68). 5a also improves but
+  loses q015 (Tesla energy revenue).
+- Without a reranker, both variants regress on Apple (5b: AAPL recall 0.72 -> 0.60 in hybrid;
+  q005, q012, q041 down). Apple's one-sentence region/product explanations become many small,
+  similar chunks that push tables out of the top 5. 5a was worse: pseudo-headings in the breadcrumb
+  mislabeled chunks (the Products & Services table got "Rest of Asia Pacific" as its heading).
+- ettin absorbs the Apple fragmentation because the candidate pool (top 50) still contains the
+  tables and the reranker ranks them correctly.
+- Effect size is small: +1 query on Hit@5 (0.964 -> 0.982), so the gain is real but modest.
+
+**Decision: adopted (5b).** Pseudo-heading boundaries are now the chunker default
+(`--no-pseudo-headings` restores the old behavior) and `RUN_DIRECTORY` points to
+`data/chunks/2026-10-20_16-33-24`. This requires the reranked pipeline (hybrid 0.85 + ettin);
+do not use this chunking with a no-reranker setup. Possible next refinement: a larger break threshold
+or keeping consecutive one-liners together, to remove the Apple regression for dense/hybrid.
+

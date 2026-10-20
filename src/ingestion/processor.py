@@ -31,6 +31,7 @@ def process(
     min_chars: int = MIN_CHARS,
     table_max_chars: int = TABLE_MAX_CHARS,
     model_cache_dir: Path = MODEL_CACHE_DIR,
+    pseudo_headings: bool = True,
 ) -> Path:
     if not skip_parse:
         parse_all(raw_dir, parsed_dir)
@@ -45,7 +46,7 @@ def process(
 
     all_chunks = []
     for doc_id in doc_ids:
-        chunks = chunk_doc_id(doc_id, parsed_dir, max_chars, min_chars, table_max_chars)
+        chunks = chunk_doc_id(doc_id, parsed_dir, max_chars, min_chars, table_max_chars, pseudo_headings)
         write_chunks(chunks, out_dir / f"{doc_id}.chunks.jsonl")
         all_chunks += chunks
         print(doc_id, len(chunks))
@@ -53,7 +54,8 @@ def process(
 
     embeddings, _ = embed_and_save(
         all_chunks, out_dir, model_name, device, batch_size,
-        {"max_chars": max_chars, "min_chars": min_chars, "table_max_chars": table_max_chars},
+        {"max_chars": max_chars, "min_chars": min_chars, "table_max_chars": table_max_chars,
+         "pseudo_headings": pseudo_headings},
         model_cache_dir=model_cache_dir,
     )
     print(embeddings.shape, "->", out_dir)
@@ -73,9 +75,12 @@ def main() -> None:
     parser.add_argument("--max-chars", type=int, default=MAX_CHARS)
     parser.add_argument("--min-chars", type=int, default=MIN_CHARS)
     parser.add_argument("--table-max-chars", type=int, default=TABLE_MAX_CHARS)
+    parser.add_argument("--pseudo-headings", action=argparse.BooleanOptionalAction, default=True,
+                        help="start new chunks at short heading-like paragraphs (default: on)")
     args = parser.parse_args()
     process(args.raw_dir, args.parsed_dir, args.chunks_dir, args.model, args.device, args.batch_size,
-            args.skip_parse, args.max_chars, args.min_chars, args.table_max_chars, args.model_cache_dir)
+            args.skip_parse, args.max_chars, args.min_chars, args.table_max_chars, args.model_cache_dir,
+            args.pseudo_headings)
 
 
 if __name__ == "__main__":

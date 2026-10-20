@@ -24,6 +24,25 @@ TABLE_MAX_CHARS = 1000
 
 SENT_SPLIT = re.compile(r"(?<=[.!?])\s+(?=[A-Z(\"'])")
 
+# Short sub-headings the parser emits as paragraphs ("Intelligent Cloud", "Greater China",
+# "Revenue Recognition"); starting a chunk at them keeps a subsection's text together.
+PSEUDO_HEADING_MAX_CHARS = 80
+PSEUDO_HEADING_END = re.compile(r"[.:;,?!)]$")
+PSEUDO_HEADING_START = re.compile(r"^[(\d•\-/]")
+
+
+def looks_like_heading(e: dict, nxt: dict | None) -> bool:
+    """Return whether a paragraph is a short sub-heading directly followed by body content."""
+    text = (e.get("text") or "").strip()
+    return (
+        e["type"] == "paragraph" and nxt is not None
+        and nxt["type"] in ("paragraph", "table")
+        and (nxt["part"], nxt["section"]) == (e["part"], e["section"])
+        and 0 < len(text) <= PSEUDO_HEADING_MAX_CHARS
+        and not PSEUDO_HEADING_END.search(text) and not PSEUDO_HEADING_START.match(text)
+    )
+
+
 def load_elements(doc_id: str, parsed_dir: Path = PARSED_DIR) -> list[dict]:
     """Load parsed elements for a document from its JSON Lines file.
 
@@ -121,7 +140,9 @@ def breadcrumb(e: dict, headings: list[str]) -> str:
 
 
 def chunk_document(
-    els: list[dict], max_chars: int = MAX_CHARS, table_max_chars: int = TABLE_MAX_CHARS
+    els: list[dict], max_chars: int = MAX_CHARS, table_max_chars: int = TABLE_MAX_CHARS,
+    pseudo_headings: bool = True,
+    min_chars: int = MIN_CHARS,
 ) -> list[dict]:
     """Convert ordered parsed elements into section-aware text and table chunks.
 
@@ -129,6 +150,9 @@ def chunk_document(
         els: Parsed elements in source-document order.
         max_chars: Preferred maximum text size per chunk.
         table_max_chars: Preferred maximum Markdown table size per chunk.
+        pseudo_headings: Start a new chunk at short heading-like paragraphs (see
+            ``looks_like_heading``) once the current chunk holds at least ``min_chars``.
+        min_chars: Minimum buffered text before a pseudo-heading may start a new chunk.
 
     Returns:
         Chunk dictionaries with source metadata, breadcrumbs, and embedding text.
@@ -158,7 +182,10 @@ def chunk_document(
         buf.clear()
         buf_orders.clear()
 
-    for e in els:
+    for i, e in enumerate(els):
+        if (pseudo_headings and sum(map(len, buf)) >= min_chars
+                and looks_like_heading(e, els[i + 1] if i + 1 < len(els) else None)):
+            flush(e)  # sub-heading after real content = new topic; heading text stays in the body
         key = (e["part"], e["section"])
         if key != state["key"]:  # new Item -> hard boundary
             if state["first"]:
@@ -233,6 +260,7 @@ def chunk_doc_id(
     max_chars: int = MAX_CHARS,
     min_chars: int = MIN_CHARS,
     table_max_chars: int = TABLE_MAX_CHARS,
+    pseudo_headings: bool = True,
 ) -> list[dict]:
     """Load, chunk, and compact one parsed document.
 
@@ -242,11 +270,12 @@ def chunk_doc_id(
         max_chars: Preferred maximum text chunk size.
         min_chars: Threshold used to identify tiny text chunks.
         table_max_chars: Preferred maximum table chunk size.
+        pseudo_headings: Start new chunks at short heading-like paragraphs.
 
     Returns:
         Final chunk dictionaries ready to be written or embedded.
     """
-    chunks = chunk_document(load_elements(doc_id, parsed_dir), max_chars, table_max_chars)
+    chunks = chunk_document(load_elements(doc_id, parsed_dir), max_chars, table_max_chars, pseudo_headings, min_chars)
     return merge_tiny(chunks, min_chars, max_chars)
 
 
@@ -269,6 +298,8 @@ def main() -> None:
     parser.add_argument("--max-chars", type=int, default=MAX_CHARS)
     parser.add_argument("--min-chars", type=int, default=MIN_CHARS)
     parser.add_argument("--table-max-chars", type=int, default=TABLE_MAX_CHARS)
+    parser.add_argument("--pseudo-headings", action=argparse.BooleanOptionalAction, default=True,
+                        help="start new chunks at short heading-like paragraphs (default: on)")
     args = parser.parse_args()
 
     if args.out_dir is None:
@@ -277,7 +308,8 @@ def main() -> None:
     args.out_dir.mkdir(parents=True, exist_ok=True)
     total = 0
     for doc_id in list_doc_ids(args.parsed_dir):
-        chunks = chunk_doc_id(doc_id, args.parsed_dir, args.max_chars, args.min_chars, args.table_max_chars)
+        chunks = chunk_doc_id(doc_id, args.parsed_dir, args.max_chars, args.min_chars, args.table_max_chars,
+                              args.pseudo_headings)
         write_chunks(chunks, args.out_dir / f"{doc_id}.chunks.jsonl")
         total += len(chunks)
         print(doc_id, len(chunks))

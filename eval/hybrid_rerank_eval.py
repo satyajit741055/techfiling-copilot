@@ -836,13 +836,13 @@ def compare_runs(results_dir: Path | None = None) -> None:
         print(f"No evaluation results found in {results_dir}")
         return
 
-    width = 145
+    width = 152
     print("\n" + "=" * width)
     print("EVALUATION RUN COMPARISON")
     print("=" * width)
 
     header = (f"\n{'Timestamp':<20} | {'Mode':<10} | {'Alpha':<6} | "
-              f"{'Ret-k':<6} | {'Reranker':<22} | {'MaxCh':>5} | {'TblCh':>5} | "
+              f"{'Ret-k':<6} | {'Reranker':<22} | {'MaxCh':>5} | {'TblCh':>5} | {'PHdg':<4} | "
               f"{'Hit@5':>6} | {'MRR@5':>6} | {'Recall@5':>8} | {'Prec@5':>6} | "
               f"{'nDCG@5':>7} | {'Chunks':>7} | Golden")
     print(header)
@@ -867,6 +867,7 @@ def compare_runs(results_dir: Path | None = None) -> None:
             chunking = data.get("chunking_config") or {}
             max_chars = chunking.get("max_chars", "-")
             table_max_chars = chunking.get("table_max_chars", "-")
+            pseudo = "yes" if chunking.get("pseudo_headings") else "-"
             golden = Path(data.get("golden_path") or "?").stem.split("dataset")[-1].lstrip("_") or "v1"
 
             overall = data.get("overall", {})
@@ -890,7 +891,7 @@ def compare_runs(results_dir: Path | None = None) -> None:
                     hit = mrr = recall = precision = ndcg = 0
 
             print(f"{ts:<20} | {mode:<10} | {alpha_str:<6} | "
-                  f"{retrieve_k_str:<6} | {reranker_str:<22} | {max_chars:>5} | {table_max_chars:>5} | "
+                  f"{retrieve_k_str:<6} | {reranker_str:<22} | {max_chars:>5} | {table_max_chars:>5} | {pseudo:<4} | "
                   f"{hit:>6.3f} | {mrr:>6.3f} | {recall:>8.3f} | {precision:>6.3f} | "
                   f"{ndcg:>7.3f} | {chunks:>7} | {golden}")
 
