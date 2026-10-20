@@ -51,8 +51,8 @@ from retriever.hybrid_retriever import (
 from retriever.retriever import DenseRetriever, SearchResult
 
 ROOT = Path(__file__).resolve().parents[1]
-DEFAULT_GOLDEN_PATH = ROOT / "goldens" / "golden_retriever_dataset.jsonl"
-DEFAULT_RESULTS_DIR = ROOT / "eval" / "results"
+DEFAULT_GOLDEN_PATH = ROOT / "goldens" / "golden_retriever_dataset_v2.jsonl"
+DEFAULT_RESULTS_DIR = ROOT / "eval" / "retriver_results"
 
 
 # =============================================================================
@@ -177,7 +177,7 @@ def compute_recall(relevant_found: int, total_relevant: int) -> float:
 
 
 def compute_precision(relevant_found: int, retrieved: int) -> float:
-    """Return the fraction of retrieved items that were relevant."""
+    """Return the fraction of retrieved chunks that contain a relevant element (0-1)."""
     return relevant_found / retrieved if retrieved > 0 else 0.0
 
 
@@ -217,6 +217,27 @@ class GoldenQuery:
                 if chunk_orders & expected_orders:
                     max_grade = max(max_grade, item["relevance"])
         return max_grade
+
+    def score_ranking(self, ranked: list[tuple[list[int], str | None]]) -> tuple[list[int], set[int]]:
+        """Grade a ranked list of (element_orders, doc_id), crediting each relevant item at most once.
+
+        An item may list equivalent elements (the same fact in an MD&A table and a note); a second copy
+        must not add gain again, otherwise recall double-counts and nDCG can exceed 1.
+        Returns per-rank gains and the indices of relevant items found.
+        """
+        scores, found = [], set()
+        for chunk_orders, doc_id in ranked:
+            orders = set(chunk_orders or [])
+            new = [
+                i for i, item in enumerate(self.relevant)
+                if i not in found
+                and item["match_by"] == "element_orders"
+                and (item.get("doc_id") is None or doc_id is None or item["doc_id"] == doc_id)
+                and orders & set(item["value"])
+            ]
+            scores.append(max((self.relevant[i]["relevance"] for i in new), default=0))
+            found.update(new)
+        return scores, found
 
     def get_all_relevance_grades(self) -> list[int]:
         """Return all expected relevance grades for ideal-ranking metrics."""
@@ -355,13 +376,14 @@ class HybridEvaluator:
         results = self._search(golden.query, k=k, doc_id=golden.doc_id)
 
         matches = []
-        relevance_scores = []
+        relevance_scores, found_relevant_items = golden.score_ranking(
+            [(chunk.get("element_orders", []), chunk.get("doc_id")) for _, chunk in results]
+        )
 
         for rank, (score, chunk) in enumerate(results, start=1):
             chunk_orders = chunk.get("element_orders", [])
             chunk_doc_id = chunk.get("doc_id")
             grade = golden.get_relevance_grade(chunk_orders, chunk_doc_id)
-            relevance_scores.append(grade)
 
             if grade > 0:
                 matched = []
@@ -381,13 +403,6 @@ class HybridEvaluator:
                 ))
 
         total_relevant = len(golden.relevant)
-        found_relevant_items = set()
-        for match in matches:
-            for item in golden.relevant:
-                if item["match_by"] == "element_orders":
-                    if set(match.element_orders) & set(item["value"]):
-                        found_relevant_items.add(tuple(item["value"]))
-
         ideal_scores = golden.get_all_relevance_grades()
 
         return QueryResult(
@@ -402,7 +417,7 @@ class HybridEvaluator:
             hit=compute_hit(relevance_scores),
             reciprocal_rank=compute_reciprocal_rank(relevance_scores),
             recall=compute_recall(len(found_relevant_items), total_relevant),
-            precision=compute_precision(len(found_relevant_items), len(results)),
+            precision=compute_precision(len(matches), len(results)),
             ndcg=compute_ndcg(relevance_scores, ideal_scores, k),
             matches=matches,
             top_chunks=[
@@ -617,7 +632,7 @@ class HybridEvaluator:
         print(f"\n\nBreakdown by Category (k={results.primary_k}):")
         print("-" * 60)
         for cat, metrics in sorted(results.metrics_by_category.items()):
-            m = metrics.get(str(results.primary_k), {})
+            m = metrics.get(results.primary_k) or metrics.get(str(results.primary_k), {})
             if m:
                 print(f"  {cat:<25} | Hit={m.get('hit_rate', 0):.2f} "
                       f"MRR={m.get('mrr', 0):.2f} "
@@ -629,7 +644,8 @@ class HybridEvaluator:
         print("-" * 60)
         for diff in ["easy", "medium", "hard"]:
             if diff in results.metrics_by_difficulty:
-                m = results.metrics_by_difficulty[diff].get(str(results.primary_k), {})
+                by_k = results.metrics_by_difficulty[diff]
+                m = by_k.get(results.primary_k) or by_k.get(str(results.primary_k), {})
                 if m:
                     print(f"  {diff:<25} | Hit={m.get('hit_rate', 0):.2f} "
                           f"MRR={m.get('mrr', 0):.2f} "
@@ -738,25 +754,18 @@ def tune_alpha(
             )
 
             # Compute metrics
-            relevance_scores = []
-            found_items = set()
-
-            for score, chunk in search_results:
-                chunk_orders = chunk.get("element_orders", [])
-                chunk_doc_id = chunk.get("doc_id")
-                grade = golden.get_relevance_grade(chunk_orders, chunk_doc_id)
-                relevance_scores.append(grade)
-
-                if grade > 0:
-                    for item in golden.relevant:
-                        if item["match_by"] == "element_orders":
-                            if set(chunk_orders) & set(item["value"]):
-                                found_items.add(tuple(item["value"]))
+            relevance_scores, found_items = golden.score_ranking(
+                [(chunk.get("element_orders", []), chunk.get("doc_id")) for _, chunk in search_results]
+            )
 
             hit_rates.append(1 if any(r > 0 for r in relevance_scores) else 0)
             mrrs.append(compute_reciprocal_rank(relevance_scores))
             recalls.append(len(found_items) / len(golden.relevant) if golden.relevant else 0)
-            precisions.append(len(found_items) / len(search_results) if search_results else 0)
+            relevant_chunks = sum(
+                golden.get_relevance_grade(chunk.get("element_orders", []), chunk.get("doc_id")) > 0
+                for _, chunk in search_results
+            )
+            precisions.append(compute_precision(relevant_chunks, len(search_results)))
 
         metrics = {
             "hit_rate": np.mean(hit_rates),
@@ -827,16 +836,17 @@ def compare_runs(results_dir: Path | None = None) -> None:
         print(f"No evaluation results found in {results_dir}")
         return
 
-    print("\n" + "=" * 120)
+    width = 145
+    print("\n" + "=" * width)
     print("EVALUATION RUN COMPARISON")
-    print("=" * 120)
+    print("=" * width)
 
-    header = (f"\n{'Timestamp':<20} | {'Mode':<8} | {'Alpha':<6} | "
-              f"{'Ret-k':<6} | {'Reranker':<20} | "
+    header = (f"\n{'Timestamp':<20} | {'Mode':<10} | {'Alpha':<6} | "
+              f"{'Ret-k':<6} | {'Reranker':<22} | {'MaxCh':>5} | {'TblCh':>5} | "
               f"{'Hit@5':>6} | {'MRR@5':>6} | {'Recall@5':>8} | {'Prec@5':>6} | "
-              f"{'nDCG@5':>7} | {'Chunks':>7}")
+              f"{'nDCG@5':>7} | {'Chunks':>7} | Golden")
     print(header)
-    print("-" * 120)
+    print("-" * width)
 
     for path in result_files:
         try:
@@ -854,6 +864,10 @@ def compare_runs(results_dir: Path | None = None) -> None:
             reranker_str = reranker.split("/")[-1] if reranker else "-"
 
             chunks = data.get("total_chunks", "?")
+            chunking = data.get("chunking_config") or {}
+            max_chars = chunking.get("max_chars", "-")
+            table_max_chars = chunking.get("table_max_chars", "-")
+            golden = Path(data.get("golden_path") or "?").stem.split("dataset")[-1].lstrip("_") or "v1"
 
             overall = data.get("overall", {})
             if overall:
@@ -875,15 +889,15 @@ def compare_runs(results_dir: Path | None = None) -> None:
                 else:
                     hit = mrr = recall = precision = ndcg = 0
 
-            print(f"{ts:<20} | {mode:<8} | {alpha_str:<6} | "
-                  f"{retrieve_k_str:<6} | {reranker_str:<20} | "
+            print(f"{ts:<20} | {mode:<10} | {alpha_str:<6} | "
+                  f"{retrieve_k_str:<6} | {reranker_str:<22} | {max_chars:>5} | {table_max_chars:>5} | "
                   f"{hit:>6.3f} | {mrr:>6.3f} | {recall:>8.3f} | {precision:>6.3f} | "
-                  f"{ndcg:>7.3f} | {chunks:>7}")
+                  f"{ndcg:>7.3f} | {chunks:>7} | {golden}")
 
         except Exception as e:
             print(f"Error loading {path.name}: {e}")
 
-    print("\n" + "=" * 120)
+    print("\n" + "=" * width)
 
 
 # =============================================================================

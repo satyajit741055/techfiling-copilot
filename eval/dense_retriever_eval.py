@@ -95,7 +95,7 @@ sys.path.insert(0, str(Path(__file__).resolve().parents[1] / "src"))
 from retriever.retriever import DenseRetriever, SearchResult
 
 ROOT = Path(__file__).resolve().parents[1]
-DEFAULT_GOLDEN_PATH = ROOT / "goldens" / "golden_retriever_dataset.jsonl"
+DEFAULT_GOLDEN_PATH = ROOT / "goldens" / "golden_retriever_dataset_v2.jsonl"
 DEFAULT_RESULTS_DIR = ROOT / "eval" / "results"
 
 # =============================================================================
@@ -133,8 +133,8 @@ class QueryResult:
     # Per-query metrics
     hit: bool  # Did we find at least one relevant?
     reciprocal_rank: float  # 1/rank of first relevant, 0 if none
-    recall: float  # relevant_retrieved / total_relevant
-    precision: float  # relevant_retrieved / retrieved_count
+    recall: float  # relevant items found (each credited once) / total_relevant
+    precision: float  # retrieved chunks containing a relevant element / retrieved_count
     ndcg: float  # Normalized DCG
 
     # Details for debugging
@@ -396,6 +396,27 @@ class GoldenQuery:
 
         return max_grade
 
+    def score_ranking(self, ranked: list[tuple[list[int], str | None]]) -> tuple[list[int], set[int]]:
+        """Grade a ranked list of (element_orders, doc_id), crediting each relevant item at most once.
+
+        An item may list equivalent elements (the same fact in an MD&A table and a note); a second copy
+        must not add gain again, otherwise recall double-counts and nDCG can exceed 1.
+        Returns per-rank gains and the indices of relevant items found.
+        """
+        scores, found = [], set()
+        for chunk_orders, doc_id in ranked:
+            orders = set(chunk_orders or [])
+            new = [
+                i for i, item in enumerate(self.relevant)
+                if i not in found
+                and item["match_by"] == "element_orders"
+                and (item.get("doc_id") is None or doc_id is None or item["doc_id"] == doc_id)
+                and orders & set(item["value"])
+            ]
+            scores.append(max((self.relevant[i]["relevance"] for i in new), default=0))
+            found.update(new)
+        return scores, found
+
     def get_all_relevance_grades(self) -> list[int]:
         """Get all relevance grades from the golden answer (for IDCG)."""
         return [item["relevance"] for item in self.relevant]
@@ -488,7 +509,9 @@ class RetrieverEvaluator:
 
         # Match results to golden answers
         matches = []
-        relevance_scores = []
+        relevance_scores, found_relevant_items = golden.score_ranking(
+            [(chunk.get("element_orders", []), chunk.get("doc_id")) for _, chunk in results]
+        )
 
         for rank, (score, chunk) in enumerate(results, start=1):
             chunk_orders = chunk.get("element_orders", [])
@@ -496,7 +519,6 @@ class RetrieverEvaluator:
 
             # Get relevance grade for this chunk
             grade = golden.get_relevance_grade(chunk_orders, chunk_doc_id)
-            relevance_scores.append(grade)
 
             if grade > 0:
                 # Find which orders matched
@@ -521,17 +543,6 @@ class RetrieverEvaluator:
 
         # Compute metrics
         total_relevant = len(golden.relevant)
-        relevant_retrieved = len(matches)
-
-        # For recall, count unique relevant items found
-        # (a chunk might match multiple relevant items)
-        found_relevant_items = set()
-        for match in matches:
-            for item in golden.relevant:
-                if item["match_by"] == "element_orders":
-                    if set(match.element_orders) & set(item["value"]):
-                        found_relevant_items.add(tuple(item["value"]))
-
         ideal_scores = golden.get_all_relevance_grades()
 
         return QueryResult(
@@ -546,7 +557,7 @@ class RetrieverEvaluator:
             hit=compute_hit(relevance_scores),
             reciprocal_rank=compute_reciprocal_rank(relevance_scores),
             recall=compute_recall(len(found_relevant_items), total_relevant),
-            precision=compute_precision(len(found_relevant_items), len(results)),
+            precision=compute_precision(len(matches), len(results)),
             ndcg=compute_ndcg(relevance_scores, ideal_scores, k),
             matches=matches,
             top_chunks=[
