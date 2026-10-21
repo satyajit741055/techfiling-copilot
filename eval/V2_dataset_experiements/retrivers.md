@@ -317,3 +317,121 @@ These do not change the retriever; they make the scores correct and comparable.
 - These are retrieval scores only; answer quality is measured separately by the generation and
   full-pipeline evaluations.
 
+---
+
+## Exp 6 - Document filtering and balanced cross-document retrieval
+
+**Question:** Can document filtering improve the weak cross-document scores?
+
+**Finding before implementation:** document filtering was already present. `HybridRetriever.search()`
+accepts `doc_id`, and the evaluator already passes the golden query's `doc_id`. Therefore, all final
+scores already use document filtering for single-document queries. Cross-document queries have
+`doc_id: null` because their evidence intentionally spans multiple filings; filtering them to all
+three documents would not change the search corpus.
+
+**Experiment:** add opt-in `--balanced-docs` routing for reranked cross-document queries. It:
+
+1. reads the distinct evidence document IDs from the golden query;
+2. divides the same 50-candidate budget across those filings;
+3. retrieves independently within each filing;
+4. reranks the merged candidates with ettin; and
+5. reserves at least one final top-5 result for each requested filing, then fills remaining slots by
+   reranker score.
+
+This uses golden evidence document IDs, so it is an **oracle upper-bound experiment**, not a deployable
+query classifier. Production would need to detect company/document IDs from the user query.
+
+| Metric | Final baseline | Balanced documents | Change |
+|---|---:|---:|---:|
+| Hit@5 | 0.982 | 0.982 | 0.000 |
+| MRR@5 | 0.905 | 0.905 | 0.000 |
+| Recall@5 | 0.761 | 0.764 | +0.003 |
+| Precision@5 | 0.482 | 0.482 | 0.000 |
+| nDCG@5 | 0.7584 | 0.7580 | -0.0004 |
+| Cross-document Recall@5 | 0.517 | 0.542 | +0.025 |
+
+Only two queries changed:
+
+| Query | Recall@5 | nDCG@5 | Observation |
+|---|---:|---:|---|
+| q055 | 0.60 -> 0.60 | 0.645 -> 0.556 | Same evidence count, but the reserved result worsened graded ordering |
+| q056 | 0.33 -> 0.50 | 0.374 -> 0.441 | One additional evidence item reached the top 5 |
+
+**Decision:** do not adopt this version. The gain is negligible: overall Recall +0.003, nDCG slightly
+worse, and even oracle document knowledge changes only two queries. The main cross-document bottleneck
+is not unrelated filings entering the candidate pool. It is finding and fitting several distinct facts
+from each requested filing into only five final slots. Better next experiments are query decomposition,
+per-document/per-subquery evidence quotas greater than one, and adaptive context k=8-10.
+
+---
+
+## Exp 7 - Final context size (k=5 vs k=8 vs k=10)
+
+**Question:** The pipeline already retrieves 50 hybrid candidates and reranks them with ettin. Does
+passing more than the top 5 reranked chunks improve evidence coverage, especially for cross-document
+and cross-section questions?
+
+**Setup:** Final production retrieval configuration and chunk run:
+
+- hybrid alpha 0.85;
+- retrieve 50 candidates;
+- `cross-encoder/ettin-reranker-150m-v1`;
+- pseudo-heading chunk run `2026-10-20_16-33-24` (1447 chunks);
+- evaluate the same reranked list at k=5, k=8, and k=10;
+- golden v2, 56 positive queries.
+
+Saved result: `eval/retriver_results/2026-10-21_14-48-26_rerank_a0.85_ettin-reranker-150m-v1_eval_results.json`.
+
+### Overall results
+
+| Metric | k=5 | k=8 | Change 5 -> 8 | k=10 | Change 8 -> 10 |
+|---|---:|---:|---:|---:|---:|
+| Hit | 0.982 | **1.000** | +0.018 | 1.000 | 0.000 |
+| MRR | 0.905 | **0.908** | +0.003 | 0.908 | 0.000 |
+| Recall | 0.761 | **0.833** | **+0.072** | 0.859 | +0.026 |
+| Precision | **0.482** | 0.368 | -0.114 | 0.318 | -0.050 |
+| nDCG | 0.758 | **0.785** | **+0.027** | 0.792 | +0.007 |
+
+The precision decrease is expected because the denominator grows from 5 to 8 or 10. At k=8 the
+retriever returns more relevant evidence in absolute terms, but also more irrelevant chunks. The
+simultaneous Recall and nDCG increases show that the extra relevant evidence is useful rather than
+only adding noise at low ranks.
+
+### Recall by category
+
+| Category | Recall@5 | Recall@8 | Change | Recall@10 |
+|---|---:|---:|---:|---:|
+| cross_section | 0.561 | **0.783** | **+0.222** | 0.858 |
+| accounting_policy | 0.740 | **0.844** | **+0.104** | 0.844 |
+| cross_document | 0.517 | **0.619** | **+0.102** | 0.675 |
+| table_structure | 0.875 | **0.938** | +0.063 | 0.938 |
+| trend_explanation | 0.750 | **0.812** | +0.062 | 0.812 |
+| risk_factor | 0.725 | **0.787** | +0.062 | 0.875 |
+| exact_numeric | 0.917 | 0.917 | 0.000 | 0.917 |
+| business_description | 0.958 | 0.958 | 0.000 | 0.958 |
+
+The gain is concentrated in the intended multi-evidence categories. Exact numeric and business
+description do not improve because their required evidence is already in the top 5.
+
+### Difficulty impact
+
+| Difficulty | Recall@5 | Recall@8 | Change | nDCG@5 | nDCG@8 | Change |
+|---|---:|---:|---:|---:|---:|---:|
+| easy | 0.908 | 0.908 | 0.000 | 0.866 | 0.866 | 0.000 |
+| medium | 0.718 | 0.798 | +0.080 | 0.746 | 0.765 | +0.019 |
+| hard | 0.617 | **0.780** | **+0.163** | 0.624 | **0.698** | **+0.074** |
+
+### Interpretation
+
+- The original top-5 cutoff is a real evidence-coverage bottleneck: relevant chunks often occupy
+  ranks 6-8 after reranking.
+- k=8 captures most of the available gain: +0.072 Recall and +0.027 nDCG.
+- Moving from k=8 to k=10 adds only +0.026 Recall and +0.007 nDCG while reducing precision by another
+  0.050 and adding two more chunks to the LLM context.
+- k=8 is therefore the best retrieval-quality/token-cost compromise among the tested values.
+
+**Decision:** k=8 is a strong candidate, but do not change production from `CONTEXT_K=5` based on
+retrieval metrics alone. First compare generation quality using identical questions with top-5 and
+top-8 contexts. Preferred long-term design: k=5 for simple/exact questions and adaptive k=8 for
+cross-document, cross-section, comparison, and other multi-evidence questions.
+
