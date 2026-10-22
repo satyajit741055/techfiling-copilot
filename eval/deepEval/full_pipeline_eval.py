@@ -6,6 +6,7 @@ import argparse
 import hashlib
 import json
 import platform
+import re
 import sys
 from collections import defaultdict
 from datetime import datetime
@@ -19,6 +20,7 @@ sys.path.insert(0, str(ROOT / "src"))
 from deepeval.metrics import AnswerRelevancyMetric, ContextualRelevancyMetric, FaithfulnessMetric
 from deepeval.test_case import LLMTestCase
 
+from config.settings import settings
 from generation import AnswerGenerator, GenerationConfig
 from generation.prompts import SYSTEM_PROMPT
 
@@ -190,7 +192,7 @@ def run_evaluation(args: argparse.Namespace) -> Path:
     generator = AnswerGenerator(config=config, system_prompt=SYSTEM_PROMPT)
     metrics = build_metrics(args)
     timestamp = datetime.now().strftime("%Y-%m-%d_%H-%M-%S")
-    run_dir = args.output_dir / f"{timestamp}_{args.provider}_{args.model.replace(':', '_')}"
+    run_dir = args.output_dir / re.sub(r"[^\w.-]+", "_", f"{timestamp}_{args.provider}_{args.model}")
     run_dir.mkdir(parents=True, exist_ok=False)
     records = []
 
@@ -269,6 +271,11 @@ def run_evaluation(args: argparse.Namespace) -> Path:
             "limit": args.limit,
         },
         "generation_config": config.to_dict(),
+        "execution_modes": {
+            "embedding": settings.effective_embedding_mode,
+            "reranker": settings.effective_reranker_mode,
+            "generation_provider": config.provider,
+        },
         "judge_model": args.judge_model,
         "metrics": metric_names,
         "threshold": args.threshold,
@@ -299,6 +306,8 @@ def dry_run(args: argparse.Namespace) -> None:
         "difficulties": sorted({str(case.get("difficulty")) for case in cases}),
         "context_k": args.context_k,
         "metrics": args.metrics,
+        "embedding_mode": settings.effective_embedding_mode,
+        "reranker_mode": settings.effective_reranker_mode,
         "generator": f"{args.provider}/{args.model}",
         "judge_model": args.judge_model,
     }
@@ -309,14 +318,17 @@ def parse_args() -> argparse.Namespace:
     parser = argparse.ArgumentParser(description=__doc__)
     parser.add_argument("--golden-path", type=Path, default=DEFAULT_GOLDEN_PATH)
     parser.add_argument("--output-dir", type=Path, default=DEFAULT_RESULTS_DIR)
-    parser.add_argument("--context-k", type=int, default=5)
-    parser.add_argument("--provider", default="ollama", choices=["ollama", "openai", "anthropic", "google"])
-    parser.add_argument("--model", default="qwen2.5-7b-instruct:latest")
+    parser.add_argument("--context-k", type=int, help="Chunks passed to the generator (default: CONTEXT_K)")
+    parser.add_argument(
+        "--provider", choices=["ollama", "huggingface", "openai", "anthropic", "google"],
+        help="Generator provider (default: from .env execution mode / LLM_PROVIDER)",
+    )
+    parser.add_argument("--model", help="Generator model (default: provider default from .env)")
     parser.add_argument("--temperature", type=float, default=0.0)
     parser.add_argument("--max-tokens", type=int, default=1024)
     parser.add_argument("--prompt-version", default="v1_strict_grounded")
-    parser.add_argument("--device", default="cuda")
-    parser.add_argument("--judge-model", default="gpt-4o-mini")
+    parser.add_argument("--device", help="Device for local embedding/reranker models (default: DEVICE)")
+    parser.add_argument("--judge-model", help="DeepEval judge (default: DEEPEVAL_JUDGE_MODEL)")
     parser.add_argument("--metrics", nargs="+", choices=METRIC_NAMES, default=list(METRIC_NAMES))
     parser.add_argument("--threshold", type=float, default=0.7)
     parser.add_argument("--strict", action="store_true")
@@ -330,10 +342,15 @@ def parse_args() -> argparse.Namespace:
     args = parser.parse_args()
     if not 0 <= args.threshold <= 1:
         parser.error("--threshold must be between 0 and 1")
-    if args.context_k < 1:
+    if args.context_k is not None and args.context_k < 1:
         parser.error("--context-k must be at least 1")
     if args.limit is not None and args.limit < 1:
         parser.error("--limit must be at least 1")
+    args.context_k = args.context_k or settings.CONTEXT_K
+    args.provider = args.provider or settings.effective_llm_provider
+    args.model = args.model or settings.model_for_provider(args.provider)
+    args.device = args.device or settings.effective_device
+    args.judge_model = args.judge_model or settings.DEEPEVAL_JUDGE_MODEL
     return args
 
 

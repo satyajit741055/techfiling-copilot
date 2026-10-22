@@ -65,9 +65,12 @@ cd techfiling-copilot
 # Install Python dependencies
 uv sync
 
-# Copy environment file and configure
-cp .env.example .env
-# Edit .env with your settings (see Configuration section)
+# Choose one environment template
+cp .env.local.example .env          # local CUDA/CPU + Ollama
+# or
+cp .env.huggingface.example .env    # fully hosted Hugging Face APIs
+
+# .env.example remains the combined reference containing every option.
 ```
 
 ### 2. Start Ollama (if using local LLM)
@@ -108,23 +111,31 @@ Open http://localhost:3000 in your browser.
 Copy `.env.example` to `.env` and configure:
 
 ```bash
-# LLM Provider: ollama | openai | anthropic | google | huggingface
+# Run embedding, reranking and generation locally, or through Hugging Face APIs
+MODEL_EXECUTION_MODE=local  # local | huggingface_api
+
+# Optional per-stage overrides (empty = follow MODEL_EXECUTION_MODE)
+EMBEDDING_EXECUTION_MODE=
+RERANKER_EXECUTION_MODE=
+GENERATION_EXECUTION_MODE=
+
+# Local generation uses this provider (normally Ollama + Qwen)
 LLM_PROVIDER=ollama
-
-# Model (provider-specific)
 OLLAMA_MODEL=qwen2.5-7b-instruct:latest
-OPENAI_MODEL=gpt-4o-mini
-ANTHROPIC_MODEL=claude-3-5-sonnet-20241022
 
-# API Keys (only needed for cloud providers)
+# Hugging Face API generation uses the same model family
+HUGGINGFACE_MODEL=Qwen/Qwen2.5-7B-Instruct
+# HUGGINGFACE_API_KEY=hf_...
+
+# DeepEval judge
+DEEPEVAL_JUDGE_MODEL=gpt-4o-mini
 # OPENAI_API_KEY=sk-...
-# ANTHROPIC_API_KEY=sk-ant-...
 
-# Hardware
+# Local embedding/reranker hardware
 DEVICE=auto  # auto | cuda | cpu
 ```
 
-See `.env.example` for all available options.
+See `.env.example` for all options and `study/11_model_execution_modes.md` for backend selection, component overrides, reranker endpoint formats, and embedding-index compatibility.
 
 ## API Endpoints
 

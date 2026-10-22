@@ -19,6 +19,8 @@ dependencies = [
     "pydantic-settings>=2.6.0",
     "bm25s>=0.3.13",
     "deepeval==4.2.8",
+    "huggingface-hub>=1.16.1",
+    "httpx>=0.28.1",
 ]
 
 [project.optional-dependencies]

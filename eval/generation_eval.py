@@ -18,6 +18,7 @@ from typing import Any
 ROOT = Path(__file__).resolve().parents[1]
 sys.path.insert(0, str(ROOT / "src"))
 
+from config.settings import settings
 from generation import AnswerGenerator, GenerationConfig
 from generation.context import format_context
 from generation.prompts import SYSTEM_PROMPT, build_user_prompt
@@ -238,7 +239,7 @@ def run_evaluation(args: argparse.Namespace) -> Path:
     )
     generator = AnswerGenerator(config=config, system_prompt=SYSTEM_PROMPT)
     timestamp = datetime.now().strftime("%Y-%m-%d_%H-%M-%S")
-    run_dir = args.output_dir / f"{timestamp}_{args.provider}_{args.model.replace(':', '_')}"
+    run_dir = args.output_dir / re.sub(r"[^\w.-]+", "_", f"{timestamp}_{args.provider}_{args.model}")
     run_dir.mkdir(parents=True, exist_ok=False)
     cases_path = run_dir / "cases.jsonl"
     records = []
@@ -410,8 +411,11 @@ def parse_args() -> argparse.Namespace:
     parser = argparse.ArgumentParser(description=__doc__)
     parser.add_argument("--golden-path", type=Path, default=DEFAULT_GOLDEN_PATH)
     parser.add_argument("--output-dir", type=Path, default=DEFAULT_RESULTS_DIR)
-    parser.add_argument("--provider", default="ollama", choices=["ollama", "openai", "anthropic", "google"])
-    parser.add_argument("--model", default="qwen2.5-7b-instruct:latest")
+    parser.add_argument(
+        "--provider", choices=["ollama", "huggingface", "openai", "anthropic", "google"],
+        help="Generator provider (default: from .env execution mode / LLM_PROVIDER)",
+    )
+    parser.add_argument("--model", help="Generator model (default: provider default from .env)")
     parser.add_argument("--temperature", type=float, default=0.0)
     parser.add_argument("--max-tokens", type=int, default=1024)
     parser.add_argument("--prompt-version", default="v1_strict_grounded")
@@ -422,7 +426,10 @@ def parse_args() -> argparse.Namespace:
     parser.add_argument("--verbose", action="store_true")
     parser.add_argument("--fail-fast", action="store_true")
     parser.add_argument("--compare", action="store_true", help="Compare saved generator evaluation runs")
-    return parser.parse_args()
+    args = parser.parse_args()
+    args.provider = args.provider or settings.effective_llm_provider
+    args.model = args.model or settings.model_for_provider(args.provider)
+    return args
 
 
 if __name__ == "__main__":

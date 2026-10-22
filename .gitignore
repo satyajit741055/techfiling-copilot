@@ -17,6 +17,8 @@ venv/
 .env
 .env.*
 !.env.example
+!.env.local.example
+!.env.huggingface.example
 !web/.env.local.example
 
 .vscode/
@@ -35,3 +37,4 @@ web/node_modules/
 web/.next/
 
 improvments
+.deepeval
