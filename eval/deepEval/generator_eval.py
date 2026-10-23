@@ -21,7 +21,7 @@ from deepeval.test_case import LLMTestCase, SingleTurnParams
 
 from config.settings import settings
 from generation import AnswerGenerator, GenerationConfig
-from generation.prompts import SYSTEM_PROMPT
+from generation.prompts import SYSTEM_PROMPTS, get_system_prompt
 
 DEFAULT_GOLDEN_PATH = ROOT / "goldens" / "golden_generator_isolation_dataset.jsonl"
 DEFAULT_RESULTS_DIR = ROOT / "eval" / "deepEval" / "generation_results"
@@ -164,12 +164,13 @@ def aggregate(records: list[dict[str, Any]], metric_names: list[str]) -> dict[st
     }
 
 
-def prompt_hash() -> str:
-    return hashlib.sha256(SYSTEM_PROMPT.encode("utf-8")).hexdigest()
+def prompt_hash(system_prompt: str) -> str:
+    return hashlib.sha256(system_prompt.encode("utf-8")).hexdigest()
 
 
 def run_evaluation(args: argparse.Namespace) -> Path:
     cases = select_cases(load_cases(args.golden_path), args.case_ids, args.limit)
+    system_prompt = get_system_prompt(args.prompt_version)
     config = GenerationConfig(
         provider=args.provider,
         model=args.model,
@@ -177,7 +178,7 @@ def run_evaluation(args: argparse.Namespace) -> Path:
         max_tokens=args.max_tokens,
         prompt_version=args.prompt_version,
     )
-    generator = AnswerGenerator(config=config, system_prompt=SYSTEM_PROMPT)
+    generator = AnswerGenerator(config=config, system_prompt=system_prompt)
     metrics = build_metrics(args)
     timestamp = datetime.now().strftime("%Y-%m-%d_%H-%M-%S")
     run_dir = args.output_dir / re.sub(r"[^\w.-]+", "_", f"{timestamp}_{args.provider}_{args.model}")
@@ -238,7 +239,7 @@ def run_evaluation(args: argparse.Namespace) -> Path:
         "metrics": list(metrics),
         "threshold": args.threshold,
         "strict": args.strict,
-        "system_prompt_sha256": prompt_hash(),
+        "system_prompt_sha256": prompt_hash(system_prompt),
         "python_version": platform.python_version(),
         "platform": platform.platform(),
         "command": sys.argv,
@@ -358,7 +359,9 @@ def parse_args() -> argparse.Namespace:
     parser.add_argument("--model", help="Generator model (default: provider default from .env)")
     parser.add_argument("--temperature", type=float, default=0.0)
     parser.add_argument("--max-tokens", type=int, default=1024)
-    parser.add_argument("--prompt-version", default="v1_strict_grounded")
+    parser.add_argument(
+        "--prompt-version", choices=sorted(SYSTEM_PROMPTS), default="v1_strict_grounded"
+    )
     parser.add_argument("--judge-model", help="DeepEval judge (default: DEEPEVAL_JUDGE_MODEL)")
     parser.add_argument("--metrics", nargs="+", choices=METRIC_NAMES, default=list(METRIC_NAMES))
     parser.add_argument("--threshold", type=float, default=0.7)
