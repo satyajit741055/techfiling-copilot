@@ -1,0 +1,44 @@
+{
+  "run_id": "2026-10-23_14-05-34_huggingface_Qwen_Qwen2.5-7B-Instruct_featherless-ai",
+  "timestamp": "2026-10-23_14-05-34",
+  "golden_path": "D:\\techfiling-copilot\\goldens\\golden_retriever_dataset_v3.jsonl",
+  "selected_query_count": 20,
+  "filters": {
+    "query_ids": null,
+    "categories": null,
+    "difficulties": null,
+    "limit": null
+  },
+  "generation_config": {
+    "run_directory": "data/chunks/2026-10-16_17-03-28",
+    "alpha": 0.85,
+    "retrieve_k": 50,
+    "reranker_model": "cross-encoder/ettin-reranker-150m-v1",
+    "context_k": 5,
+    "provider": "huggingface",
+    "model": "Qwen/Qwen2.5-7B-Instruct:featherless-ai",
+    "temperature": 0.0,
+    "max_tokens": 1024,
+    "prompt_version": "v1_strict_grounded",
+    "device": "cpu"
+  },
+  "execution_modes": {
+    "embedding": "huggingface_api",
+    "reranker": "huggingface_api",
+    "generation_provider": "huggingface"
+  },
+  "judge_model": "gpt-4o-mini",
+  "metrics": [
+    "contextual_relevancy",
+    "faithfulness",
+    "answer_relevancy"
+  ],
+  "threshold": 0.7,
+  "strict": false,
+  "system_prompt_sha256": "db6cdda1e9313ff12835061d74104c82d3bf77aaacf9eaf739af0ea4ba71c835",
+  "python_version": "3.13.17",
+  "platform": "Windows-10-10.0.19045-SP0",
+  "command": [
+    ".\\eval\\deepEval\\full_pipeline_eval.py"
+  ]
+}

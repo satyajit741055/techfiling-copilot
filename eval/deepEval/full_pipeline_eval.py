@@ -24,7 +24,7 @@ from config.settings import settings
 from generation import AnswerGenerator, GenerationConfig
 from generation.prompts import SYSTEM_PROMPT
 
-DEFAULT_GOLDEN_PATH = ROOT / "goldens" / "golden_retriever_dataset_v2.jsonl"
+DEFAULT_GOLDEN_PATH = ROOT / "goldens" / "golden_retriever_dataset_v3.jsonl"
 DEFAULT_RESULTS_DIR = ROOT / "eval" / "deepEval" / "full_pipeline_results"
 METRIC_NAMES = ("contextual_relevancy", "faithfulness", "answer_relevancy")
 
