@@ -1,0 +1,25 @@
+{
+  "cases": 20,
+  "successful_cases": 20,
+  "error_cases": 0,
+  "prompt_tokens": 16360,
+  "completion_tokens": 2267,
+  "generation_latency_seconds": 59.67421507835388,
+  "metrics": {
+    "faithfulness": {
+      "mean_score": 0.8875,
+      "pass_rate": 0.85,
+      "scored_cases": 20
+    },
+    "answer_relevancy": {
+      "mean_score": 0.9625,
+      "pass_rate": 0.95,
+      "scored_cases": 20
+    },
+    "answer_correctness": {
+      "mean_score": 0.8863952389312932,
+      "pass_rate": 0.95,
+      "scored_cases": 20
+    }
+  }
+}
