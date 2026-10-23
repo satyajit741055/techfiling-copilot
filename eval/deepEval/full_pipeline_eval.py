@@ -314,6 +314,89 @@ def dry_run(args: argparse.Namespace) -> None:
     print(json.dumps(summary, indent=2))
 
 
+def comparison_signature(manifest: dict[str, Any]) -> dict[str, Any]:
+    config = manifest.get("generation_config", {})
+    return {
+        "golden_path": manifest.get("golden_path"),
+        "selected_query_count": manifest.get("selected_query_count"),
+        "filters": manifest.get("filters"),
+        "judge_model": manifest.get("judge_model"),
+        "metrics": manifest.get("metrics"),
+        "threshold": manifest.get("threshold"),
+        "strict": manifest.get("strict"),
+        "system_prompt_sha256": manifest.get("system_prompt_sha256"),
+        "context_k": config.get("context_k"),
+        "temperature": config.get("temperature"),
+        "max_tokens": config.get("max_tokens"),
+        "prompt_version": config.get("prompt_version"),
+    }
+
+
+def format_metric(value: Any) -> str:
+    return "—" if value is None else f"{float(value) * 100:.1f}%"
+
+
+def compare_runs(results_dir: Path) -> Path | None:
+    rows = []
+    for summary_path in sorted(results_dir.glob("*/summary.json")):
+        manifest_path = summary_path.parent / "manifest.json"
+        if not manifest_path.exists():
+            continue
+        manifest = json.loads(manifest_path.read_text(encoding="utf-8"))
+        summary = json.loads(summary_path.read_text(encoding="utf-8"))
+        config = manifest.get("generation_config", {})
+        overall = summary.get("overall", {})
+        metrics = overall.get("metrics", {})
+        rows.append({
+            "run_id": manifest.get("run_id", summary_path.parent.name),
+            "provider": config.get("provider"),
+            "model": config.get("model"),
+            "execution_modes": manifest.get("execution_modes"),
+            "cases": overall.get("cases"),
+            "pipeline_errors": overall.get("pipeline_error_cases"),
+            "triad_mean": overall.get("triad_mean_score"),
+            "contextual_relevancy": metrics.get("contextual_relevancy", {}).get("mean_score"),
+            "faithfulness": metrics.get("faithfulness", {}).get("mean_score"),
+            "answer_relevancy": metrics.get("answer_relevancy", {}).get("mean_score"),
+            "signature": comparison_signature(manifest),
+        })
+    if not rows:
+        print(f"No DeepEval full-pipeline runs found in: {results_dir}")
+        return None
+
+    comparable = len({json.dumps(row["signature"], sort_keys=True) for row in rows}) == 1
+    headers = ["Run", "Model", "Cases", "Errors", "Triad", "Context", "Faithful", "Relevant"]
+    display_rows = [
+        [
+            row["run_id"],
+            f"{row['provider']}/{row['model']}",
+            str(row["cases"]),
+            str(row["pipeline_errors"]),
+            format_metric(row["triad_mean"]),
+            format_metric(row["contextual_relevancy"]),
+            format_metric(row["faithfulness"]),
+            format_metric(row["answer_relevancy"]),
+        ]
+        for row in rows
+    ]
+    widths = [max(len(headers[i]), *(len(row[i]) for row in display_rows)) for i in range(len(headers))]
+    print("  ".join(header.ljust(widths[i]) for i, header in enumerate(headers)))
+    print("  ".join("-" * width for width in widths))
+    for row in display_rows:
+        print("  ".join(value.ljust(widths[i]) for i, value in enumerate(row)))
+    if not comparable:
+        print("\nWARNING: Runs are not directly comparable; evaluation settings differ.")
+
+    timestamp = datetime.now().strftime("%Y-%m-%d_%H-%M-%S")
+    output_path = results_dir / f"comparison_{timestamp}.json"
+    output_path.write_text(
+        json.dumps({"timestamp": timestamp, "directly_comparable": comparable, "runs": rows}, indent=2),
+        encoding="utf-8",
+    )
+    print(f"\nComparison saved to: {output_path}")
+    return output_path
+
+
 def parse_args() -> argparse.Namespace:
     parser = argparse.ArgumentParser(description=__doc__)
     parser.add_argument("--golden-path", type=Path, default=DEFAULT_GOLDEN_PATH)
@@ -337,6 +420,7 @@ def parse_args() -> argparse.Namespace:
     parser.add_argument("--difficulties", nargs="+")
     parser.add_argument("--limit", type=int)
     parser.add_argument("--dry-run", action="store_true")
+    parser.add_argument("--compare", action="store_true", help="Compare saved full-pipeline runs")
     parser.add_argument("--verbose", action="store_true")
     parser.add_argument("--fail-fast", action="store_true")
     args = parser.parse_args()
@@ -356,7 +440,9 @@ def parse_args() -> argparse.Namespace:
 
 if __name__ == "__main__":
     arguments = parse_args()
-    if arguments.dry_run:
+    if arguments.compare:
+        compare_runs(arguments.output_dir)
+    elif arguments.dry_run:
         dry_run(arguments)
     else:
         run_evaluation(arguments)
