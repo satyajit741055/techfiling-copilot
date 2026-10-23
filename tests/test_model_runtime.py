@@ -167,10 +167,21 @@ def _mock_client(handler):
     return httpx.Client(transport=httpx.MockTransport(handler))
 
 
-def test_hf_reranker_pair_format():
+def test_hf_reranker_serverless_text_ranking_format():
     def handler(request):
-        inputs = json.loads(request.content)["inputs"]
-        return httpx.Response(200, json=[{"label": "LABEL_0", "score": len(i["text_pair"])} for i in inputs])
+        body = json.loads(request.content)
+        assert body == {"inputs": {"query": "q", "texts": ["aa", "a", "aaa"]}}
+        ranked = sorted(
+            range(len(body["inputs"]["texts"])),
+            key=lambda i: -len(body["inputs"]["texts"][i]),
+        )
+        return httpx.Response(
+            200,
+            json=[
+                {"index": i, "score": len(body["inputs"]["texts"][i])}
+                for i in ranked
+            ],
+        )
 
     reranker = HuggingFaceApiReranker(
         "ce", api_key="k", url="https://x/models/{model}", client=_mock_client(handler)

@@ -83,8 +83,8 @@ class HuggingFaceApiReranker:
     """Cross-encoder scores from a Hugging Face endpoint.
 
     ``url`` may contain ``{model}``. URLs ending in ``/rerank`` are called with the
-    Text Embeddings Inference format (``{"query", "texts"}``); all other URLs use the
-    pair-classification format (``{"inputs": [{"text", "text_pair"}, ...]}``).
+    Text Embeddings Inference format (``{"query", "texts"}``); Hugging Face serverless
+    text-ranking URLs receive ``{"inputs": {"query", "texts"}}``.
     """
 
     backend = "huggingface_api"
@@ -113,27 +113,40 @@ class HuggingFaceApiReranker:
             )
         return response.json()
 
-    def _score_tei(self, query: str, documents: list[str]) -> np.ndarray:
-        ranked = self._post({"query": query, "texts": documents, "truncate": True})
-        scores = np.empty(len(documents), dtype=np.float32)
-        for item in ranked:
-            scores[item["index"]] = item["score"]
+    @staticmethod
+    def _parse_scores(result: Any, document_count: int) -> np.ndarray:
+        if isinstance(result, dict):
+            result = result.get("results", result.get("data", [result]))
+        if not isinstance(result, list) or len(result) != document_count:
+            count = len(result) if isinstance(result, list) else type(result).__name__
+            raise ValueError(f"Reranker returned {count} results for {document_count} documents")
+
+        scores = np.empty(document_count, dtype=np.float32)
+        indexed = all(isinstance(item, dict) and "index" in item for item in result)
+        if indexed and {int(item["index"]) for item in result} != set(range(document_count)):
+            raise ValueError("Reranker response has missing or duplicate document indices")
+        for position, item in enumerate(result):
+            if not isinstance(item, dict) or "score" not in item:
+                raise ValueError(f"Reranker result {position} has no numeric score: {item!r}")
+            index = int(item["index"]) if indexed else position
+            if not 0 <= index < document_count:
+                raise ValueError(f"Reranker returned invalid document index {index}")
+            scores[index] = float(item["score"])
         return scores
 
-    def _score_pairs(self, query: str, documents: list[str]) -> np.ndarray:
-        result = self._post({"inputs": [{"text": query, "text_pair": text} for text in documents]})
-        if isinstance(result, dict):
-            result = [result]
-        scores = [item[0]["score"] if isinstance(item, list) else item["score"] for item in result]
-        if len(scores) != len(documents):
-            raise ValueError(f"Reranker returned {len(scores)} scores for {len(documents)} documents")
-        return np.asarray(scores, dtype=np.float32)
+    def _score_tei(self, query: str, documents: list[str]) -> np.ndarray:
+        result = self._post({"query": query, "texts": documents, "truncate": True})
+        return self._parse_scores(result, len(documents))
+
+    def _score_hf_text_ranking(self, query: str, documents: list[str]) -> np.ndarray:
+        result = self._post({"inputs": {"query": query, "texts": documents}})
+        return self._parse_scores(result, len(documents))
 
     def score(self, query: str, documents: Sequence[str]) -> np.ndarray:
         documents = list(documents)
         if not documents:
             return np.empty(0, dtype=np.float32)
-        score_batch = self._score_tei if self.tei_format else self._score_pairs
+        score_batch = self._score_tei if self.tei_format else self._score_hf_text_ranking
         return np.concatenate([
             score_batch(query, documents[i:i + API_BATCH_SIZE])
             for i in range(0, len(documents), API_BATCH_SIZE)

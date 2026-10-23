@@ -222,8 +222,8 @@ The runtime selects the request format from the URL:
 
 | Endpoint | Request format |
 |---|---|
-| URL ending in `/rerank` | TEI: `{"query": "...", "texts": ["..."]}` |
-| Other URL | Pair classification: `{"inputs": [{"text": "...", "text_pair": "..."}]}` |
+| URL ending in `/rerank` | TEI: `{"query": "...", "texts": ["..."], "truncate": true}` |
+| Hugging Face serverless URL | Text ranking: `{"inputs": {"query": "...", "texts": ["..."]}}` |
 
 ## 9. Component-level API modes
 
