@@ -21,7 +21,7 @@ sys.path.insert(0, str(ROOT / "src"))
 from config.settings import settings
 from generation import AnswerGenerator, GenerationConfig
 from generation.context import format_context
-from generation.prompts import SYSTEM_PROMPT, build_user_prompt
+from generation.prompts import SYSTEM_PROMPTS, build_user_prompt, get_system_prompt
 
 DEFAULT_GOLDEN_PATH = ROOT / "goldens" / "golden_generation_dataset.jsonl"
 DEFAULT_RESULTS_DIR = ROOT / "eval" / "generation_results"
@@ -230,6 +230,7 @@ def run_evaluation(args: argparse.Namespace) -> Path:
     if not cases:
         raise ValueError("No golden cases matched the requested filters")
 
+    system_prompt = get_system_prompt(args.prompt_version)
     config = GenerationConfig(
         provider=args.provider,
         model=args.model,
@@ -237,7 +238,7 @@ def run_evaluation(args: argparse.Namespace) -> Path:
         max_tokens=args.max_tokens,
         prompt_version=args.prompt_version,
     )
-    generator = AnswerGenerator(config=config, system_prompt=SYSTEM_PROMPT)
+    generator = AnswerGenerator(config=config, system_prompt=system_prompt)
     timestamp = datetime.now().strftime("%Y-%m-%d_%H-%M-%S")
     run_dir = args.output_dir / re.sub(r"[^\w.-]+", "_", f"{timestamp}_{args.provider}_{args.model}")
     run_dir.mkdir(parents=True, exist_ok=False)
@@ -257,7 +258,7 @@ def run_evaluation(args: argparse.Namespace) -> Path:
                     "case": {key: value for key, value in case.items() if key != "context"},
                     "input": {
                         "chunk_ids": [entry["chunk_id"] for entry in case["context"]],
-                        "system_prompt": SYSTEM_PROMPT,
+                        "system_prompt": system_prompt,
                         "user_prompt": user_prompt,
                         "formatted_context": result.context,
                     },
@@ -274,7 +275,7 @@ def run_evaluation(args: argparse.Namespace) -> Path:
                     "case": {key: value for key, value in case.items() if key != "context"},
                     "input": {
                         "chunk_ids": [entry["chunk_id"] for entry in case["context"]],
-                        "system_prompt": SYSTEM_PROMPT,
+                        "system_prompt": system_prompt,
                         "user_prompt": user_prompt,
                         "formatted_context": context,
                     },
@@ -296,8 +297,8 @@ def run_evaluation(args: argparse.Namespace) -> Path:
         "selected_case_count": len(cases),
         "filters": {"variants": args.variants, "case_ids": args.case_ids, "limit": args.limit},
         "generation_config": config.to_dict(),
-        "system_prompt": SYSTEM_PROMPT,
-        "system_prompt_sha256": prompt_hash(SYSTEM_PROMPT),
+        "system_prompt": system_prompt,
+        "system_prompt_sha256": prompt_hash(system_prompt),
         "fact_threshold": args.fact_threshold,
         "python_version": platform.python_version(),
         "platform": platform.platform(),
@@ -418,7 +419,9 @@ def parse_args() -> argparse.Namespace:
     parser.add_argument("--model", help="Generator model (default: provider default from .env)")
     parser.add_argument("--temperature", type=float, default=0.0)
     parser.add_argument("--max-tokens", type=int, default=1024)
-    parser.add_argument("--prompt-version", default="v1_strict_grounded")
+    parser.add_argument(
+        "--prompt-version", choices=sorted(SYSTEM_PROMPTS), default="v2_complete_precise"
+    )
     parser.add_argument("--fact-threshold", type=float, default=0.6)
     parser.add_argument("--variants", nargs="+")
     parser.add_argument("--case-ids", nargs="+")

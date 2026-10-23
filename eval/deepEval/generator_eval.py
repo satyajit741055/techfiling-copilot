@@ -264,6 +264,8 @@ def dry_run(args: argparse.Namespace) -> None:
         "context_elements": sum(len(case["ideal_context"]) for case in cases),
         "metrics": args.metrics,
         "generator": f"{args.provider}/{args.model}",
+        "prompt_version": args.prompt_version,
+        "system_prompt_sha256": prompt_hash(get_system_prompt(args.prompt_version)),
         "judge_model": args.judge_model,
     }
     print(json.dumps(summary, indent=2))
@@ -360,7 +362,7 @@ def parse_args() -> argparse.Namespace:
     parser.add_argument("--temperature", type=float, default=0.0)
     parser.add_argument("--max-tokens", type=int, default=1024)
     parser.add_argument(
-        "--prompt-version", choices=sorted(SYSTEM_PROMPTS), default="v1_strict_grounded"
+        "--prompt-version", choices=sorted(SYSTEM_PROMPTS), default="v2_complete_precise"
     )
     parser.add_argument("--judge-model", help="DeepEval judge (default: DEEPEVAL_JUDGE_MODEL)")
     parser.add_argument("--metrics", nargs="+", choices=METRIC_NAMES, default=list(METRIC_NAMES))

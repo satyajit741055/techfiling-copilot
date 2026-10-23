@@ -1,0 +1,246 @@
+{
+  "timestamp": "2026-10-23_16-46-39",
+  "directly_comparable": false,
+  "runs": [
+    {
+      "run_id": "2026-10-23_13-32-38_huggingface_Qwen_Qwen2.5-7B-Instruct_featherless-ai",
+      "provider": "huggingface",
+      "model": "Qwen/Qwen2.5-7B-Instruct:featherless-ai",
+      "cases": 20,
+      "error_cases": 1,
+      "faithfulness": 0.9429824561403509,
+      "answer_relevancy": 0.9078947368421053,
+      "answer_correctness": 0.828772724475529,
+      "signature": {
+        "golden_path": "D:\\techfiling-copilot\\goldens\\golden_generator_isolation_dataset.jsonl",
+        "selected_case_count": 20,
+        "case_ids": null,
+        "limit": null,
+        "judge_model": "gpt-4o-mini",
+        "metrics": [
+          "faithfulness",
+          "answer_relevancy",
+          "answer_correctness"
+        ],
+        "threshold": 0.7,
+        "strict": false,
+        "system_prompt_sha256": "db6cdda1e9313ff12835061d74104c82d3bf77aaacf9eaf739af0ea4ba71c835",
+        "temperature": 0.0,
+        "max_tokens": 1024,
+        "prompt_version": "v1_strict_grounded"
+      }
+    },
+    {
+      "run_id": "2026-10-23_15-44-48_huggingface_Qwen_Qwen2.5-7B-Instruct_featherless-ai",
+      "provider": "huggingface",
+      "model": "Qwen/Qwen2.5-7B-Instruct:featherless-ai",
+      "cases": 2,
+      "error_cases": 0,
+      "faithfulness": 1.0,
+      "answer_relevancy": 1.0,
+      "answer_correctness": 0.882271592350805,
+      "signature": {
+        "golden_path": "D:\\techfiling-copilot\\goldens\\golden_generator_isolation_dataset.jsonl",
+        "selected_case_count": 2,
+        "case_ids": [
+          "q003",
+          "q017"
+        ],
+        "limit": null,
+        "judge_model": "gpt-4o-mini",
+        "metrics": [
+          "faithfulness",
+          "answer_relevancy",
+          "answer_correctness"
+        ],
+        "threshold": 0.7,
+        "strict": false,
+        "system_prompt_sha256": "cdf7afc1e69ab45588d6480d5556d3ab4eeb435d17a3300aa27f3e9435af925e",
+        "temperature": 0.0,
+        "max_tokens": 1024,
+        "prompt_version": "v2_complete_precise"
+      }
+    },
+    {
+      "run_id": "2026-10-23_15-47-04_huggingface_Qwen_Qwen2.5-7B-Instruct_featherless-ai",
+      "provider": "huggingface",
+      "model": "Qwen/Qwen2.5-7B-Instruct:featherless-ai",
+      "cases": 2,
+      "error_cases": 0,
+      "faithfulness": 1.0,
+      "answer_relevancy": 1.0,
+      "answer_correctness": 0.8494123381588736,
+      "signature": {
+        "golden_path": "D:\\techfiling-copilot\\goldens\\golden_generator_isolation_dataset.jsonl",
+        "selected_case_count": 2,
+        "case_ids": [
+          "q003",
+          "q017"
+        ],
+        "limit": null,
+        "judge_model": "gpt-4o-mini",
+        "metrics": [
+          "faithfulness",
+          "answer_relevancy",
+          "answer_correctness"
+        ],
+        "threshold": 0.7,
+        "strict": false,
+        "system_prompt_sha256": "db6cdda1e9313ff12835061d74104c82d3bf77aaacf9eaf739af0ea4ba71c835",
+        "temperature": 0.0,
+        "max_tokens": 1024,
+        "prompt_version": "v1_strict_grounded"
+      }
+    },
+    {
+      "run_id": "2026-10-23_15-52-04_huggingface_Qwen_Qwen2.5-7B-Instruct_featherless-ai",
+      "provider": "huggingface",
+      "model": "Qwen/Qwen2.5-7B-Instruct:featherless-ai",
+      "cases": 20,
+      "error_cases": 0,
+      "faithfulness": 0.8875,
+      "answer_relevancy": 0.9625,
+      "answer_correctness": 0.8863952389312932,
+      "signature": {
+        "golden_path": "D:\\techfiling-copilot\\goldens\\golden_generator_isolation_dataset.jsonl",
+        "selected_case_count": 20,
+        "case_ids": null,
+        "limit": null,
+        "judge_model": "gpt-4o-mini",
+        "metrics": [
+          "faithfulness",
+          "answer_relevancy",
+          "answer_correctness"
+        ],
+        "threshold": 0.7,
+        "strict": false,
+        "system_prompt_sha256": "cdf7afc1e69ab45588d6480d5556d3ab4eeb435d17a3300aa27f3e9435af925e",
+        "temperature": 0.0,
+        "max_tokens": 1024,
+        "prompt_version": "v2_complete_precise"
+      }
+    },
+    {
+      "run_id": "2026-10-23_16-03-34_huggingface_Qwen_Qwen2.5-7B-Instruct_featherless-ai",
+      "provider": "huggingface",
+      "model": "Qwen/Qwen2.5-7B-Instruct:featherless-ai",
+      "cases": 3,
+      "error_cases": 0,
+      "faithfulness": 0.4166666666666667,
+      "answer_relevancy": null,
+      "answer_correctness": null,
+      "signature": {
+        "golden_path": "D:\\techfiling-copilot\\goldens\\golden_generator_isolation_dataset.jsonl",
+        "selected_case_count": 3,
+        "case_ids": [
+          "q004",
+          "q018",
+          "q019"
+        ],
+        "limit": null,
+        "judge_model": "gpt-4o-mini",
+        "metrics": [
+          "faithfulness"
+        ],
+        "threshold": 0.7,
+        "strict": false,
+        "system_prompt_sha256": "cdf7afc1e69ab45588d6480d5556d3ab4eeb435d17a3300aa27f3e9435af925e",
+        "temperature": 0.0,
+        "max_tokens": 1024,
+        "prompt_version": "v2_complete_precise"
+      }
+    },
+    {
+      "run_id": "2026-10-23_16-18-51_huggingface_Qwen_Qwen2.5-7B-Instruct_featherless-ai",
+      "provider": "huggingface",
+      "model": "Qwen/Qwen2.5-7B-Instruct:featherless-ai",
+      "cases": 7,
+      "error_cases": 0,
+      "faithfulness": 1.0,
+      "answer_relevancy": 0.9071428571428571,
+      "answer_correctness": 0.8991993194163923,
+      "signature": {
+        "golden_path": "D:\\techfiling-copilot\\goldens\\golden_generator_isolation_dataset.jsonl",
+        "selected_case_count": 7,
+        "case_ids": [
+          "q003",
+          "q004",
+          "q010",
+          "q017",
+          "q018",
+          "q019",
+          "q020"
+        ],
+        "limit": null,
+        "judge_model": "gpt-4o",
+        "metrics": [
+          "faithfulness",
+          "answer_relevancy",
+          "answer_correctness"
+        ],
+        "threshold": 0.7,
+        "strict": false,
+        "system_prompt_sha256": "cdf7afc1e69ab45588d6480d5556d3ab4eeb435d17a3300aa27f3e9435af925e",
+        "temperature": 0.0,
+        "max_tokens": 1024,
+        "prompt_version": "v2_complete_precise"
+      }
+    },
+    {
+      "run_id": "2026-10-23_16-29-54_huggingface_Qwen_Qwen2.5-7B-Instruct_featherless-ai",
+      "provider": "huggingface",
+      "model": "Qwen/Qwen2.5-7B-Instruct:featherless-ai",
+      "cases": 20,
+      "error_cases": 0,
+      "faithfulness": 1.0,
+      "answer_relevancy": 0.9875,
+      "answer_correctness": 0.8831090972793729,
+      "signature": {
+        "golden_path": "D:\\techfiling-copilot\\goldens\\golden_generator_isolation_dataset.jsonl",
+        "selected_case_count": 20,
+        "case_ids": null,
+        "limit": null,
+        "judge_model": "gpt-4o",
+        "metrics": [
+          "faithfulness",
+          "answer_relevancy",
+          "answer_correctness"
+        ],
+        "threshold": 0.7,
+        "strict": false,
+        "system_prompt_sha256": "db6cdda1e9313ff12835061d74104c82d3bf77aaacf9eaf739af0ea4ba71c835",
+        "temperature": 0.0,
+        "max_tokens": 1024,
+        "prompt_version": "v1_strict_grounded"
+      }
+    },
+    {
+      "run_id": "2026-10-23_16-36-38_huggingface_Qwen_Qwen2.5-7B-Instruct_featherless-ai",
+      "provider": "huggingface",
+      "model": "Qwen/Qwen2.5-7B-Instruct:featherless-ai",
+      "cases": 20,
+      "error_cases": 0,
+      "faithfulness": 1.0,
+      "answer_relevancy": 0.965,
+      "answer_correctness": 0.9148952764193562,
+      "signature": {
+        "golden_path": "D:\\techfiling-copilot\\goldens\\golden_generator_isolation_dataset.jsonl",
+        "selected_case_count": 20,
+        "case_ids": null,
+        "limit": null,
+        "judge_model": "gpt-4o",
+        "metrics": [
+          "faithfulness",
+          "answer_relevancy",
+          "answer_correctness"
+        ],
+        "threshold": 0.7,
+        "strict": false,
+        "system_prompt_sha256": "cdf7afc1e69ab45588d6480d5556d3ab4eeb435d17a3300aa27f3e9435af925e",
+        "temperature": 0.0,
+        "max_tokens": 1024,
+        "prompt_version": "v2_complete_precise"
+      }
+    }
+  ]
+}

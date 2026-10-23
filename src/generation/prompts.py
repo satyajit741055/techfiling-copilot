@@ -115,7 +115,7 @@ SYSTEM_PROMPTS = {
     "v1_strict_grounded": SYSTEM_PROMPT_V1,
     "v2_complete_precise": SYSTEM_PROMPT_V2,
 }
-SYSTEM_PROMPT = SYSTEM_PROMPT_V1
+SYSTEM_PROMPT = SYSTEM_PROMPT_V2
 
 
 def get_system_prompt(version: str) -> str:

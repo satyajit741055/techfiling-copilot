@@ -22,7 +22,7 @@ from deepeval.test_case import LLMTestCase
 
 from config.settings import settings
 from generation import AnswerGenerator, GenerationConfig
-from generation.prompts import SYSTEM_PROMPT
+from generation.prompts import SYSTEM_PROMPTS, get_system_prompt
 
 DEFAULT_GOLDEN_PATH = ROOT / "goldens" / "golden_retriever_dataset_v3.jsonl"
 DEFAULT_RESULTS_DIR = ROOT / "eval" / "deepEval" / "full_pipeline_results"
@@ -174,12 +174,13 @@ def breakdown(
     return {name: aggregate(items, metric_names) for name, items in sorted(groups.items())}
 
 
-def prompt_hash() -> str:
-    return hashlib.sha256(SYSTEM_PROMPT.encode("utf-8")).hexdigest()
+def prompt_hash(system_prompt: str) -> str:
+    return hashlib.sha256(system_prompt.encode("utf-8")).hexdigest()
 
 
 def run_evaluation(args: argparse.Namespace) -> Path:
     cases = select_cases(load_cases(args.golden_path), args)
+    system_prompt = get_system_prompt(args.prompt_version)
     config = GenerationConfig(
         context_k=args.context_k,
         provider=args.provider,
@@ -189,7 +190,7 @@ def run_evaluation(args: argparse.Namespace) -> Path:
         prompt_version=args.prompt_version,
         device=args.device,
     )
-    generator = AnswerGenerator(config=config, system_prompt=SYSTEM_PROMPT)
+    generator = AnswerGenerator(config=config, system_prompt=system_prompt)
     metrics = build_metrics(args)
     timestamp = datetime.now().strftime("%Y-%m-%d_%H-%M-%S")
     run_dir = args.output_dir / re.sub(r"[^\w.-]+", "_", f"{timestamp}_{args.provider}_{args.model}")
@@ -280,7 +281,7 @@ def run_evaluation(args: argparse.Namespace) -> Path:
         "metrics": metric_names,
         "threshold": args.threshold,
         "strict": args.strict,
-        "system_prompt_sha256": prompt_hash(),
+        "system_prompt_sha256": prompt_hash(system_prompt),
         "python_version": platform.python_version(),
         "platform": platform.platform(),
         "command": sys.argv,
@@ -309,6 +310,8 @@ def dry_run(args: argparse.Namespace) -> None:
         "embedding_mode": settings.effective_embedding_mode,
         "reranker_mode": settings.effective_reranker_mode,
         "generator": f"{args.provider}/{args.model}",
+        "prompt_version": args.prompt_version,
+        "system_prompt_sha256": prompt_hash(get_system_prompt(args.prompt_version)),
         "judge_model": args.judge_model,
     }
     print(json.dumps(summary, indent=2))
@@ -409,7 +412,9 @@ def parse_args() -> argparse.Namespace:
     parser.add_argument("--model", help="Generator model (default: provider default from .env)")
     parser.add_argument("--temperature", type=float, default=0.0)
     parser.add_argument("--max-tokens", type=int, default=1024)
-    parser.add_argument("--prompt-version", default="v1_strict_grounded")
+    parser.add_argument(
+        "--prompt-version", choices=sorted(SYSTEM_PROMPTS), default="v2_complete_precise"
+    )
     parser.add_argument("--device", help="Device for local embedding/reranker models (default: DEVICE)")
     parser.add_argument("--judge-model", help="DeepEval judge (default: DEEPEVAL_JUDGE_MODEL)")
     parser.add_argument("--metrics", nargs="+", choices=METRIC_NAMES, default=list(METRIC_NAMES))

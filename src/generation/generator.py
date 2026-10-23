@@ -23,9 +23,9 @@ from typing import Any
 
 from .config import GenerationConfig
 from .context import format_context
-from .prompts import SYSTEM_PROMPT, build_user_prompt
-from .schemas import GeneratedAnswer, GenerationResult
 from .llm_client import LLMClient
+from .prompts import build_user_prompt, get_system_prompt
+from .schemas import GeneratedAnswer, GenerationResult
 from .validation import parse_llm_response, validate_answer
 
 logger = logging.getLogger(__name__)
@@ -53,7 +53,7 @@ class AnswerGenerator:
         config: GenerationConfig | None = None,
         retriever: Any | None = None,
         llm_client: LLMClient | None = None,
-        system_prompt: str = SYSTEM_PROMPT,
+        system_prompt: str | None = None,
         root: Path | str | None = None,
     ):
         """
@@ -67,7 +67,7 @@ class AnswerGenerator:
             root: Project root for resolving paths
         """
         self.config = config or GenerationConfig()
-        self.system_prompt = system_prompt
+        self.system_prompt = system_prompt or get_system_prompt(self.config.prompt_version)
         
         # Resolve root
         if root is None:

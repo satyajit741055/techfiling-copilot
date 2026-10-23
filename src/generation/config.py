@@ -71,7 +71,7 @@ class GenerationConfig:
     max_tokens: int = field(default_factory=lambda: _get_settings().LLM_MAX_TOKENS)
 
     # Tracking
-    prompt_version: str = "v1_strict_grounded"
+    prompt_version: str = "v2_complete_precise"
 
     # Hardware
     device: str = field(default_factory=lambda: _get_settings().effective_device)
