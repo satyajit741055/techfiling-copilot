@@ -24,7 +24,7 @@ for line in golden_path.open(encoding='utf-8'):
         print(f"=== {case['id']} ===")
         print(f"Query: {case['query']}")
         print(f"Doc ID: {case.get('doc_id')}")
-        
+
         for rel in case['relevant']:
             orders = rel['value']
             if isinstance(orders[0], list):

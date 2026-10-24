@@ -7,10 +7,8 @@ providing consistent semantic evaluation across all pipeline stages.
 from __future__ import annotations
 
 import argparse
-import hashlib
 import json
 import platform
-import re
 import sys
 from collections import defaultdict
 from datetime import datetime
@@ -20,7 +18,6 @@ from typing import Any
 
 ROOT = Path(__file__).resolve().parents[2]
 sys.path.insert(0, str(ROOT / "src"))
-
 from deepeval.metrics import ContextualPrecisionMetric, ContextualRecallMetric
 from deepeval.test_case import LLMTestCase
 
@@ -170,8 +167,8 @@ def breakdown(
 
 def run_evaluation(args: argparse.Namespace) -> Path:
     """Run retriever evaluation with DeepEval metrics."""
-    from retriever.hybrid_retriever import HybridRetrieverWithReranker
     from generation.config import GenerationConfig
+    from retriever.hybrid_retriever import HybridRetrieverWithReranker
 
     cases = select_cases(load_cases(args.golden_path), args)
     config = GenerationConfig()  # Use default retrieval config
@@ -292,10 +289,10 @@ def run_evaluation(args: argparse.Namespace) -> Path:
     print(f"Cases: {summary['overall']['cases']}")
     print(f"Successful: {summary['overall']['successful_cases']}")
     print(f"Errors: {summary['overall']['error_cases']}")
-    print(f"\nExecution modes:")
+    print("\nExecution modes:")
     print(f"  Embedding: {manifest['execution_modes']['embedding']}")
     print(f"  Reranker: {manifest['execution_modes']['reranker']}")
-    print(f"\nRetrieval config:")
+    print("\nRetrieval config:")
     print(f"  Run directory: {manifest['retrieval_config']['run_directory']}")
     print(f"  Alpha: {manifest['retrieval_config']['alpha']}")
     print(f"  Retrieve-k: {manifest['retrieval_config']['retrieve_k']}")
@@ -384,7 +381,7 @@ def compare_runs(results_dir: Path) -> Path | None:
             continue
         manifest = json.loads(manifest_path.read_text(encoding="utf-8"))
         summary = json.loads(summary_path.read_text(encoding="utf-8"))
-        config = manifest.get("retrieval_config", {})
+        manifest.get("retrieval_config", {})
         overall = summary.get("overall", {})
         metrics = overall.get("metrics", {})
         rows.append({
@@ -397,7 +394,7 @@ def compare_runs(results_dir: Path) -> Path | None:
             "contextual_recall": metrics.get("contextual_recall", {}).get("mean_score"),
             "signature": comparison_signature(manifest),
         })
-    
+
     if not rows:
         print(f"No DeepEval retriever runs found in: {results_dir}")
         return None
@@ -416,13 +413,13 @@ def compare_runs(results_dir: Path) -> Path | None:
         ]
         for row in rows
     ]
-    
+
     widths = [max(len(headers[i]), *(len(row[i]) for row in display_rows)) for i in range(len(headers))]
     print("  ".join(header.ljust(widths[i]) for i, header in enumerate(headers)))
     print("  ".join("-" * width for width in widths))
     for row in display_rows:
         print("  ".join(value.ljust(widths[i]) for i, value in enumerate(row)))
-    
+
     if not comparable:
         print("\nWARNING: Runs are not directly comparable; evaluation settings differ.")
 

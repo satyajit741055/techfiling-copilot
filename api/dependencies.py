@@ -16,7 +16,6 @@ from typing import TYPE_CHECKING
 ROOT = Path(__file__).resolve().parents[1]
 if str(ROOT / "src") not in sys.path:
     sys.path.insert(0, str(ROOT / "src"))
-
 from api.config import api_settings
 from api.services.rag_service import RAGService
 
@@ -43,17 +42,17 @@ _filings: list[dict] | None = None
 def _load_filings_from_disk() -> list[dict]:
     """
     Load filing metadata from data/parsed/*.document.json files.
-    
+
     Returns:
         List of filing metadata dictionaries
     """
     parsed_dir = api_settings.PARSED_DATA_DIR
     filings = []
-    
+
     if not parsed_dir.exists():
         logger.warning(f"Parsed data directory not found: {parsed_dir}")
         return filings
-    
+
     for doc_file in sorted(parsed_dir.glob("*.document.json")):
         try:
             with open(doc_file, "r", encoding="utf-8") as f:
@@ -61,34 +60,34 @@ def _load_filings_from_disk() -> list[dict]:
                 filings.append(doc_meta)
         except Exception as e:
             logger.warning(f"Failed to load {doc_file}: {e}")
-    
+
     return filings
 
 
 def init_generator() -> None:
     """
     Initialize the AnswerGenerator and load filings.
-    
+
     Called once at startup via FastAPI lifespan.
     This loads embedding models, reranker, and BM25 index (~5-10 seconds).
     """
     global _generator, _rag_service, _filings
-    
+
     # Load filings metadata
     logger.info("Loading filings metadata...")
     _filings = _load_filings_from_disk()
     logger.info(f"  Loaded {len(_filings)} filings: {[f['doc_id'] for f in _filings]}")
-    
+
     # Initialize the generator (this is the slow part)
     logger.info("Initializing AnswerGenerator...")
     from generation import AnswerGenerator, GenerationConfig
-    
+
     config = GenerationConfig()
     _generator = AnswerGenerator(config, root=ROOT)
-    
+
     # Create the service wrapper
     _rag_service = RAGService(_generator)
-    
+
     logger.info(f"  Model: {_rag_service.model_name}")
     logger.info("Generator ready!")
 
@@ -96,7 +95,7 @@ def init_generator() -> None:
 def shutdown_generator() -> None:
     """
     Cleanup on shutdown.
-    
+
     Called via FastAPI lifespan on app shutdown.
     """
     global _generator, _rag_service, _filings
@@ -113,7 +112,7 @@ def shutdown_generator() -> None:
 def get_generator() -> "AnswerGenerator":
     """
     FastAPI dependency to get the initialized AnswerGenerator.
-    
+
     Raises:
         RuntimeError: If generator not initialized
     """
@@ -125,7 +124,7 @@ def get_generator() -> "AnswerGenerator":
 def get_rag_service() -> RAGService:
     """
     FastAPI dependency to get the RAG service.
-    
+
     Raises:
         RuntimeError: If service not initialized
     """
@@ -137,7 +136,7 @@ def get_rag_service() -> RAGService:
 def get_filings() -> list[dict]:
     """
     FastAPI dependency to get the list of available filings.
-    
+
     Raises:
         RuntimeError: If filings not loaded
     """
@@ -149,7 +148,7 @@ def get_filings() -> list[dict]:
 def get_valid_doc_ids() -> set[str]:
     """
     Get the set of valid document IDs.
-    
+
     Returns:
         Set of valid doc_id strings
     """

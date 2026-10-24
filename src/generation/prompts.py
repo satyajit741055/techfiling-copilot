@@ -129,14 +129,14 @@ def get_system_prompt(version: str) -> str:
 def build_user_prompt(question: str, context: str) -> str:
     """
     Build the user message with question and sources.
-    
+
     Args:
         question: The question to answer
         context: Formatted context string with <source> tags
-        
+
     Returns:
         Complete user prompt string
-    
+
     The sources are already formatted with <source> tags and IDs.
     """
     return f"""Question:

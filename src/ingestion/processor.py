@@ -12,11 +12,16 @@ from datetime import datetime
 from pathlib import Path
 
 from ingestion.chunking.chunker import (
-    MAX_CHARS, MIN_CHARS, PARSED_DIR, TABLE_MAX_CHARS, chunk_doc_id, list_doc_ids, write_chunks,
+    MAX_CHARS,
+    MIN_CHARS,
+    PARSED_DIR,
+    TABLE_MAX_CHARS,
+    chunk_doc_id,
+    list_doc_ids,
+    write_chunks,
 )
 from ingestion.chunking.embedder import CHUNKS_DIR, MODEL_CACHE_DIR, embed_and_save
 from ingestion.parser.parser import RAW_DIR, parse_all
-
 
 
 def process(

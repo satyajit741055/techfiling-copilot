@@ -17,7 +17,6 @@ from typing import Any
 
 ROOT = Path(__file__).resolve().parents[1]
 sys.path.insert(0, str(ROOT / "src"))
-
 from config.settings import settings
 from generation import AnswerGenerator, GenerationConfig
 from generation.context import format_context

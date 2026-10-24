@@ -20,12 +20,11 @@ if str(ROOT / "src") not in sys.path:
 def client():
     """
     Create a test client for the FastAPI application.
-    
     Uses module scope to avoid reinitializing the heavy RAG pipeline
     for each test function.
     """
     from api.main import app
-    
+
     with TestClient(app) as test_client:
         yield test_client
 

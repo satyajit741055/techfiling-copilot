@@ -232,7 +232,7 @@ class DenseRetriever:
         """Iterate over all loaded chunks in embedding-row order."""
         return iter(self.chunks)
 
-    
+
 def show(results: list[SearchResult], width: int = 350) -> None:
     """Print ranked search results with truncated single-line text previews.
 
@@ -274,6 +274,6 @@ def main() -> None:
 
 if __name__ == "__main__":
     main()
-    
+
 
 

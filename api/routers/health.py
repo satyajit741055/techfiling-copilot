@@ -13,12 +13,10 @@ from fastapi import APIRouter, Depends
 ROOT = Path(__file__).resolve().parents[2]
 if str(ROOT / "src") not in sys.path:
     sys.path.insert(0, str(ROOT / "src"))
-
-from api.dependencies import get_rag_service, get_filings
+from api.dependencies import get_filings, get_rag_service
 from api.schemas import HealthResponse
 from api.services import RAGService
 from config.settings import settings
-
 
 router = APIRouter()
 
@@ -35,7 +33,7 @@ def health_check(
 ) -> HealthResponse:
     """
     Health check endpoint.
-    
+
     Returns service status, environment, loaded model, and filing count.
     Used by load balancers and monitoring systems.
     """

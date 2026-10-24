@@ -6,7 +6,7 @@ FastAPI backend wrapping the RAG pipeline for SEC 10-K document Q&A.
 Usage:
     # From project root
     uvicorn api.main:app --reload --host 0.0.0.0 --port 8000
-    
+
     # Or with explicit PYTHONPATH
     set PYTHONPATH=.
     uvicorn api.main:app --reload
@@ -15,7 +15,7 @@ Endpoints:
     GET  /health     - Health check
     GET  /filings    - List available filings
     POST /questions  - Ask a question about a filing
-    
+
     GET  /docs       - Swagger UI (auto-generated)
     GET  /redoc      - ReDoc (auto-generated)
 """
@@ -28,7 +28,7 @@ from fastapi.middleware.cors import CORSMiddleware
 
 from api.config import api_settings
 from api.dependencies import init_generator, shutdown_generator
-from api.routers import health, filings, questions
+from api.routers import filings, health, questions
 
 # Configure logging
 logger = logging.getLogger(__name__)
@@ -42,11 +42,11 @@ logger = logging.getLogger(__name__)
 async def lifespan(app: FastAPI):
     """
     Manage application lifecycle.
-    
+
     Startup:
         - Load filing metadata
         - Initialize AnswerGenerator (loads models, index)
-        
+
     Shutdown:
         - Cleanup resources
     """
@@ -54,17 +54,17 @@ async def lifespan(app: FastAPI):
     logger.info("=" * 60)
     logger.info("TechFiling Copilot API - Starting up...")
     logger.info("=" * 60)
-    
+
     init_generator()
-    
+
     logger.info("=" * 60)
     logger.info("API ready to serve requests!")
     logger.info(f"  Swagger UI: http://{api_settings.API_HOST}:{api_settings.API_PORT}/docs")
     logger.info(f"  ReDoc:      http://{api_settings.API_HOST}:{api_settings.API_PORT}/redoc")
     logger.info("=" * 60)
-    
+
     yield
-    
+
     # Shutdown
     logger.info("Shutting down...")
     shutdown_generator()
@@ -151,7 +151,7 @@ def root():
 
 if __name__ == "__main__":
     import uvicorn
-    
+
     uvicorn.run(
         "api.main:app",
         host=api_settings.API_HOST,

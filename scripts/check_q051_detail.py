@@ -11,11 +11,11 @@ for line in enriched_path.open(encoding='utf-8'):
         # Split by document tags
         sections = text.split('[AAPL_10-K_2025]')
         sections = [s for s in sections if s.strip()]
-        
-        print(f'=== q051 ===')
+
+        print('=== q051 ===')
         print(f'Total sections: {len(sections)}')
         print()
-        
+
         for i, section in enumerate(sections):
             print(f'Section {i+1}: {len(section)} chars')
             # Show first 200 chars

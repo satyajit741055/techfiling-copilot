@@ -4,6 +4,6 @@ API Routers.
 FastAPI routers for different endpoint groups.
 """
 
-from . import health, filings, questions
+from . import filings, health, questions
 
 __all__ = ["health", "filings", "questions"]

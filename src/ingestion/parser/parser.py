@@ -765,8 +765,10 @@ def validate(rows: list[Row], columns: list[Column], facts: dict, contexts: dict
                 sign_ok += 1
             ctx = contexts.get(f.context, {})
             p = (ctx.get("start"), ctx.get("end"))
-            by_col_p[j][p] += 1; by_row_p[i][p] += 1
-            by_col_c[j][f.concept] += 1; by_row_c[i][f.concept] += 1
+            by_col_p[j][p] += 1
+            by_row_p[i][p] += 1
+            by_col_c[j][f.concept] += 1
+            by_row_c[i][f.concept] += 1
     if not n:
         return {"n_fact_cells": 0}
     col_p, row_p = purity(by_col_p), purity(by_row_p)
@@ -815,17 +817,22 @@ def score(kind, n_header, title, units, conflicts, n_cells, v) -> dict:
     """
     s, reasons = 1.0, []
     if kind == "financial" and n_header == 0:
-        s -= 0.3; reasons.append("no_header")
+        s -= 0.3
+        reasons.append("no_header")
     if kind == "financial" and not units:
-        s -= 0.1; reasons.append("no_units")
+        s -= 0.1
+        reasons.append("no_units")
     if not title:
-        s -= 0.1; reasons.append("no_title")
+        s -= 0.1
+        reasons.append("no_title")
     if conflicts:
-        s -= min(0.4, 2 * conflicts / max(1, n_cells)); reasons.append(f"conflicts={conflicts}")
+        s -= min(0.4, 2 * conflicts / max(1, n_cells))
+        reasons.append(f"conflicts={conflicts}")
     if v.get("n_fact_cells"):
         for key, w in (("value_match", 0.4), ("period_purity", 0.3), ("concept_purity", 0.2), ("header_period_agreement", 0.2)):
             if v.get(key) is not None and v[key] < 1:
-                s -= w * (1 - v[key]); reasons.append(f"{key}={v[key]}")
+                s -= w * (1 - v[key])
+                reasons.append(f"{key}={v[key]}")
     s = round(max(0.0, s), 3)
     return {**v, "score": s, "low_confidence": s < CONFIG["low_confidence"], "reasons": reasons}
 

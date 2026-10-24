@@ -9,7 +9,6 @@ from fastapi import APIRouter, Depends
 from api.dependencies import get_filings
 from api.schemas import FilingInfo, FilingsResponse
 
-
 router = APIRouter()
 
 
@@ -24,7 +23,7 @@ def list_filings(
 ) -> FilingsResponse:
     """
     List all available filings.
-    
+
     Returns metadata for each filing including company name, ticker,
     fiscal year, and period end date.
     """
@@ -39,5 +38,5 @@ def list_filings(
         )
         for f in filings
     ]
-    
+
     return FilingsResponse(filings=filing_infos)

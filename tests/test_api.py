@@ -7,7 +7,6 @@ Tests cover:
 - Questions endpoint (validation and basic functionality)
 """
 
-import pytest
 
 
 class TestHealthEndpoint:
@@ -22,7 +21,7 @@ class TestHealthEndpoint:
         """Health response should contain required fields."""
         response = client.get("/health")
         data = response.json()
-        
+
         assert "status" in data
         assert "environment" in data
         assert "model" in data
@@ -32,14 +31,14 @@ class TestHealthEndpoint:
         """Health status should be 'healthy'."""
         response = client.get("/health")
         data = response.json()
-        
+
         assert data["status"] == "healthy"
 
     def test_health_filings_loaded(self, client):
         """Health should report filings are loaded."""
         response = client.get("/health")
         data = response.json()
-        
+
         # Should have at least the 3 MVP filings
         assert data["filings_loaded"] >= 0
 
@@ -56,7 +55,7 @@ class TestFilingsEndpoint:
         """Filings response should contain a list of filings."""
         response = client.get("/filings")
         data = response.json()
-        
+
         assert "filings" in data
         assert isinstance(data["filings"], list)
 
@@ -64,9 +63,9 @@ class TestFilingsEndpoint:
         """Each filing should have required metadata fields."""
         response = client.get("/filings")
         data = response.json()
-        
+
         required_fields = ["doc_id", "company", "ticker", "form", "fiscal_year", "period_end"]
-        
+
         for filing in data["filings"]:
             for field in required_fields:
                 assert field in filing, f"Missing field: {field}"
@@ -84,7 +83,7 @@ class TestRootEndpoint:
         """Root should contain links to docs and health."""
         response = client.get("/")
         data = response.json()
-        
+
         assert "docs" in data
         assert "health" in data
 
@@ -130,12 +129,12 @@ class TestQuestionsEndpoint:
     def test_questions_accepts_valid_request(self, client, sample_question_request):
         """Questions should accept valid request and return answer."""
         response = client.post("/questions", json=sample_question_request)
-        
+
         # Should succeed (may take a few seconds due to LLM)
         assert response.status_code == 200
-        
+
         data = response.json()
-        
+
         # Check response structure
         assert "question" in data
         assert "doc_id" in data
@@ -148,9 +147,9 @@ class TestQuestionsEndpoint:
         """Answer object should have required fields."""
         response = client.post("/questions", json=sample_question_request)
         assert response.status_code == 200
-        
+
         answer = response.json()["answer"]
-        
+
         # Required answer fields
         assert "answer" in answer  # Can be null for insufficient context
         assert "explanation" in answer
@@ -162,9 +161,9 @@ class TestQuestionsEndpoint:
         """Sources should have required metadata fields."""
         response = client.post("/questions", json=sample_question_request)
         assert response.status_code == 200
-        
+
         sources = response.json()["sources"]
-        
+
         # Should have at least one source for a valid question
         if len(sources) > 0:
             source = sources[0]
@@ -184,7 +183,7 @@ class TestQuestionsEndpoint:
             }
         )
         assert response.status_code == 200
-        
+
         data = response.json()
         assert data["context_k"] == 3
 
@@ -206,7 +205,7 @@ class TestOpenAPIDocumentation:
         """OpenAPI schema should be available."""
         response = client.get("/openapi.json")
         assert response.status_code == 200
-        
+
         schema = response.json()
         assert "openapi" in schema
         assert "paths" in schema

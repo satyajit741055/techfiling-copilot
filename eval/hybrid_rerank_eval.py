@@ -42,6 +42,7 @@ import numpy as np
 
 # Add parent to path for imports
 sys.path.insert(0, str(Path(__file__).resolve().parents[1] / "src"))
+from config.settings import settings
 from retriever.bm25s_rrf_retriever import BM25SRRFRetriever, BM25SRRFRetrieverWithReranker
 from retriever.hybrid_retriever import (
     BM25Retriever,
@@ -49,7 +50,6 @@ from retriever.hybrid_retriever import (
     HybridRetrieverWithReranker,
 )
 from retriever.retriever import DenseRetriever, SearchResult
-from config.settings import settings
 
 ROOT = Path(__file__).resolve().parents[1]
 DEFAULT_GOLDEN_PATH = ROOT / "goldens" / "golden_retriever_dataset_v2.jsonl"

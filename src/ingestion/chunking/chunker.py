@@ -121,7 +121,7 @@ def split_table_markdown(md: str, max_chars: int) -> list[str]:
     if len(md) <= max_chars:
         return [md]
     lines = md.split("\n")
-    sep = next(i for i, l in enumerate(lines) if re.fullmatch(r"\|[-| ]+\|", l))
+    sep = next(i for i, line in enumerate(lines) if re.fullmatch(r"\|[-| ]+\|", line))
     head, rows = lines[: sep + 1], lines[sep + 1:]
     pieces, cur = [], []
     for r in rows:

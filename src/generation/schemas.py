@@ -6,7 +6,7 @@ Defines structured types for LLM responses, generated answers, and complete resu
 
 from __future__ import annotations
 
-from dataclasses import dataclass, field, asdict
+from dataclasses import asdict, dataclass, field
 from typing import Any
 
 
@@ -14,7 +14,7 @@ from typing import Any
 class LLMResponse:
     """
     Standardized response from any LLM provider.
-    
+
     Attributes:
         content: Raw text content from the model
         model: Model name used
@@ -35,7 +35,7 @@ class LLMResponse:
 class GeneratedAnswer:
     """
     Structured answer from the LLM.
-    
+
     Attributes:
         answer: The direct answer to the question (None if abstaining)
         explanation: Brief explanation of how the answer was found
@@ -50,11 +50,11 @@ class GeneratedAnswer:
     citations: list[str]
     calculation: str | None
     insufficient_context: bool
-    
+
     # Validation results (filled by validate_answer())
     is_valid: bool = True
     validation_errors: list[str] = field(default_factory=list)
-    
+
     def to_dict(self) -> dict:
         """Convert to dictionary."""
         return asdict(self)
@@ -64,9 +64,9 @@ class GeneratedAnswer:
 class GenerationResult:
     """
     Complete result from the generation pipeline.
-    
+
     Includes input, output, sources, and metadata for full traceability.
-    
+
     Attributes:
         question: The input question
         doc_id: Document filter used (if any)
@@ -84,13 +84,13 @@ class GenerationResult:
     # Input
     question: str
     doc_id: str | None
-    
+
     # Generated answer
     answer: GeneratedAnswer
-    
+
     # Sources used
     sources: list[dict[str, Any]]
-    
+
     # Metadata
     model: str
     context_k: int
@@ -98,11 +98,11 @@ class GenerationResult:
     completion_tokens: int
     latency_seconds: float
     timestamp: str
-    
+
     # Raw data for debugging
     context: str = ""
     raw_response: str = ""
-    
+
     def to_dict(self) -> dict:
         """Convert to dictionary for serialization."""
         return {

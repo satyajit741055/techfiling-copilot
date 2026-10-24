@@ -36,13 +36,13 @@ def ask_question(
 ) -> QuestionResponse:
     """
     Ask a question about a SEC 10-K filing.
-    
+
     The question is processed through the RAG pipeline:
     1. Retrieve relevant chunks using hybrid search
     2. Rerank with cross-encoder
     3. Generate grounded answer with LLM
     4. Validate citations
-    
+
     Returns the answer with full citation metadata for verification.
     """
     # Validate doc_id exists
@@ -51,12 +51,12 @@ def ask_question(
             status_code=404,
             detail=f"Filing not found: {request.doc_id}. Available filings: {sorted(valid_doc_ids)}"
         )
-    
+
     try:
         # Call the RAG pipeline
         response = rag_service.answer(request)
         return response
-    
+
     except Exception as e:
         logger.error(f"Generation failed: {type(e).__name__}: {e}", exc_info=True)
         raise HTTPException(

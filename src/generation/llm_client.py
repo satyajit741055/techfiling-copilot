@@ -15,7 +15,7 @@ Usage:
     from generation.llm_client import LLMClient
     client = LLMClient()  # Uses LLM_PROVIDER and LLM_MODEL from settings
     response = client.generate(system_prompt, user_prompt)
-    
+
     # Override specific settings
     client = LLMClient(provider="huggingface", model="Qwen/Qwen2.5-7B-Instruct")
 """
@@ -40,18 +40,18 @@ def _get_settings():
 class LLMClient:
     """
     Unified interface for different LLM providers.
-    
+
     Supports: OpenAI, Anthropic, Google, Ollama, Hugging Face
-    
+
     All defaults are loaded from centralized settings (config.settings).
-    
+
     Attributes:
         provider: Provider name (openai, anthropic, google, ollama, huggingface)
         model: Model name
         temperature: Generation temperature
         max_tokens: Maximum response length
     """
-    
+
     def __init__(
         self,
         provider: str | None = None,
@@ -73,19 +73,19 @@ class LLMClient:
                        If None, uses LLM_MAX_TOKENS from settings.
         """
         settings = _get_settings()
-        
+
         # Use settings defaults if not provided
         self.provider = (provider or settings.effective_llm_provider).lower()
         self.model = model or settings.model_for_provider(self.provider)
         self.temperature = temperature if temperature is not None else settings.LLM_TEMPERATURE
         self.max_tokens = max_tokens if max_tokens is not None else settings.LLM_MAX_TOKENS
-        
+
         # Store settings reference for API keys
         self._settings = settings
         self._client: Any = None
-        
+
         self._init_client()
-    
+
     def _init_client(self) -> None:
         """Initialize the appropriate client based on provider."""
         if self.provider == "openai":
@@ -100,7 +100,7 @@ class LLMClient:
             self._init_huggingface()
         else:
             raise ValueError(f"Unknown provider: {self.provider}")
-    
+
     def _init_openai(self) -> None:
         """Initialize OpenAI client."""
         try:
@@ -111,7 +111,7 @@ class LLMClient:
             logger.info(f"OpenAI client initialized (model: {self.model})")
         except ImportError:
             raise ImportError("Install openai: pip install openai")
-    
+
     def _init_anthropic(self) -> None:
         """Initialize Anthropic client."""
         try:
@@ -121,7 +121,7 @@ class LLMClient:
             logger.info(f"Anthropic client initialized (model: {self.model})")
         except ImportError:
             raise ImportError("Install anthropic: pip install anthropic")
-    
+
     def _init_google(self) -> None:
         """Initialize Google AI client."""
         try:
@@ -135,7 +135,7 @@ class LLMClient:
             logger.info(f"Google client initialized (model: {self.model})")
         except ImportError:
             raise ImportError("Install google-generativeai: pip install google-generativeai")
-    
+
     def _init_ollama(self) -> None:
         """Initialize Ollama client for local LLM with CUDA."""
         try:
@@ -150,7 +150,7 @@ class LLMClient:
             logger.info(f"Ollama client initialized (model: {self.model}, host: {ollama_host})")
         except ImportError:
             raise ImportError("Install ollama: pip install ollama")
-    
+
     def _init_huggingface(self) -> None:
         """Initialize Hugging Face Inference Providers chat client."""
         from huggingface_hub import InferenceClient
@@ -163,20 +163,20 @@ class LLMClient:
             f"Hugging Face client initialized (model: {self.model}, "
             f"provider: {self._settings.HUGGINGFACE_PROVIDER})"
         )
-    
+
     def generate(self, system_prompt: str, user_prompt: str) -> LLMResponse:
         """
         Generate a response from the LLM.
-        
+
         Args:
             system_prompt: System message defining behavior
             user_prompt: User message with question and context
-            
+
         Returns:
             LLMResponse with content and metadata
         """
         start_time = time.time()
-        
+
         if self.provider == "openai":
             return self._generate_openai(system_prompt, user_prompt, start_time)
         elif self.provider == "anthropic":
@@ -189,7 +189,7 @@ class LLMClient:
             return self._generate_huggingface(system_prompt, user_prompt, start_time)
         else:
             raise ValueError(f"Unknown provider: {self.provider}")
-    
+
     def _generate_openai(
         self,
         system_prompt: str,
@@ -207,7 +207,7 @@ class LLMClient:
             max_tokens=self.max_tokens,
             response_format={"type": "json_object"},  # Enforce JSON output
         )
-        
+
         return LLMResponse(
             content=response.choices[0].message.content,
             model=self.model,
@@ -216,7 +216,7 @@ class LLMClient:
             latency_seconds=time.time() - start_time,
             raw_response=response,
         )
-    
+
     def _generate_anthropic(
         self,
         system_prompt: str,
@@ -231,7 +231,7 @@ class LLMClient:
             messages=[{"role": "user", "content": user_prompt}],
             temperature=self.temperature,
         )
-        
+
         return LLMResponse(
             content=response.content[0].text,
             model=self.model,
@@ -240,7 +240,7 @@ class LLMClient:
             latency_seconds=time.time() - start_time,
             raw_response=response,
         )
-    
+
     def _generate_google(
         self,
         system_prompt: str,
@@ -257,11 +257,11 @@ class LLMClient:
                 "max_output_tokens": self.max_tokens,
             },
         )
-        
+
         # Token counts may not be available for all models
         prompt_tokens = getattr(response.usage_metadata, 'prompt_token_count', 0)
         completion_tokens = getattr(response.usage_metadata, 'candidates_token_count', 0)
-        
+
         return LLMResponse(
             content=response.text,
             model=self.model,
@@ -270,7 +270,7 @@ class LLMClient:
             latency_seconds=time.time() - start_time,
             raw_response=response,
         )
-    
+
     def _generate_ollama(
         self,
         system_prompt: str,
@@ -289,7 +289,7 @@ class LLMClient:
                 "num_predict": self.max_tokens,
             },
         )
-        
+
         return LLMResponse(
             content=response['message']['content'],
             model=self.model,
@@ -298,7 +298,7 @@ class LLMClient:
             latency_seconds=time.time() - start_time,
             raw_response=response,
         )
-    
+
     def _generate_huggingface(
         self,
         system_prompt: str,
@@ -320,7 +320,7 @@ class LLMClient:
             max_tokens=self.max_tokens,
         )
         usage = getattr(response, "usage", None)
-        
+
         return LLMResponse(
             content=response.choices[0].message.content or "",
             model=self.model,

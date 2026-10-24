@@ -344,7 +344,8 @@ def check_totals(table: dict):
 def check_structure(soup, parsed, top_n: int):
     html_tables = [(t, html_grid(t)) for t in top_level_tables(soup)]
     html_tables = [(t, g) for t, g in html_tables if any(g)]
-    sig = lambda labels: {x for x in labels if x}
+    def sig(labels):
+        return {x for x in labels if x}
     html_sigs = [sig(" ".join(cells[0][1]) for cells in g if cells) for _, g in html_tables]
     html_rows = [{" ".join(t for _, toks in cells for t in toks) for cells in g if cells} for _, g in html_tables]
     agg, problems, totals_pass, totals_checked, totals_fail = Counter(), [], 0, 0, []

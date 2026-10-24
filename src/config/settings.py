@@ -392,7 +392,7 @@ class Settings(BaseSettings):
             raise ValueError("ANTHROPIC_API_KEY is required when using Anthropic provider")
         elif provider == LLMProvider.GOOGLE and not self.GOOGLE_API_KEY:
             raise ValueError("GOOGLE_API_KEY is required when using Google provider")
-    
+
         return self
 
     @field_validator(

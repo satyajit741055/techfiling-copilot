@@ -16,7 +16,10 @@ import numpy as np
 import pandas as pd
 
 from ingestion.chunking.chunker import (
-    MAX_CHARS, MIN_CHARS, ROOT, TABLE_MAX_CHARS,
+    MAX_CHARS,
+    MIN_CHARS,
+    ROOT,
+    TABLE_MAX_CHARS,
 )
 from model_runtime import Embedder, create_embedder
 
@@ -153,7 +156,7 @@ def chunk_summary(chunks: list[dict], token_counts: list[int], limits: dict, min
         "token_statistics": token_summary(token_counts),
     }
 
-    
+
 def build_manifest(
     chunks: list[dict],
     token_counts: list[int],
