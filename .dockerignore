@@ -1,0 +1,42 @@
+# Only api/, src/, data/ and the uv project files are needed by the backend image
+
+# Secrets
+.env
+.env.*
+
+# Python / tooling caches
+__pycache__/
+*.py[cod]
+.venv/
+.pytest_cache/
+.mypy_cache/
+.ruff_cache/
+.deepeval/
+.coverage
+htmlcov/
+
+# Not needed at runtime
+.git/
+.vscode/
+.idea/
+web/
+tests/
+eval/
+goldens/
+study/
+exploration/
+handoff/
+scripts/
+*.md
+
+# Local model cache (not used in API mode)
+models/
+
+# Logs
+src/logs/
+*.log
+
+# Docker
+Dockerfile*
+docker-compose*.yml
+.dockerignore

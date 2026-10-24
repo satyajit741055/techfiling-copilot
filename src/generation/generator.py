@@ -17,6 +17,7 @@ Usage:
 from __future__ import annotations
 
 import logging
+import time
 from datetime import datetime
 from pathlib import Path
 from typing import Any
@@ -165,9 +166,23 @@ class AnswerGenerator:
             List of SearchResult objects from the hybrid retriever
         """
         context_k = context_k or self.config.context_k
-        if verbose:
-            logger.info(f"Retrieving top {context_k} chunks...")
-        return self.retriever.search(question, k=context_k, doc_id=doc_id)
+        logger.info("=== RETRIEVAL ===")
+        logger.info(f"Question: {question}")
+        logger.info(f"Document filter: {doc_id or 'none'} | context_k={context_k}")
+        start = time.perf_counter()
+        results = self.retriever.search(question, k=context_k, doc_id=doc_id)
+        logger.info(f"Retrieved {len(results)} chunks in {time.perf_counter() - start:.2f}s")
+        for i, result in enumerate(results, start=1):
+            chunk = result.chunk
+            logger.info(
+                f"[S{i}] score={result.score:.4f} chunk_id={chunk.get('chunk_id')} "
+                f"doc={chunk.get('doc_id')} type={chunk.get('type')} "
+                f"section={chunk.get('section_title') or chunk.get('section')!r} "
+                f"elements={chunk.get('element_orders', [])} table_id={chunk.get('table_id')} "
+                f"chars={len(chunk.get('text', ''))}"
+            )
+            logger.info(f"[S{i}] text:\n{chunk.get('text', '')}")
+        return results
 
     def generate(
         self,
@@ -197,7 +212,11 @@ class AnswerGenerator:
         timestamp = datetime.now().isoformat()
         context_k = len(chunks)
 
+        logger.info("=== GENERATION ===")
+        logger.info(f"Question: {question} | doc={doc_id or 'none'} | context chunks={context_k}")
+
         if not chunks:
+            logger.warning("No relevant context found in the filing")
             return GenerationResult(
                 question=question,
                 doc_id=doc_id,
@@ -221,33 +240,44 @@ class AnswerGenerator:
         context, sources = format_context(chunks)
         valid_source_ids = [s["source_id"] for s in sources]
 
-        if verbose:
-            logger.info(f"Context: {len(context):,} characters, {len(sources)} sources")
+        logger.info(f"Context: {len(context):,} chars, sources={valid_source_ids}")
 
         # Step 2: Build prompt
         user_prompt = build_user_prompt(question, context)
-
-        if verbose:
-            logger.info(f"Prompt: {len(self.system_prompt) + len(user_prompt):,} characters")
+        logger.info(
+            f"Prompt: system={len(self.system_prompt):,} chars "
+            f"(version={self.config.prompt_version}), user={len(user_prompt):,} chars"
+        )
+        logger.info(f"System prompt:\n{self.system_prompt}")
+        logger.info(f"User prompt:\n{user_prompt}")
 
         # Step 3: Generate
-        if verbose:
-            logger.info(f"Generating with {self.llm_client.model}...")
-
+        logger.info(
+            f"Calling LLM: provider={self.llm_client.provider} model={self.llm_client.model} "
+            f"temperature={self.llm_client.temperature} max_tokens={self.llm_client.max_tokens}"
+        )
         llm_response = self.llm_client.generate(self.system_prompt, user_prompt)
-
-        if verbose:
-            logger.info(f"Response: {llm_response.completion_tokens} tokens, {llm_response.latency_seconds:.2f}s")
+        logger.info(
+            f"LLM done: prompt_tokens={llm_response.prompt_tokens} "
+            f"completion_tokens={llm_response.completion_tokens} "
+            f"latency={llm_response.latency_seconds:.2f}s"
+        )
+        logger.info(f"Raw LLM response:\n{llm_response.content}")
 
         # Step 4: Parse and validate
         answer = parse_llm_response(llm_response.content)
         answer = validate_answer(answer, valid_source_ids)
 
-        if verbose:
-            if answer.is_valid:
-                logger.info("Validation: PASSED")
-            else:
-                logger.warning(f"Validation: FAILED - {answer.validation_errors}")
+        logger.info(
+            f"Final answer: {answer.answer!r} | explanation={answer.explanation!r} | "
+            f"citations={answer.citations} | calculation={answer.calculation!r} | "
+            f"insufficient_context={answer.insufficient_context}"
+        )
+        if answer.is_valid:
+            logger.info("Validation: PASSED")
+        else:
+            logger.warning(f"Validation: FAILED - {answer.validation_errors}")
+        logger.info("=== GENERATION COMPLETE ===")
 
         return GenerationResult(
             question=question,

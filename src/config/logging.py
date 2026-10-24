@@ -92,6 +92,10 @@ def setup_logging(
     # Configure handlers
     handlers = []
 
+    # Filing text contains characters (e.g. checkboxes) the Windows console codec cannot encode
+    if hasattr(sys.stdout, "reconfigure"):
+        sys.stdout.reconfigure(errors="replace")
+
     # Console handler (always)
     console_handler = logging.StreamHandler(sys.stdout)
     console_handler.setFormatter(formatter)
@@ -106,6 +110,7 @@ def setup_logging(
             log_file_path,
             maxBytes=settings.LOG_FILE_MAX_BYTES,
             backupCount=settings.LOG_FILE_BACKUP_COUNT,
+            encoding="utf-8",
         )
         file_handler.setFormatter(formatter)
         handlers.append(file_handler)

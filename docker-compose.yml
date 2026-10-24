@@ -1,0 +1,37 @@
+# =============================================================================
+# Docker Compose - TechFiling Copilot
+# =============================================================================
+# Backend config comes from the same .env used for local runs
+# (src/config/settings.py holds the defaults). The container always runs in
+# Hugging Face API mode: the image has no torch/CUDA, so local mode cannot work.
+# =============================================================================
+
+services:
+  backend:
+    build: .
+    env_file: .env
+    environment:
+      MODEL_EXECUTION_MODE: huggingface_api
+      # Clear any per-stage "local" overrides from .env
+      EMBEDDING_EXECUTION_MODE: ""
+      RERANKER_EXECUTION_MODE: ""
+      GENERATION_EXECUTION_MODE: ""
+      # Absolute path inside the writable, mounted logs volume
+      LOG_FILE: /app/src/logs/app.log
+    ports:
+      - "8000:8000"
+    volumes:
+      - ./src/logs:/app/src/logs
+    restart: unless-stopped
+
+  frontend:
+    build:
+      context: ./web
+      args:
+        # Called from the browser, so it must be reachable from the host, not the Docker network
+        NEXT_PUBLIC_API_URL: ${DOCKER_PUBLIC_API_URL:-http://localhost:8000}
+    ports:
+      - "3000:3000"
+    depends_on:
+      - backend
+    restart: unless-stopped

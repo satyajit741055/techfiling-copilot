@@ -1,0 +1,15 @@
+node_modules/
+.next/
+out/
+*.log
+tsconfig.tsbuildinfo
+
+# Local env files would be read by `next build`; the API URL comes from the build arg
+.env
+.env.*
+
+.vscode/
+.idea/
+.git/
+Dockerfile
+.dockerignore

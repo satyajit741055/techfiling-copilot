@@ -1,2 +1,256 @@
 2026-10-24 18:00:19 | INFO     | test:1 | Test info message
 2026-10-24 18:00:19 | WARNING  | test:1 | Test warning message
+2026-10-24 20:26:14 | INFO     | __main__:422 | Initializing generator...
+2026-10-24 20:26:16 | INFO     | generation.llm_client:150 | Ollama client initialized (model: qwen2.5-7b-instruct:latest, host: http://localhost:11434)
+2026-10-24 20:26:17 | INFO     | retriever.hybrid_retriever:783 | Loading hybrid retriever...
+2026-10-24 20:26:24 | WARNING  | huggingface_hub.utils._http:904 | Warning: You are sending unauthenticated requests to the HF Hub. Please set a HF_TOKEN to enable higher rate limits and faster downloads.
+2026-10-24 20:26:32 | DEBUG    | bm25s:520 | Building index from tokens
+2026-10-24 20:26:32 | WARNING  | model_runtime.factory:119 | Index was embedded with the 'huggingface_api' backend but queries use 'local'; same model, but re-embedding is recommended for exact parity
+2026-10-24 20:26:32 | INFO     | retriever.hybrid_retriever:404 | Loaded 1447 chunks
+2026-10-24 20:26:32 | INFO     | retriever.hybrid_retriever:405 | Dense model: BAAI/bge-base-en-v1.5 (local)
+2026-10-24 20:26:32 | INFO     | retriever.hybrid_retriever:406 | BM25 index (bm25s): 6528 unique terms
+2026-10-24 20:26:32 | INFO     | retriever.hybrid_retriever:411 | Hybrid alpha: 0.85 (dense weight)
+2026-10-24 20:26:32 | INFO     | retriever.hybrid_retriever:791 | Loading reranker...
+2026-10-24 20:26:43 | INFO     | retriever.hybrid_retriever:690 | Reranker loaded: cross-encoder/ettin-reranker-150m-v1 (local)
+2026-10-24 20:26:43 | INFO     | __main__:113 | Retriever ready with 1,447 chunks
+2026-10-24 20:28:00 | INFO     | __main__:467 | Initializing generator...
+2026-10-24 20:28:03 | INFO     | generation.llm_client:150 | Ollama client initialized (model: qwen2.5-7b-instruct:latest, host: http://localhost:11434)
+2026-10-24 20:28:03 | INFO     | __main__:168 | === RETRIEVAL ===
+2026-10-24 20:28:03 | INFO     | __main__:169 | Question: What was Apple's total net sales in fiscal 2025?
+2026-10-24 20:28:03 | INFO     | __main__:170 | Document ID: AAPL_10-K_2025
+2026-10-24 20:28:03 | INFO     | __main__:171 | Retrieving top 5 chunks...
+2026-10-24 20:28:03 | INFO     | retriever.hybrid_retriever:783 | Loading hybrid retriever...
+2026-10-24 20:28:11 | WARNING  | huggingface_hub.utils._http:904 | Warning: You are sending unauthenticated requests to the HF Hub. Please set a HF_TOKEN to enable higher rate limits and faster downloads.
+2026-10-24 20:28:18 | DEBUG    | bm25s:520 | Building index from tokens
+2026-10-24 20:28:19 | WARNING  | model_runtime.factory:119 | Index was embedded with the 'huggingface_api' backend but queries use 'local'; same model, but re-embedding is recommended for exact parity
+2026-10-24 20:28:19 | INFO     | retriever.hybrid_retriever:404 | Loaded 1447 chunks
+2026-10-24 20:28:19 | INFO     | retriever.hybrid_retriever:405 | Dense model: BAAI/bge-base-en-v1.5 (local)
+2026-10-24 20:28:19 | INFO     | retriever.hybrid_retriever:406 | BM25 index (bm25s): 6528 unique terms
+2026-10-24 20:28:19 | INFO     | retriever.hybrid_retriever:411 | Hybrid alpha: 0.85 (dense weight)
+2026-10-24 20:28:19 | INFO     | retriever.hybrid_retriever:791 | Loading reranker...
+2026-10-24 20:28:29 | INFO     | retriever.hybrid_retriever:690 | Reranker loaded: cross-encoder/ettin-reranker-150m-v1 (local)
+2026-10-24 20:28:29 | INFO     | __main__:113 | Retriever ready with 1,447 chunks
+2026-10-24 20:28:31 | INFO     | __main__:173 | Retrieved 5 chunks
+2026-10-24 20:41:13 | INFO     | __main__:452 | Initializing generator...
+2026-10-24 20:41:18 | INFO     | generation.llm_client:150 | Ollama client initialized (model: qwen2.5-7b-instruct:latest, host: http://localhost:11434)
+2026-10-24 20:41:18 | INFO     | __main__:169 | === RETRIEVAL ===
+2026-10-24 20:41:18 | INFO     | __main__:170 | Question: What was Apple's total net sales in fiscal 2025?
+2026-10-24 20:41:18 | INFO     | __main__:171 | Document filter: AAPL_10-K_2025 | context_k=5
+2026-10-24 20:41:18 | INFO     | retriever.hybrid_retriever:783 | Loading hybrid retriever...
+2026-10-24 20:41:26 | WARNING  | huggingface_hub.utils._http:904 | Warning: You are sending unauthenticated requests to the HF Hub. Please set a HF_TOKEN to enable higher rate limits and faster downloads.
+2026-10-24 20:41:35 | DEBUG    | bm25s:520 | Building index from tokens
+2026-10-24 20:41:35 | WARNING  | model_runtime.factory:119 | Index was embedded with the 'huggingface_api' backend but queries use 'local'; same model, but re-embedding is recommended for exact parity
+2026-10-24 20:41:35 | INFO     | retriever.hybrid_retriever:404 | Loaded 1447 chunks
+2026-10-24 20:41:35 | INFO     | retriever.hybrid_retriever:405 | Dense model: BAAI/bge-base-en-v1.5 (local)
+2026-10-24 20:41:35 | INFO     | retriever.hybrid_retriever:406 | BM25 index (bm25s): 6528 unique terms
+2026-10-24 20:41:35 | INFO     | retriever.hybrid_retriever:411 | Hybrid alpha: 0.85 (dense weight)
+2026-10-24 20:41:35 | INFO     | retriever.hybrid_retriever:791 | Loading reranker...
+2026-10-24 20:41:46 | INFO     | retriever.hybrid_retriever:690 | Reranker loaded: cross-encoder/ettin-reranker-150m-v1 (local)
+2026-10-24 20:41:46 | INFO     | __main__:114 | Retriever ready with 1,447 chunks
+2026-10-24 20:41:48 | INFO     | __main__:174 | Retrieved 5 chunks in 29.22s
+2026-10-24 20:41:48 | INFO     | __main__:177 | [S1] score=10.7682 chunk_id=AAPL_10-K_2025_c0214 doc=AAPL_10-K_2025 type=table section='Financial Statements and Supplementary Data' elements=[406] table_id=AAPL_10-K_2025_t028 chars=637
+2026-10-24 20:41:48 | INFO     | __main__:184 | [S1] text:
+The following table shows disaggregated net sales, as well as the portion of total net sales that was previously deferred, for 2025, 2024 and 2023 (in millions):
+
+**Table** (in millions)
+
+| Line item | 2025 | 2024 | 2023 |
+|---|---|---|---|
+| iPhone | 209,586 | 201,183 | 200,583 |
+| Mac | 33,708 | 29,984 | 29,357 |
+| iPad | 28,023 | 26,694 | 28,300 |
+| Wearables, Home and Accessories | 35,686 | 37,005 | 39,845 |
+| Services (1) | 109,158 | 96,169 | 85,200 |
+| Total net sales | 416,161 | 391,035 | 383,285 |
+| Portion of total net sales that was included in deferred revenue as of the beginning of the period | 8,229 | 7,728 | 8,169 |
+2026-10-24 20:41:48 | INFO     | __main__:177 | [S2] score=10.5678 chunk_id=AAPL_10-K_2025_c0144 doc=AAPL_10-K_2025 type=table section='Management’s Discussion and Analysis of Financial Condition and Results of Operations' elements=[279] table_id=AAPL_10-K_2025_t016 chars=570
+2026-10-24 20:41:48 | INFO     | __main__:184 | [S2] text:
+The following table shows net sales by category for 2025, 2024 and 2023 (dollars in millions):
+
+**Products and Services Performance** (dollars in millions)
+
+| Line item | 2025 | Change | 2024 | Change | 2023 |
+|---|---|---|---|---|---|
+| iPhone | 209,586 | 4% | 201,183 | — | 200,583 |
+| Mac | 33,708 | 12% | 29,984 | 2% | 29,357 |
+| iPad | 28,023 | 5% | 26,694 | -6% | 28,300 |
+| Wearables, Home and Accessories | 35,686 | -4% | 37,005 | -7% | 39,845 |
+| Services (1) | 109,158 | 14% | 96,169 | 13% | 85,200 |
+| Total net sales | 416,161 | 6% | 391,035 | 2% | 383,285 |
+2026-10-24 20:41:48 | INFO     | __main__:177 | [S3] score=10.3498 chunk_id=AAPL_10-K_2025_c0287 doc=AAPL_10-K_2025 type=table section='Financial Statements and Supplementary Data' elements=[533] table_id=AAPL_10-K_2025_t052 chars=592
+2026-10-24 20:41:48 | INFO     | __main__:184 | [S3] text:
+The following tables show net sales for 2025, 2024 and 2023 and long-lived assets as of September 27, 2025 and September 28, 2024 for countries that individually accounted for 10% or more of the respective totals, as well as aggregate amounts for the remaining countries (in millions):
+
+**Table** (in millions)
+
+| Line item | 2025 | 2024 | 2023 |
+|---|---|---|---|
+| Net sales > U.S. | 151,790 | 142,196 | 138,573 |
+| Net sales > China (1) | 64,377 | 66,952 | 72,559 |
+| Net sales > Other countries | 199,994 | 181,887 | 172,153 |
+| Net sales > Total net sales | 416,161 | 391,035 | 383,285 |
+2026-10-24 20:41:48 | INFO     | __main__:177 | [S4] score=10.1800 chunk_id=AAPL_10-K_2025_c0139 doc=AAPL_10-K_2025 type=table section='Management’s Discussion and Analysis of Financial Condition and Results of Operations' elements=[266] table_id=AAPL_10-K_2025_t015 chars=573
+2026-10-24 20:41:48 | INFO     | __main__:184 | [S4] text:
+The following table shows net sales by reportable segment for 2025, 2024 and 2023 (dollars in millions):
+
+**Segment Operating Performance** (dollars in millions)
+
+| Line item | 2025 | Change | 2024 | Change | 2023 |
+|---|---|---|---|---|---|
+| Americas | 178,353 | 7% | 167,045 | 3% | 162,560 |
+| Europe | 111,032 | 10% | 101,328 | 7% | 94,294 |
+| Greater China | 64,377 | -4% | 66,952 | -8% | 72,559 |
+| Japan | 28,703 | 15% | 25,052 | 3% | 24,257 |
+| Rest of Asia Pacific | 33,696 | 10% | 30,658 | 4% | 29,615 |
+| Total net sales | 416,161 | 6% | 391,035 | 2% | 383,285 |
+2026-10-24 20:41:48 | INFO     | __main__:177 | [S5] score=9.8713 chunk_id=AAPL_10-K_2025_c0179 doc=AAPL_10-K_2025 type=table section='Financial Statements and Supplementary Data' elements=[357] table_id=AAPL_10-K_2025_t023 chars=836
+2026-10-24 20:41:48 | INFO     | __main__:184 | [S5] text:
+**CONSOLIDATED STATEMENTS OF OPERATIONS** (In millions, except number of shares, which are reflected in thousands, and per-share amounts)
+
+| Line item | Years ended September 27, 2025 | Years ended September 28, 2024 | Years ended September 30, 2023 |
+|---|---|---|---|
+| Net sales > Products | 307,003 | 294,866 | 298,085 |
+| Net sales > Services | 109,158 | 96,169 | 85,200 |
+| Net sales > Total net sales | 416,161 | 391,035 | 383,285 |
+| Cost of sales > Products | 194,116 | 185,233 | 189,282 |
+| Cost of sales > Services | 26,844 | 25,119 | 24,855 |
+| Cost of sales > Total cost of sales | 220,960 | 210,352 | 214,137 |
+| Gross margin | 195,201 | 180,683 | 169,148 |
+| Operating expenses > Research and development | 34,550 | 31,370 | 29,915 |
+| Operating expenses > Selling, general and administrative | 27,601 | 26,097 | 24,932 |
+2026-10-24 20:41:48 | INFO     | __main__:215 | === GENERATION ===
+2026-10-24 20:41:48 | INFO     | __main__:216 | Question: What was Apple's total net sales in fiscal 2025? | doc=AAPL_10-K_2025 | context chunks=5
+2026-10-24 20:41:48 | INFO     | __main__:243 | Context: 4,315 chars, sources=['S1', 'S2', 'S3', 'S4', 'S5']
+2026-10-24 20:41:48 | INFO     | __main__:247 | Prompt: system=2,439 chars (version=v2_complete_precise), user=4,444 chars
+2026-10-24 20:41:48 | INFO     | __main__:251 | System prompt:
+You are a financial analyst assistant that answers questions about SEC 10-K filings.
+
+You will be given:
+1. A question about a company's financial filing
+2. Relevant excerpts from the 10-K filing, labeled as sources [S1], [S2], etc.
+
+STRICT RULES:
+1. ONLY use information explicitly stated in the provided sources.
+2. NEVER use prior knowledge or make assumptions.
+3. Answer EVERY requested part of the question. Before responding, identify each requested fact, comparison, cause, consequence, period, entity, and unit, then verify that the answer includes all of them.
+4. Answer only about the entity, segment, geography, metric, or property requested. Do not add inverse, excluded, neighboring, or merely related facts unless the question asks for them.
+5. Preserve the source's meaning and certainty exactly. Do not change actual values into projections or projections, estimates, expectations, possibilities, or risks into definitive facts.
+6. PRESERVE exact values from sources. Do not round, convert, estimate, or substitute a subtotal or total for a requested line item.
+7. PRESERVE signs, units, currency, fiscal periods, and comparison direction. Clearly state whether a change increased or decreased.
+8. For tables, match every value to the requested row and column, and distinguish individual values from subtotals and totals.
+9. For questions asking "why," "what caused," or "what resulted," include the stated reason, cause, or consequence—not only the outcome.
+10. CITE every factual claim using source IDs: [S1], [S2], etc.
+11. Keep the answer direct and concise after all requested parts have been covered.
+12. If any requested part is unsupported by the sources, do not guess. Set insufficient_context to true and explain what is missing.
+
+FINAL CHECK BEFORE RESPONDING:
+- Did I answer every part of the question?
+- Did I stay focused on exactly what was asked?
+- Did I preserve actual versus projected/estimated language?
+- Did I copy the correct row, column, year, unit, sign, and total level?
+- Is every factual claim supported by a cited source?
+
+OUTPUT FORMAT (JSON):
+{
+    "answer": "The complete, direct answer to every part of the question",
+    "explanation": "Brief explanation of how the sources support the answer (1-2 sentences)",
+    "citations": ["S1", "S2"],
+    "calculation": "Show formula if answer requires calculation, otherwise null",
+    "insufficient_context": false
+}
+
+Return only the JSON object.
+2026-10-24 20:41:48 | INFO     | __main__:252 | User prompt:
+Question:
+What was Apple's total net sales in fiscal 2025?
+
+Sources:
+<source id="S1" doc="AAPL_10-K_2025" section="Financial Statements and Supplementary Data" type="table" elements="[406]" table_id="AAPL_10-K_2025_t028" units="in millions">
+The following table shows disaggregated net sales, as well as the portion of total net sales that was previously deferred, for 2025, 2024 and 2023 (in millions):
+
+**Table** (in millions)
+
+| Line item | 2025 | 2024 | 2023 |
+|---|---|---|---|
+| iPhone | 209,586 | 201,183 | 200,583 |
+| Mac | 33,708 | 29,984 | 29,357 |
+| iPad | 28,023 | 26,694 | 28,300 |
+| Wearables, Home and Accessories | 35,686 | 37,005 | 39,845 |
+| Services (1) | 109,158 | 96,169 | 85,200 |
+| Total net sales | 416,161 | 391,035 | 383,285 |
+| Portion of total net sales that was included in deferred revenue as of the beginning of the period | 8,229 | 7,728 | 8,169 |
+</source>
+
+<source id="S2" doc="AAPL_10-K_2025" section="Management’s Discussion and Analysis of Financial Condition and Results of Operations" type="table" elements="[279]" table_id="AAPL_10-K_2025_t016" units="dollars in millions">
+The following table shows net sales by category for 2025, 2024 and 2023 (dollars in millions):
+
+**Products and Services Performance** (dollars in millions)
+
+| Line item | 2025 | Change | 2024 | Change | 2023 |
+|---|---|---|---|---|---|
+| iPhone | 209,586 | 4% | 201,183 | — | 200,583 |
+| Mac | 33,708 | 12% | 29,984 | 2% | 29,357 |
+| iPad | 28,023 | 5% | 26,694 | -6% | 28,300 |
+| Wearables, Home and Accessories | 35,686 | -4% | 37,005 | -7% | 39,845 |
+| Services (1) | 109,158 | 14% | 96,169 | 13% | 85,200 |
+| Total net sales | 416,161 | 6% | 391,035 | 2% | 383,285 |
+</source>
+
+<source id="S3" doc="AAPL_10-K_2025" section="Financial Statements and Supplementary Data" type="table" elements="[533]" table_id="AAPL_10-K_2025_t052" units="in millions">
+The following tables show net sales for 2025, 2024 and 2023 and long-lived assets as of September 27, 2025 and September 28, 2024 for countries that individually accounted for 10% or more of the respective totals, as well as aggregate amounts for the remaining countries (in millions):
+
+**Table** (in millions)
+
+| Line item | 2025 | 2024 | 2023 |
+|---|---|---|---|
+| Net sales > U.S. | 151,790 | 142,196 | 138,573 |
+| Net sales > China (1) | 64,377 | 66,952 | 72,559 |
+| Net sales > Other countries | 199,994 | 181,887 | 172,153 |
+| Net sales > Total net sales | 416,161 | 391,035 | 383,285 |
+</source>
+
+<source id="S4" doc="AAPL_10-K_2025" section="Management’s Discussion and Analysis of Financial Condition and Results of Operations" type="table" elements="[266]" table_id="AAPL_10-K_2025_t015" units="dollars in millions">
+The following table shows net sales by reportable segment for 2025, 2024 and 2023 (dollars in millions):
+
+**Segment Operating Performance** (dollars in millions)
+
+| Line item | 2025 | Change | 2024 | Change | 2023 |
+|---|---|---|---|---|---|
+| Americas | 178,353 | 7% | 167,045 | 3% | 162,560 |
+| Europe | 111,032 | 10% | 101,328 | 7% | 94,294 |
+| Greater China | 64,377 | -4% | 66,952 | -8% | 72,559 |
+| Japan | 28,703 | 15% | 25,052 | 3% | 24,257 |
+| Rest of Asia Pacific | 33,696 | 10% | 30,658 | 4% | 29,615 |
+| Total net sales | 416,161 | 6% | 391,035 | 2% | 383,285 |
+</source>
+
+<source id="S5" doc="AAPL_10-K_2025" section="Financial Statements and Supplementary Data" type="table" elements="[357]" table_id="AAPL_10-K_2025_t023" units="(In millions, except number of shares, which are reflected in thousands, and per-share amounts)">
+**CONSOLIDATED STATEMENTS OF OPERATIONS** (In millions, except number of shares, which are reflected in thousands, and per-share amounts)
+
+| Line item | Years ended September 27, 2025 | Years ended September 28, 2024 | Years ended September 30, 2023 |
+|---|---|---|---|
+| Net sales > Products | 307,003 | 294,866 | 298,085 |
+| Net sales > Services | 109,158 | 96,169 | 85,200 |
+| Net sales > Total net sales | 416,161 | 391,035 | 383,285 |
+| Cost of sales > Products | 194,116 | 185,233 | 189,282 |
+| Cost of sales > Services | 26,844 | 25,119 | 24,855 |
+| Cost of sales > Total cost of sales | 220,960 | 210,352 | 214,137 |
+| Gross margin | 195,201 | 180,683 | 169,148 |
+| Operating expenses > Research and development | 34,550 | 31,370 | 29,915 |
+| Operating expenses > Selling, general and administrative | 27,601 | 26,097 | 24,932 |
+</source>
+
+Respond with a JSON object following the specified format.
+2026-10-24 20:41:48 | INFO     | __main__:255 | Calling LLM: provider=ollama model=qwen2.5-7b-instruct:latest temperature=0.0 max_tokens=1024
+2026-10-24 20:41:58 | INFO     | __main__:260 | LLM done: prompt_tokens=2496 completion_tokens=98 latency=10.81s
+2026-10-24 20:41:58 | INFO     | __main__:265 | Raw LLM response:
+{
+    "answer": "Apple's total net sales in fiscal 2025 was 416,161 million dollars.",
+    "explanation": "This value is directly stated in [S1] and [S2] under the 'Total net sales' row for the year 2025.",
+    "citations": ["S1", "S2"],
+    "calculation": null,
+    "insufficient_context": false
+}
+2026-10-24 20:41:58 | INFO     | __main__:271 | Final answer: "Apple's total net sales in fiscal 2025 was 416,161 million dollars." | explanation="This value is directly stated in [S1] and [S2] under the 'Total net sales' row for the year 2025." | citations=['S1', 'S2'] | calculation=None | insufficient_context=False
+2026-10-24 20:41:58 | INFO     | __main__:277 | Validation: PASSED
+2026-10-24 20:41:58 | INFO     | __main__:280 | === GENERATION COMPLETE ===
