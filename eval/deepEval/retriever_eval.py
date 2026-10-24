@@ -333,6 +333,115 @@ def run_evaluation(args: argparse.Namespace) -> Path:
     return run_dir
 
 
+def dry_run(args: argparse.Namespace) -> None:
+    """Print configuration without running evaluation."""
+    from config.settings import settings
+    from generation.config import GenerationConfig
+
+    config = GenerationConfig()
+    print(json.dumps({
+        "golden_path": str(args.golden_path.resolve()),
+        "selected_queries": len(load_cases(args.golden_path)),
+        "context_k": args.context_k,
+        "metrics": args.metrics,
+        "embedding_mode": settings.effective_embedding_mode,
+        "reranker_mode": settings.effective_reranker_mode,
+        "retrieval_config": {
+            "run_directory": config.run_directory,
+            "alpha": config.alpha,
+            "retrieve_k": config.retrieve_k,
+            "reranker_model": config.reranker_model,
+        },
+        "judge_model": args.judge_model or settings.DEEPEVAL_JUDGE_MODEL,
+        "threshold": args.threshold,
+    }, indent=2))
+
+
+def comparison_signature(manifest: dict[str, Any]) -> dict[str, Any]:
+    """Extract configuration for comparability check."""
+    config = manifest.get("retrieval_config", {})
+    return {
+        "golden_path": manifest.get("golden_path"),
+        "selected_query_count": manifest.get("selected_query_count"),
+        "filters": manifest.get("filters"),
+        "judge_model": manifest.get("judge_model"),
+        "metrics": manifest.get("metrics"),
+        "threshold": manifest.get("threshold"),
+        "strict": manifest.get("strict"),
+        "context_k": config.get("context_k"),
+        "run_directory": config.get("run_directory"),
+        "alpha": config.get("alpha"),
+        "retrieve_k": config.get("retrieve_k"),
+        "reranker_model": config.get("reranker_model"),
+    }
+
+
+def format_metric(value: Any) -> str:
+    """Format metric value for display."""
+    return "—" if value is None else f"{float(value) * 100:.1f}%"
+
+
+def compare_runs(results_dir: Path) -> Path | None:
+    """Compare all retriever evaluation runs in the results directory."""
+    rows = []
+    for summary_path in sorted(results_dir.glob("*/summary.json")):
+        manifest_path = summary_path.parent / "manifest.json"
+        if not manifest_path.exists():
+            continue
+        manifest = json.loads(manifest_path.read_text(encoding="utf-8"))
+        summary = json.loads(summary_path.read_text(encoding="utf-8"))
+        config = manifest.get("retrieval_config", {})
+        overall = summary.get("overall", {})
+        metrics = overall.get("metrics", {})
+        rows.append({
+            "run_id": manifest.get("run_id", summary_path.parent.name),
+            "execution_modes": manifest.get("execution_modes"),
+            "cases": overall.get("cases"),
+            "errors": overall.get("error_cases"),
+            "mean_score": overall.get("mean_score"),
+            "contextual_precision": metrics.get("contextual_precision", {}).get("mean_score"),
+            "contextual_recall": metrics.get("contextual_recall", {}).get("mean_score"),
+            "signature": comparison_signature(manifest),
+        })
+    
+    if not rows:
+        print(f"No DeepEval retriever runs found in: {results_dir}")
+        return None
+
+    comparable = len({json.dumps(row["signature"], sort_keys=True) for row in rows}) == 1
+    headers = ["Run", "Modes", "Cases", "Errors", "Mean", "Precision", "Recall"]
+    display_rows = [
+        [
+            row["run_id"],
+            f"{row['execution_modes'].get('embedding', 'N/A')}/{row['execution_modes'].get('reranker', 'N/A')}",
+            str(row["cases"]),
+            str(row["errors"]),
+            format_metric(row["mean_score"]),
+            format_metric(row["contextual_precision"]),
+            format_metric(row["contextual_recall"]),
+        ]
+        for row in rows
+    ]
+    
+    widths = [max(len(headers[i]), *(len(row[i]) for row in display_rows)) for i in range(len(headers))]
+    print("  ".join(header.ljust(widths[i]) for i, header in enumerate(headers)))
+    print("  ".join("-" * width for width in widths))
+    for row in display_rows:
+        print("  ".join(value.ljust(widths[i]) for i, value in enumerate(row)))
+    
+    if not comparable:
+        print("\nWARNING: Runs are not directly comparable; evaluation settings differ.")
+
+    timestamp = datetime.now().strftime("%Y-%m-%d_%H-%M-%S")
+    output_path = results_dir / f"comparison_{timestamp}.json"
+    output_path.write_text(
+        json.dumps({"timestamp": timestamp, "directly_comparable": comparable, "runs": rows}, indent=2),
+        encoding="utf-8",
+    )
+    print(f"\nComparison saved to: {output_path}")
+    return output_path
+
+
 def main():
     parser = argparse.ArgumentParser(
         description="DeepEval LLM-judge evaluation of the retriever"
@@ -407,29 +516,19 @@ def main():
         action="store_true",
         help="Print configuration without running evaluation"
     )
+    parser.add_argument(
+        "--compare",
+        action="store_true",
+        help="Compare all retriever evaluation runs in the results directory"
+    )
     args = parser.parse_args()
 
-    if args.dry_run:
-        from config.settings import settings
-        from generation.config import GenerationConfig
+    if args.compare:
+        compare_runs(args.output_dir)
+        return
 
-        config = GenerationConfig()
-        print(json.dumps({
-            "golden_path": str(args.golden_path.resolve()),
-            "selected_queries": len(load_cases(args.golden_path)),
-            "context_k": args.context_k,
-            "metrics": args.metrics,
-            "embedding_mode": settings.effective_embedding_mode,
-            "reranker_mode": settings.effective_reranker_mode,
-            "retrieval_config": {
-                "run_directory": config.run_directory,
-                "alpha": config.alpha,
-                "retrieve_k": config.retrieve_k,
-                "reranker_model": config.reranker_model,
-            },
-            "judge_model": args.judge_model or settings.DEEPEVAL_JUDGE_MODEL,
-            "threshold": args.threshold,
-        }, indent=2))
+    if args.dry_run:
+        dry_run(args)
         return
 
     run_evaluation(args)
