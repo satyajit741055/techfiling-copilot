@@ -117,4 +117,3 @@ def check_index_compatibility(
             f"{embedder.backend!r}; same model, but re-embedding is recommended for exact parity"
         )
         logger.warning(message)
-        print(f"  WARNING: {message}")

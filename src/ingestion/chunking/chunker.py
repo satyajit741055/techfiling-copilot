@@ -14,6 +14,10 @@ import re
 from datetime import datetime
 from pathlib import Path
 
+from config.logging import get_logger
+
+logger = get_logger(__name__)
+
 ROOT = Path(__file__).resolve().parents[3]
 PARSED_DIR = ROOT / "data" / "parsed"
 
@@ -312,8 +316,8 @@ def main() -> None:
                               args.pseudo_headings)
         write_chunks(chunks, args.out_dir / f"{doc_id}.chunks.jsonl")
         total += len(chunks)
-        print(doc_id, len(chunks))
-    print("total", total)
+        logger.info(f"{doc_id}: {len(chunks)} chunks")
+    logger.info(f"Total chunks: {total}")
 
 
 if __name__ == "__main__":

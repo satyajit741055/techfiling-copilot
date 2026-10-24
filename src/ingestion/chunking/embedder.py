@@ -15,6 +15,7 @@ from pathlib import Path
 import numpy as np
 import pandas as pd
 
+from config.logging import get_logger
 from ingestion.chunking.chunker import (
     MAX_CHARS,
     MIN_CHARS,
@@ -22,6 +23,8 @@ from ingestion.chunking.chunker import (
     TABLE_MAX_CHARS,
 )
 from model_runtime import Embedder, create_embedder
+
+logger = get_logger(__name__)
 
 
 def _get_settings():
@@ -287,7 +290,7 @@ def main() -> None:
     embeddings, _ = embed_and_save(
         chunks, args.chunks_dir, args.model, args.device, args.batch_size,
         model_cache_dir=args.model_cache_dir)
-    print(embeddings.shape, "->", args.chunks_dir / EMBEDDINGS_FILENAME)
+    logger.info(f"Embeddings shape: {embeddings.shape} -> {args.chunks_dir / EMBEDDINGS_FILENAME}")
 
 
 if __name__ == "__main__":

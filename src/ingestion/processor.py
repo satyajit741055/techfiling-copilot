@@ -11,6 +11,7 @@ import argparse
 from datetime import datetime
 from pathlib import Path
 
+from config.logging import get_logger
 from ingestion.chunking.chunker import (
     MAX_CHARS,
     MIN_CHARS,
@@ -22,6 +23,8 @@ from ingestion.chunking.chunker import (
 )
 from ingestion.chunking.embedder import CHUNKS_DIR, MODEL_CACHE_DIR, embed_and_save
 from ingestion.parser.parser import RAW_DIR, parse_all
+
+logger = get_logger(__name__)
 
 
 def process(
@@ -54,8 +57,8 @@ def process(
         chunks = chunk_doc_id(doc_id, parsed_dir, max_chars, min_chars, table_max_chars, pseudo_headings)
         write_chunks(chunks, out_dir / f"{doc_id}.chunks.jsonl")
         all_chunks += chunks
-        print(doc_id, len(chunks))
-    print("total", len(all_chunks))
+        logger.info(f"{doc_id}: {len(chunks)} chunks")
+    logger.info(f"Total chunks: {len(all_chunks)}")
 
     embeddings, _ = embed_and_save(
         all_chunks, out_dir, model_name, device, batch_size,
@@ -63,7 +66,7 @@ def process(
          "pseudo_headings": pseudo_headings},
         model_cache_dir=model_cache_dir,
     )
-    print(embeddings.shape, "->", out_dir)
+    logger.info(f"Embeddings shape: {embeddings.shape} -> {out_dir}")
     return out_dir
 
 

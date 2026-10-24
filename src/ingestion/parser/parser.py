@@ -17,6 +17,10 @@ from pathlib import Path
 
 from bs4 import BeautifulSoup, XMLParsedAsHTMLWarning
 
+from config.logging import get_logger
+
+logger = get_logger(__name__)
+
 warnings.filterwarnings("ignore", category=XMLParsedAsHTMLWarning)
 
 ROOT = Path(__file__).resolve().parents[3]
@@ -1017,7 +1021,7 @@ def parse_all(raw_dir: Path = RAW_DIR, out_dir: Path = OUT_DIR, files: list[Path
         docs.append(doc)
         rows += quality_rows(doc)
         types = Counter(e.type for e in doc.elements)
-        print(f"{doc.doc_id}: {dict(types)} xbrl_facts={len(facts)} removed={dict(removed)}")
+        logger.info(f"{doc.doc_id}: {dict(types)} xbrl_facts={len(facts)} removed={dict(removed)}")
     with open(out_dir / "quality_report.csv", "w", encoding="utf-8", newline="") as fh:
         writer = csv.DictWriter(fh, fieldnames=QUALITY_COLUMNS)
         writer.writeheader()

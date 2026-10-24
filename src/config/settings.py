@@ -290,6 +290,22 @@ class Settings(BaseSettings):
         default="INFO",
         description="Logging level"
     )
+    LOG_FORMAT: Literal["text", "json"] = Field(
+        default="text",
+        description="Log format: 'text' for human-readable, 'json' for structured logging"
+    )
+    LOG_FILE: str | None = Field(
+        default=None,
+        description="Path to log file (if set, logs will be written to file)"
+    )
+    LOG_FILE_MAX_BYTES: int = Field(
+        default=10 * 1024 * 1024,  # 10 MB
+        description="Maximum log file size before rotation"
+    )
+    LOG_FILE_BACKUP_COUNT: int = Field(
+        default=5,
+        description="Number of backup log files to keep"
+    )
 
     # =========================================================================
     # COMPUTED PROPERTIES

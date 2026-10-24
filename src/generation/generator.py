@@ -21,12 +21,16 @@ from datetime import datetime
 from pathlib import Path
 from typing import Any
 
+from config.logging import get_logger
+
 from .config import GenerationConfig
 from .context import format_context
 from .llm_client import LLMClient
 from .prompts import build_user_prompt, get_system_prompt
 from .schemas import GeneratedAnswer, GenerationResult
 from .validation import parse_llm_response, validate_answer
+
+logger = get_logger(__name__)
 
 logger = logging.getLogger(__name__)
 
@@ -162,7 +166,7 @@ class AnswerGenerator:
         """
         context_k = context_k or self.config.context_k
         if verbose:
-            print(f"Retrieving top {context_k} chunks...")
+            logger.info(f"Retrieving top {context_k} chunks...")
         return self.retriever.search(question, k=context_k, doc_id=doc_id)
 
     def generate(
@@ -218,22 +222,22 @@ class AnswerGenerator:
         valid_source_ids = [s["source_id"] for s in sources]
 
         if verbose:
-            print(f"Context: {len(context):,} characters, {len(sources)} sources")
+            logger.info(f"Context: {len(context):,} characters, {len(sources)} sources")
 
         # Step 2: Build prompt
         user_prompt = build_user_prompt(question, context)
 
         if verbose:
-            print(f"Prompt: {len(self.system_prompt) + len(user_prompt):,} characters")
+            logger.info(f"Prompt: {len(self.system_prompt) + len(user_prompt):,} characters")
 
         # Step 3: Generate
         if verbose:
-            print(f"Generating with {self.llm_client.model}...")
+            logger.info(f"Generating with {self.llm_client.model}...")
 
         llm_response = self.llm_client.generate(self.system_prompt, user_prompt)
 
         if verbose:
-            print(f"Response: {llm_response.completion_tokens} tokens, {llm_response.latency_seconds:.2f}s")
+            logger.info(f"Response: {llm_response.completion_tokens} tokens, {llm_response.latency_seconds:.2f}s")
 
         # Step 4: Parse and validate
         answer = parse_llm_response(llm_response.content)
@@ -241,9 +245,9 @@ class AnswerGenerator:
 
         if verbose:
             if answer.is_valid:
-                print("Validation: PASSED")
+                logger.info("Validation: PASSED")
             else:
-                print(f"Validation: FAILED - {answer.validation_errors}")
+                logger.warning(f"Validation: FAILED - {answer.validation_errors}")
 
         return GenerationResult(
             question=question,
@@ -285,7 +289,7 @@ class AnswerGenerator:
 
         for i, q in enumerate(questions, 1):
             if verbose:
-                print(f"[{i}/{total}] {q.get('id', 'Q')}: {q['query'][:60]}...")
+                logger.info(f"[{i}/{total}] {q.get('id', 'Q')}: {q['query'][:60]}...")
 
             try:
                 gen_result = self.answer(
@@ -331,7 +335,7 @@ class AnswerGenerator:
 
             except Exception as e:
                 if verbose:
-                    print(f"  ERROR: {e}")
+                    logger.error(f"ERROR: {e}")
                 results.append({
                     "id": q.get("id"),
                     "query": q["query"],
@@ -415,11 +419,10 @@ def main():
         parser.error("Either provide a question or use --interactive mode")
 
     # Initialize generator
-    print("Initializing generator...")
+    logger.info("Initializing generator...")
     overrides = {"provider": args.provider, "model": args.model, "context_k": args.context_k}
     config = GenerationConfig(**{key: value for key, value in overrides.items() if value is not None})
     generator = AnswerGenerator(config)
-    print()
 
     def process_question(question: str, doc_id: str | None) -> None:
         """Process a single question and display results as text or JSON."""

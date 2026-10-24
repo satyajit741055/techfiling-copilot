@@ -27,7 +27,10 @@ from typing import Any, NamedTuple
 import bm25s
 import numpy as np
 
+from config.logging import get_logger
 from model_runtime import Embedder, check_index_compatibility, create_embedder, create_reranker
+
+logger = get_logger(__name__)
 
 
 def _get_settings():
@@ -224,8 +227,10 @@ class BM25Retriever:
         corpus = [chunk.get("embed_text", chunk.get("text", "")) for chunk in self.chunks]
         self.bm25 = BM25().fit(corpus)
 
-        print(f"  BM25 index built: {len(self.chunks)} documents, "
-              f"{self.bm25.vocab_size} unique terms")
+        logger.info(
+            f"BM25 index built: {len(self.chunks)} documents, "
+            f"{self.bm25.vocab_size} unique terms"
+        )
 
     @staticmethod
     def _resolve_run_directory(run_directory: str | Path | None) -> Path:
@@ -396,14 +401,14 @@ class HybridRetriever:
 
         self._validate_artifacts()
 
-        print(f"  Loaded {len(self.chunks)} chunks")
-        print(f"  Dense model: {self.model_name} ({self.embedder.backend})")
-        print(f"  BM25 index (bm25s): {self.bm25.vocab_size} unique terms")
-        self._print_fusion_config()
+        logger.info(f"Loaded {len(self.chunks)} chunks")
+        logger.info(f"Dense model: {self.model_name} ({self.embedder.backend})")
+        logger.info(f"BM25 index (bm25s): {self.bm25.vocab_size} unique terms")
+        self._log_fusion_config()
 
-    def _print_fusion_config(self) -> None:
+    def _log_fusion_config(self) -> None:
         """Log how dense and BM25 scores are fused."""
-        print(f"  Hybrid alpha: {self.alpha} (dense weight)")
+        logger.info(f"Hybrid alpha: {self.alpha} (dense weight)")
 
     def _encode_query(self, query: str) -> np.ndarray:
         """Embed a query with the BGE retrieval prefix."""
@@ -682,7 +687,7 @@ class Reranker:
             model_name, device=device, cache_dir=model_cache_directory
         )
         self._model_name = self.backend.model_name
-        print(f"  Reranker loaded: {self._model_name} ({self.backend.backend})")
+        logger.info(f"Reranker loaded: {self._model_name} ({self.backend.backend})")
 
     @property
     def model_name(self) -> str:
@@ -775,7 +780,7 @@ class HybridRetrieverWithReranker:
         self.retrieve_k = retrieve_k
         self.rerank_k = rerank_k
 
-        print("Loading hybrid retriever...")
+        logger.info("Loading hybrid retriever...")
         self.retriever = HybridRetriever(
             run_directory,
             alpha=alpha,
@@ -783,7 +788,7 @@ class HybridRetrieverWithReranker:
             model_cache_directory=model_cache_directory,
         )
 
-        print("Loading reranker...")
+        logger.info("Loading reranker...")
         self.reranker = Reranker(
             reranker_model,
             device=device,
@@ -930,7 +935,7 @@ def main() -> None:
     args.reranker_model = args.reranker_model or settings.effective_reranker
 
     if args.mode == "bm25":
-        print("Loading BM25 retriever...")
+        logger.info("Loading BM25 retriever...")
         retriever = BM25Retriever(args.run_directory)
         results = retriever.search(
             args.query,
@@ -942,7 +947,7 @@ def main() -> None:
         show(results, args.width)
 
     elif args.mode == "hybrid":
-        print("Loading hybrid retriever...")
+        logger.info("Loading hybrid retriever...")
         retriever = HybridRetriever(
             args.run_directory,
             alpha=args.alpha,
@@ -976,7 +981,7 @@ def main() -> None:
             show(results, args.width)
 
     elif args.mode == "rerank":
-        print("Loading hybrid retriever with reranker...")
+        logger.info("Loading hybrid retriever with reranker...")
         retriever = HybridRetrieverWithReranker(
             args.run_directory,
             alpha=args.alpha,
@@ -1032,7 +1037,7 @@ def main() -> None:
         from retriever.retriever import DenseRetriever
         from retriever.retriever import show as dense_show
 
-        print("Loading dense retriever...")
+        logger.info("Loading dense retriever...")
         retriever = DenseRetriever(
             args.run_directory,
             device=args.device,

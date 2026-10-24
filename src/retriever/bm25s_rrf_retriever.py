@@ -18,8 +18,11 @@ from typing import Any
 
 import numpy as np
 
+from config.logging import get_logger
 from model_runtime import Embedder
 from retriever.hybrid_retriever import HybridRetriever, Reranker, SearchResult
+
+logger = get_logger(__name__)
 
 
 def reciprocal_rank_fusion(
@@ -90,10 +93,10 @@ class BM25SRRFRetriever(HybridRetriever):
             model_cache_directory=model_cache_directory,
         )
 
-    def _print_fusion_config(self) -> None:
+    def _log_fusion_config(self) -> None:
         """Log RRF fusion parameters."""
-        print(
-            f"  RRF: dense_k={self.dense_k}, bm25_k={self.bm25_k}, rrf_k={self.rrf_k}, "
+        logger.info(
+            f"RRF: dense_k={self.dense_k}, bm25_k={self.bm25_k}, rrf_k={self.rrf_k}, "
             f"weights=({self.dense_weight}, {self.bm25_weight})"
         )
 
@@ -176,7 +179,7 @@ class BM25SRRFRetrieverWithReranker:
         self.retrieve_k = retrieve_k
         self.rerank_k = rerank_k
 
-        print("Loading BM25S + dense RRF retriever...")
+        logger.info("Loading BM25S + dense RRF retriever...")
         self.retriever = BM25SRRFRetriever(
             run_directory,
             dense_k=dense_k,
@@ -188,7 +191,7 @@ class BM25SRRFRetrieverWithReranker:
             model_cache_directory=model_cache_directory,
         )
 
-        print("Loading reranker...")
+        logger.info("Loading reranker...")
         self.reranker = Reranker(
             reranker_model,
             device=device,

@@ -228,7 +228,8 @@ def test_index_compatibility_checks():
         check_index_compatibility(manifest, StubEmbedder(dimension=384), 768)
 
 
-def test_index_backend_mismatch_only_warns(capsys):
+def test_index_backend_mismatch_only_warns(caplog):
     manifest = {"embedding_model": {"name": "bge"}}
-    check_index_compatibility(manifest, StubEmbedder(backend="huggingface_api"), 768)
-    assert "re-embedding is recommended" in capsys.readouterr().out
+    with caplog.at_level("WARNING"):
+        check_index_compatibility(manifest, StubEmbedder(backend="huggingface_api"), 768)
+    assert "re-embedding is recommended" in caplog.text
