@@ -26,7 +26,7 @@ from deepeval.test_case import LLMTestCase
 
 from config.settings import settings
 
-DEFAULT_GOLDEN_PATH = ROOT / "goldens" / "golden_retriever_dataset_v3.jsonl"
+DEFAULT_GOLDEN_PATH = ROOT / "goldens" / "golden_retriever_dataset_v3_enriched.jsonl"
 DEFAULT_RESULTS_DIR = ROOT / "eval" / "deepEval" / "retriever_results"
 METRIC_NAMES = ("contextual_precision", "contextual_recall")
 
@@ -190,6 +190,9 @@ def run_evaluation(args: argparse.Namespace) -> Path:
     with (run_dir / "cases.jsonl").open("w", encoding="utf-8") as output:
         for index, case in enumerate(cases, start=1):
             print(f"[{index}/{len(cases)}] {case['id']} ({case.get('category', 'uncategorized')})")
+            if args.verbose:
+                print(f"  Doc ID: {case.get('doc_id')}")
+                print(f"  Retrieving {args.context_k} chunks...")
             try:
                 # Retrieve chunks
                 results = retriever.search(
@@ -199,18 +202,9 @@ def run_evaluation(args: argparse.Namespace) -> Path:
                 )
                 retrieval_context = [chunk.get("text", "") for _, chunk in results]
 
-                # Build expected output from relevant chunks
-                # For DeepEval, we need the actual relevant text
-                relevant_texts = []
-                if "relevant" in case:
-                    for rel in case["relevant"]:
-                        if rel.get("match_by") == "element_orders":
-                            # For element_orders, we need to find the actual chunk text
-                            # This is a simplification - in practice, you'd map element_orders to chunks
-                            relevant_texts.append(f"Element orders: {rel.get('value')}")
-                        else:
-                            relevant_texts.append(str(rel.get("value", "")))
-                expected_output = "\n".join(relevant_texts) if relevant_texts else case.get("expected_answer", "")
+                # Build expected output from relevant text (enriched dataset)
+                # Fallback to expected_answer if relevant_text is not available (e.g., negative queries)
+                expected_output = case.get("relevant_text", case.get("expected_answer", ""))
 
                 # Create test case
                 test_case = LLMTestCase(
@@ -515,6 +509,11 @@ def main():
         "--dry-run",
         action="store_true",
         help="Print configuration without running evaluation"
+    )
+    parser.add_argument(
+        "--verbose",
+        action="store_true",
+        help="Print detailed progress during evaluation"
     )
     parser.add_argument(
         "--compare",
