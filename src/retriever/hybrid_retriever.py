@@ -26,7 +26,8 @@ from typing import Any, NamedTuple
 
 import bm25s
 import numpy as np
-from sentence_transformers import CrossEncoder, SentenceTransformer
+
+from model_runtime import Embedder, check_index_compatibility, create_embedder, create_reranker
 
 
 def _get_settings():
@@ -35,7 +36,6 @@ def _get_settings():
     return settings
 
 
-BGE_QUERY_PREFIX = "Represent this sentence for searching relevant passages: "
 ROOT = Path(__file__).resolve().parents[2]
 DEFAULT_RUNS_DIRECTORY = ROOT / "data" / "chunks"
 DEFAULT_MODEL_CACHE_DIRECTORY = ROOT / "models" / "sentence_transformers"
@@ -342,8 +342,8 @@ class HybridRetriever:
     Args:
         run_directory: Path to the chunking run directory
         alpha: Weight for dense scores (default 0.5 = equal weight)
-        model: Pre-loaded SentenceTransformer model (optional)
-        device: Device for embedding model ("cuda", "cpu", etc.)
+        embedder: Pre-built embedder (optional; otherwise created by model_runtime)
+        device: Device for a local embedding model ("cuda", "cpu", etc.)
         model_cache_directory: Cache directory for models
     """
 
@@ -352,7 +352,7 @@ class HybridRetriever:
         run_directory: str | Path | None = None,
         *,
         alpha: float = 0.5,
-        model: SentenceTransformer | None = None,
+        embedder: Embedder | None = None,
         device: str | None = None,
         model_cache_directory: str | Path | None = None,
     ) -> None:
@@ -361,7 +361,7 @@ class HybridRetriever:
         Args:
             run_directory: Path to chunk directory. If None, uses latest.
             alpha: Dense weight (0=BM25 only, 1=dense only).
-            model: Pre-loaded embedding model.
+            embedder: Pre-built embedder. If None, the configured execution mode decides.
             device: Compute device. If None, uses DEVICE from settings.
             model_cache_directory: Model cache dir. If None, uses settings.
 
@@ -371,12 +371,6 @@ class HybridRetriever:
         """
         if not 0.0 <= alpha <= 1.0:
             raise ValueError(f"alpha must be between 0 and 1, got {alpha}")
-
-        # Use settings defaults if not provided
-        if device is None:
-            device = get_device()
-        if model_cache_directory is None:
-            model_cache_directory = get_model_cache_dir()
 
         self.alpha = alpha
         self.run_directory = self._resolve_run_directory(run_directory)
@@ -389,11 +383,12 @@ class HybridRetriever:
             mmap_mode="r",
         )
 
-        # Load embedding model
-        self.model_name = self.manifest["embedding_model"]["name"]
-        self.model = model or SentenceTransformer(
-            self.model_name, device=device, cache_folder=str(model_cache_directory)
+        # Load the embedding model the index was built with (backend from execution mode)
+        self.embedder = embedder or create_embedder(
+            device=device,
+            cache_dir=model_cache_directory,
         )
+        self.model_name = self.embedder.model_name
 
         # Build BM25 index
         corpus = [chunk.get("embed_text", chunk.get("text", "")) for chunk in self.chunks]
@@ -402,7 +397,7 @@ class HybridRetriever:
         self._validate_artifacts()
 
         print(f"  Loaded {len(self.chunks)} chunks")
-        print(f"  Dense model: {self.model_name}")
+        print(f"  Dense model: {self.model_name} ({self.embedder.backend})")
         print(f"  BM25 index (bm25s): {self.bm25.vocab_size} unique terms")
         self._print_fusion_config()
 
@@ -412,11 +407,7 @@ class HybridRetriever:
 
     def _encode_query(self, query: str) -> np.ndarray:
         """Embed a query with the BGE retrieval prefix."""
-        return self.model.encode(
-            BGE_QUERY_PREFIX + query,
-            normalize_embeddings=True,
-            convert_to_numpy=True,
-        ).astype("float32")
+        return self.embedder.encode_query(query)
 
     @staticmethod
     def _resolve_run_directory(run_directory: str | Path | None) -> Path:
@@ -469,6 +460,7 @@ class HybridRetriever:
                 "Chunk and embedding counts differ: "
                 f"{len(self.chunks)} chunks versus {len(self.embeddings)} embeddings"
             )
+        check_index_compatibility(self.manifest, self.embedder, self.embeddings.shape[1])
 
     def _matching_indices(
         self,
@@ -668,7 +660,7 @@ class Reranker:
 
     Args:
         model_name: Cross-encoder model name
-        device: Device for model ("cuda", "cpu", etc.)
+        device: Device for a local model ("cuda", "cpu", etc.)
         model_cache_directory: Cache directory for models
     """
 
@@ -679,28 +671,18 @@ class Reranker:
         device: str | None = None,
         model_cache_directory: str | Path | None = None,
     ) -> None:
-        """Load the configured cross-encoder model for pairwise reranking.
+        """Create the configured cross-encoder backend for pairwise reranking.
 
         Args:
             model_name: Cross-encoder model. If None, uses settings (env-aware).
             device: Compute device. If None, uses DEVICE from settings.
             model_cache_directory: Model cache dir. If None, uses settings.
         """
-        # Use settings defaults if not provided
-        if model_name is None:
-            model_name = get_reranker_model()
-        if device is None:
-            device = get_device()
-        if model_cache_directory is None:
-            model_cache_directory = get_model_cache_dir()
-
-        self._model_name = model_name
-        self.model = CrossEncoder(
-            model_name,
-            device=device,
-            cache_folder=str(model_cache_directory),
+        self.backend = create_reranker(
+            model_name, device=device, cache_dir=model_cache_directory
         )
-        print(f"  Reranker loaded: {model_name}")
+        self._model_name = self.backend.model_name
+        print(f"  Reranker loaded: {self._model_name} ({self.backend.backend})")
 
     @property
     def model_name(self) -> str:
@@ -738,11 +720,8 @@ class Reranker:
                 chunks.append(r)
                 texts.append(r.get("embed_text", r.get("text", "")))
 
-        # Create query-document pairs
-        pairs = [(query, text) for text in texts]
-
-        # Get cross-encoder scores
-        scores = self.model.predict(pairs)
+        # Get cross-encoder scores for each query-document pair
+        scores = self.backend.score(query, texts)
 
         # Sort by score
         ranked_indices = np.argsort(-scores)
@@ -788,7 +767,7 @@ class HybridRetrieverWithReranker:
         alpha: float = 0.85,
         retrieve_k: int = 50,
         rerank_k: int = 5,
-        reranker_model: str = DEFAULT_RERANKER_MODEL,
+        reranker_model: str | None = None,
         device: str | None = None,
         model_cache_directory: str | Path = DEFAULT_MODEL_CACHE_DIRECTORY,
     ) -> None:
@@ -915,8 +894,8 @@ def main() -> None:
     parser.add_argument(
         "--alpha",
         type=float,
-        default=0.5,
-        help="Dense weight (0=BM25 only, 1=dense only)",
+        default=None,
+        help="Dense weight (default: RETRIEVAL_ALPHA from .env)",
     )
     parser.add_argument(
         "--mode",
@@ -930,13 +909,13 @@ def main() -> None:
     parser.add_argument(
         "--retrieve-k",
         type=int,
-        default=20,
-        help="Candidates for reranking (only for rerank mode)",
+        default=None,
+        help="Candidates for reranking (default: RETRIEVAL_K from .env)",
     )
     parser.add_argument(
         "--reranker-model",
-        default=DEFAULT_RERANKER_MODEL,
-        help="Cross-encoder reranker model name",
+        default=None,
+        help="Reranker model (default: environment-aware setting from .env)",
     )
     parser.add_argument("--width", type=int, default=350, help="Text display width")
     parser.add_argument(
@@ -945,6 +924,10 @@ def main() -> None:
         help="Show detailed score breakdown",
     )
     args = parser.parse_args()
+    settings = _get_settings()
+    args.alpha = settings.RETRIEVAL_ALPHA if args.alpha is None else args.alpha
+    args.retrieve_k = settings.RETRIEVAL_K if args.retrieve_k is None else args.retrieve_k
+    args.reranker_model = args.reranker_model or settings.effective_reranker
 
     if args.mode == "bm25":
         print("Loading BM25 retriever...")

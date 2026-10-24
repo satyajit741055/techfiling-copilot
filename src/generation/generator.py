@@ -23,9 +23,9 @@ from typing import Any
 
 from .config import GenerationConfig
 from .context import format_context
-from .prompts import SYSTEM_PROMPT, build_user_prompt
-from .schemas import GeneratedAnswer, GenerationResult
 from .llm_client import LLMClient
+from .prompts import build_user_prompt, get_system_prompt
+from .schemas import GeneratedAnswer, GenerationResult
 from .validation import parse_llm_response, validate_answer
 
 logger = logging.getLogger(__name__)
@@ -53,7 +53,7 @@ class AnswerGenerator:
         config: GenerationConfig | None = None,
         retriever: Any | None = None,
         llm_client: LLMClient | None = None,
-        system_prompt: str = SYSTEM_PROMPT,
+        system_prompt: str | None = None,
         root: Path | str | None = None,
     ):
         """
@@ -67,7 +67,7 @@ class AnswerGenerator:
             root: Project root for resolving paths
         """
         self.config = config or GenerationConfig()
-        self.system_prompt = system_prompt
+        self.system_prompt = system_prompt or get_system_prompt(self.config.prompt_version)
         
         # Resolve root
         if root is None:
@@ -360,7 +360,6 @@ def main():
     """
     import argparse
     import json
-    import sys
     
     parser = argparse.ArgumentParser(
         description="SEC 10-K RAG Answer Generator",
@@ -378,19 +377,19 @@ def main():
     parser.add_argument(
         "--context-k",
         type=int,
-        default=5,
-        help="Number of context chunks (default: 5)",
+        default=None,
+        help="Number of context chunks (default: CONTEXT_K from .env)",
     )
     parser.add_argument(
         "--provider",
-        default="ollama",
-        choices=["openai", "anthropic", "google", "ollama"],
-        help="LLM provider (default: ollama)",
+        default=None,
+        choices=["openai", "anthropic", "google", "ollama", "huggingface"],
+        help="LLM provider (default: resolved from .env execution mode / LLM_PROVIDER)",
     )
     parser.add_argument(
         "--model",
-        default="qwen2.5-7b-instruct:latest",
-        help="Model name (default: qwen2.5-7b-instruct:latest)",
+        default=None,
+        help="Model name (default: provider default from .env)",
     )
     parser.add_argument(
         "--interactive",
@@ -417,11 +416,8 @@ def main():
     
     # Initialize generator
     print("Initializing generator...")
-    config = GenerationConfig(
-        provider=args.provider,
-        model=args.model,
-        context_k=args.context_k,
-    )
+    overrides = {"provider": args.provider, "model": args.model, "context_k": args.context_k}
+    config = GenerationConfig(**{key: value for key, value in overrides.items() if value is not None})
     generator = AnswerGenerator(config)
     print()
     
@@ -449,18 +445,18 @@ def main():
                 print(f"CALCULATION: {result.answer.calculation}")
             print(f"INSUFFICIENT CONTEXT: {result.answer.insufficient_context}")
             print()
-            print(f"--- Validation ---")
+            print("--- Validation ---")
             print(f"Valid: {result.answer.is_valid}")
             if result.answer.validation_errors:
                 print(f"Errors: {result.answer.validation_errors}")
             print()
-            print(f"--- Metadata ---")
+            print("--- Metadata ---")
             print(f"Model: {result.model}")
             print(f"Context chunks: {result.context_k}")
             print(f"Tokens: {result.prompt_tokens} prompt + {result.completion_tokens} completion")
             print(f"Latency: {result.latency_seconds:.2f}s")
             print()
-            print(f"--- Sources ---")
+            print("--- Sources ---")
             for s in result.sources:
                 print(f"  [{s['source_id']}] {s['doc_id']} | {s['type']} | score={s['score']:.4f}")
                 print(f"       elements={s['element_orders']}")

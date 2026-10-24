@@ -1,0 +1,15 @@
+{
+  "cases": 3,
+  "successful_cases": 3,
+  "error_cases": 0,
+  "prompt_tokens": 2200,
+  "completion_tokens": 324,
+  "generation_latency_seconds": 9.139968872070312,
+  "metrics": {
+    "faithfulness": {
+      "mean_score": 0.4166666666666667,
+      "pass_rate": 0.3333333333333333,
+      "scored_cases": 3
+    }
+  }
+}

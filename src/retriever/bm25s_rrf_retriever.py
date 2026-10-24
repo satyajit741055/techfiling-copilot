@@ -17,8 +17,8 @@ from pathlib import Path
 from typing import Any
 
 import numpy as np
-from sentence_transformers import SentenceTransformer
 
+from model_runtime import Embedder
 from retriever.hybrid_retriever import HybridRetriever, Reranker, SearchResult
 
 
@@ -52,7 +52,7 @@ class BM25SRRFRetriever(HybridRetriever):
         rrf_k: int = 60,
         dense_weight: float = 1.0,
         bm25_weight: float = 1.0,
-        model: SentenceTransformer | None = None,
+        embedder: Embedder | None = None,
         device: str | None = None,
         model_cache_directory: str | Path | None = None,
     ) -> None:
@@ -65,7 +65,7 @@ class BM25SRRFRetriever(HybridRetriever):
             rrf_k: RRF smoothing constant (60 is the standard default).
             dense_weight: Weight of the dense ranking in fusion.
             bm25_weight: Weight of the BM25 ranking in fusion.
-            model: Pre-loaded embedding model.
+            embedder: Pre-built embedder. If None, the configured execution mode decides.
             device: Compute device. If None, uses DEVICE from settings.
             model_cache_directory: Model cache dir. If None, uses settings.
         """
@@ -85,7 +85,7 @@ class BM25SRRFRetriever(HybridRetriever):
         self.bm25_weight = bm25_weight
         super().__init__(
             run_directory,
-            model=model,
+            embedder=embedder,
             device=device,
             model_cache_directory=model_cache_directory,
         )

@@ -92,7 +92,7 @@ import numpy as np
 
 # Add parent to path for imports
 sys.path.insert(0, str(Path(__file__).resolve().parents[1] / "src"))
-from retriever.retriever import DenseRetriever, SearchResult
+from retriever.retriever import DenseRetriever
 
 ROOT = Path(__file__).resolve().parents[1]
 DEFAULT_GOLDEN_PATH = ROOT / "goldens" / "golden_retriever_dataset_v2.jsonl"
@@ -482,7 +482,10 @@ class RetrieverEvaluator:
         print(f"Loading retriever from: {run_directory or 'latest run'}")
         self.retriever = DenseRetriever(run_directory, device=device)
         print(f"  Loaded {len(self.retriever.chunks)} chunks")
-        print(f"  Model: {self.retriever.model_name}")
+        print(
+            f"  Model: {self.retriever.model_name} "
+            f"({self.retriever.embedder.backend})"
+        )
         print(f"Loaded {len(self.golden_queries)} golden queries")
 
     def evaluate_query(
@@ -594,7 +597,10 @@ class RetrieverEvaluator:
         # Get config from retriever manifest
         manifest = self.retriever.manifest
         chunking_config = manifest.get("chunking_config", {})
-        embedding_model = manifest.get("embedding_model", {})
+        embedding_model = {
+            **manifest.get("embedding_model", {}),
+            "query_backend": self.retriever.embedder.backend,
+        }
 
         # Storage for results
         query_results: dict[int, list[QueryResult]] = {k: [] for k in k_values}
@@ -786,7 +792,7 @@ class RetrieverEvaluator:
         print("RETRIEVAL EVALUATION SUMMARY")
         print("=" * 80)
 
-        print(f"\nConfiguration:")
+        print("\nConfiguration:")
         print(f"  Run directory: {results.run_directory}")
         print(f"  Total chunks: {results.total_chunks}")
         print(f"  Total queries: {results.total_queries} "
@@ -797,7 +803,7 @@ class RetrieverEvaluator:
         print(f"  Model: {results.embedding_model.get('name')}")
 
         # Overall metrics - the headline numbers
-        print(f"\n" + "-" * 80)
+        print("\n" + "-" * 80)
         print(f"OVERALL METRICS (k={results.primary_k})")
         print("-" * 80)
         o = results.overall
@@ -813,7 +819,7 @@ class RetrieverEvaluator:
               f"(ranking quality score)")
 
         # Detailed metrics by k
-        print(f"\nMetrics by k:")
+        print("\nMetrics by k:")
         print(f"{'Metric':<20} | " + " | ".join(f"k={k:>2}" for k in results.k_values))
         print("-" * (22 + 8 * len(results.k_values)))
 
@@ -826,7 +832,7 @@ class RetrieverEvaluator:
             print(f"{metric:<20} | " + " | ".join(f"{v:>5}" for v in values))
 
         # Category breakdown for k=5
-        print(f"\n\nBreakdown by Category (k=5):")
+        print("\n\nBreakdown by Category (k=5):")
         print("-" * 60)
         k = 5 if 5 in results.k_values else results.k_values[-1]
         for category, metrics in sorted(results.metrics_by_category.items()):
@@ -839,7 +845,7 @@ class RetrieverEvaluator:
                       f"(n={m.get('positive_queries', 0)})")
 
         # Difficulty breakdown
-        print(f"\nBreakdown by Difficulty (k=5):")
+        print("\nBreakdown by Difficulty (k=5):")
         print("-" * 60)
         for diff in ["easy", "medium", "hard"]:
             if diff in results.metrics_by_difficulty:
@@ -985,11 +991,11 @@ def analyze_failures(
     for qr in failures:
         by_category[qr.category].append(qr)
 
-    print(f"\nFailures by category:")
+    print("\nFailures by category:")
     for cat, qrs in sorted(by_category.items(), key=lambda x: -len(x[1])):
         print(f"  {cat}: {len(qrs)}")
 
-    print(f"\nSample failures:")
+    print("\nSample failures:")
     for qr in failures[:5]:
         print(f"\n  Query: {qr.query[:80]}...")
         print(f"  Category: {qr.category}, Difficulty: {qr.difficulty}")

@@ -65,9 +65,12 @@ cd techfiling-copilot
 # Install Python dependencies
 uv sync
 
-# Copy environment file and configure
-cp .env.example .env
-# Edit .env with your settings (see Configuration section)
+# Choose one environment template
+cp .env.local.example .env          # local CUDA/CPU + Ollama
+# or
+cp .env.huggingface.example .env    # fully hosted Hugging Face APIs
+
+# .env.example remains the combined reference containing every option.
 ```
 
 ### 2. Start Ollama (if using local LLM)
@@ -108,23 +111,31 @@ Open http://localhost:3000 in your browser.
 Copy `.env.example` to `.env` and configure:
 
 ```bash
-# LLM Provider: ollama | openai | anthropic | google | huggingface
+# Run embedding, reranking and generation locally, or through Hugging Face APIs
+MODEL_EXECUTION_MODE=local  # local | huggingface_api
+
+# Optional per-stage overrides (empty = follow MODEL_EXECUTION_MODE)
+EMBEDDING_EXECUTION_MODE=
+RERANKER_EXECUTION_MODE=
+GENERATION_EXECUTION_MODE=
+
+# Local generation uses this provider (normally Ollama + Qwen)
 LLM_PROVIDER=ollama
-
-# Model (provider-specific)
 OLLAMA_MODEL=qwen2.5-7b-instruct:latest
-OPENAI_MODEL=gpt-4o-mini
-ANTHROPIC_MODEL=claude-3-5-sonnet-20241022
 
-# API Keys (only needed for cloud providers)
+# Hugging Face API generation uses the same model family
+HUGGINGFACE_MODEL=Qwen/Qwen2.5-7B-Instruct
+# HUGGINGFACE_API_KEY=hf_...
+
+# DeepEval judge
+DEEPEVAL_JUDGE_MODEL=gpt-4o-mini
 # OPENAI_API_KEY=sk-...
-# ANTHROPIC_API_KEY=sk-ant-...
 
-# Hardware
+# Local embedding/reranker hardware
 DEVICE=auto  # auto | cuda | cpu
 ```
 
-See `.env.example` for all available options.
+See `.env.example` for all options and `study/11_model_execution_modes.md` for backend selection, component overrides, reranker endpoint formats, and embedding-index compatibility.
 
 ## API Endpoints
 
@@ -206,14 +217,132 @@ techfiling-copilot/
 
 ## Evaluation Results
 
-The retrieval pipeline was tuned through controlled experiments:
+The RAG system was systematically evaluated across all pipeline stages using both traditional metrics (human labels) and LLM-judge metrics (DeepEval with gpt-4o).
 
-| Configuration | Hit@5 | MRR@5 | Recall@5 | nDCG@5 |
-|--------------|-------|-------|----------|--------|
-| Dense baseline | 0.750 | 0.551 | 0.601 | 0.511 |
-| **Final (Hybrid + Ettin)** | **0.786** | **0.587** | **0.640** | **0.546** |
+### Overall Performance (Single-Company Use Case)
 
-See [eval/final_retriever_conf.md](eval/final_retriever_conf.md) for detailed experiment documentation.
+| Metric | Score |
+|---|---:|
+| **Triad Mean** | **80.4%** |
+| Contextual Relevancy | 49.2% |
+| Faithfulness | 95.6% |
+| Answer Relevancy | 96.5% |
+
+### Baseline vs Final Comparison
+
+#### Retriever (Traditional Metrics, Human Labels)
+
+| Metric | Baseline (Dense only) | Final (Hybrid + Reranker) | Improvement |
+|---|---:|---:|---:|
+| Hit@5 | 94.6% | **98.2%** | +3.6% |
+| MRR@5 | 88.7% | **93.5%** | +4.8% |
+| Recall@5 | 74.3% | 76.1% | +1.8% |
+| nDCG@5 | 75.8% | **77.5%** | +1.7% |
+
+**Key changes**: Added BM25 with RRF, Ettin reranker, tuned hybrid alpha to 0.85, implemented pseudo-heading chunking
+
+#### Retriever (DeepEval Metrics, LLM Judge)
+
+| Metric | Score | Pass Rate |
+|---|---:|---:|
+| Contextual Precision | 81.0% | 85% |
+| Contextual Recall | 65.8% | 70% |
+| Mean Score | 73.4% | - |
+
+#### Generation (Isolation, Curated Context)
+
+| Metric | V1 (Baseline) | V2 (Final) | Improvement |
+|---|---:|---:|---:|
+| Faithfulness | 100% | 100% | Maintained |
+| Answer Relevancy | 98.8% | 96.5% | -2.3% (false negative) |
+| Answer Correctness | 88.3% | **91.5%** | **+3.2%** |
+| Correctness Pass Rate | 90% | **100%** | **+10%** |
+
+**Key changes**: V2 prompt explicitly requires answering every part of multi-part questions, preserves exact values/units, includes causes/reasons
+
+#### Full-Pipeline (End-to-End)
+
+| Metric | Baseline (V1 + old chunking) | Final (V2 + pseudo-heading) | Improvement |
+|---|---:|---:|---:|
+| Triad Mean | 71.6% | **76.4%** | **+4.8%** |
+| Contextual Relevancy | 41.2% | 44.7% | +3.5% |
+| Faithfulness | 93.1% | 89.2% | -3.9% |
+| Answer Relevancy | 80.6% | **95.2%** | **+14.6%** |
+
+**Key changes**: Pseudo-heading chunking for better table extraction, V2 prompt for complete answers
+
+### Production Configuration
+
+| Setting | Value |
+|---|---|
+| **Prompt version** | `v2_complete_precise` |
+| **Chunk directory** | `data/chunks/2026-10-20_16-33-24` (pseudo-heading chunking) |
+| **Context-k** | 5 |
+| **Embedding mode** | local |
+| **Reranker mode** | local |
+| **Hybrid alpha** | 0.85 |
+| **Retrieve-k** | 50 |
+| **Reranker model** | `cross-encoder/ettin-reranker-150m-v1` |
+| **Generator** | Qwen/Qwen2.5-7B-Instruct (Hugging Face via Featherless AI) |
+| **DeepEval judge** | gpt-4o |
+
+### How to Evaluate
+
+#### Retriever Evaluation
+
+```bash
+# Traditional metrics (human labels)
+uv run python eval/hybrid_rerank_eval.py --mode rerank --golden-path goldens/golden_retriever_dataset_v2.jsonl --run-directory data/chunks/2026-10-20_16-33-24
+
+# DeepEval metrics (LLM judge)
+uv run python eval/deepEval/retriever_eval.py --judge-model gpt-4o-mini
+uv run python eval/deepEval/retriever_eval.py --compare
+```
+
+#### Generation Evaluation (Isolation)
+
+```bash
+# V1 baseline
+uv run python eval/deepEval/generator_eval.py --prompt-version v1_strict_grounded --judge-model gpt-4o
+
+# V2 production
+uv run python eval/deepEval/generator_eval.py --prompt-version v2_complete_precise --judge-model gpt-4o
+
+# Compare runs
+uv run python eval/deepEval/generator_eval.py --compare
+```
+
+#### Full-Pipeline Evaluation
+
+```bash
+# Dry run (check configuration)
+uv run python eval/deepEval/full_pipeline_eval.py --dry-run
+
+# Run evaluation
+uv run python eval/deepEval/full_pipeline_eval.py --judge-model gpt-4o --verbose
+
+# Compare runs
+uv run python eval/deepEval/full_pipeline_eval.py --compare
+```
+
+#### Run All Evaluations
+
+```bash
+# Run all three evaluations
+uv run python eval/deepEval/run_all_evaluations.py --judge-model gpt-4o-mini
+
+# Compare latest runs
+uv run python eval/deepEval/run_all_evaluations.py --compare
+```
+
+### Detailed Evaluation Reports
+
+For complete experiment documentation, case studies, and analysis:
+
+- **Final Report**: [eval/V2_dataset_experiements/final_report.md](eval/V2_dataset_experiements/final_report.md) - Comprehensive summary of all evaluations
+- **Retriever Experiments**: [eval/V2_dataset_experiements/retrivers.md](eval/V2_dataset_experiements/retrivers.md) - Retrieval tuning experiments
+- **Generation Experiments**: [eval/V2_dataset_experiements/generation_isolation_result.md](eval/V2_dataset_experiements/generation_isolation_result.md) - Prompt optimization experiments
+- **Full-Pipeline Summary**: [eval/V2_dataset_experiements/full_pipeline_evaluation_summary.md](eval/V2_dataset_experiements/full_pipeline_evaluation_summary.md) - End-to-end evaluation details
 
 ## Development
 

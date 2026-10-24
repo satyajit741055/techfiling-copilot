@@ -17,7 +17,7 @@ Usage:
     response = client.generate(system_prompt, user_prompt)
     
     # Override specific settings
-    client = LLMClient(provider="huggingface", model="mistralai/Mistral-7B-Instruct-v0.3")
+    client = LLMClient(provider="huggingface", model="Qwen/Qwen2.5-7B-Instruct")
 """
 
 from __future__ import annotations
@@ -75,8 +75,8 @@ class LLMClient:
         settings = _get_settings()
         
         # Use settings defaults if not provided
-        self.provider = (provider or settings.LLM_PROVIDER.value).lower()
-        self.model = model or settings.effective_model
+        self.provider = (provider or settings.effective_llm_provider).lower()
+        self.model = model or settings.model_for_provider(self.provider)
         self.temperature = temperature if temperature is not None else settings.LLM_TEMPERATURE
         self.max_tokens = max_tokens if max_tokens is not None else settings.LLM_MAX_TOKENS
         
@@ -152,17 +152,17 @@ class LLMClient:
             raise ImportError("Install ollama: pip install ollama")
     
     def _init_huggingface(self) -> None:
-        """Initialize Hugging Face Inference API client."""
-        try:
-            import requests
-            self._client = requests.Session()
-            self._hf_api_url = self._settings.HUGGINGFACE_API_URL
-            self._hf_api_key = self._settings.HUGGINGFACE_API_KEY
-            if self._hf_api_key:
-                self._client.headers.update({"Authorization": f"Bearer {self._hf_api_key}"})
-            logger.info(f"Hugging Face client initialized (model: {self.model})")
-        except ImportError:
-            raise ImportError("Install requests: pip install requests")
+        """Initialize Hugging Face Inference Providers chat client."""
+        from huggingface_hub import InferenceClient
+        self._client = InferenceClient(
+            provider=self._settings.HUGGINGFACE_PROVIDER,
+            api_key=self._settings.HUGGINGFACE_API_KEY,
+            timeout=self._settings.HUGGINGFACE_TIMEOUT,
+        )
+        logger.info(
+            f"Hugging Face client initialized (model: {self.model}, "
+            f"provider: {self._settings.HUGGINGFACE_PROVIDER})"
+        )
     
     def generate(self, system_prompt: str, user_prompt: str) -> LLMResponse:
         """
@@ -299,68 +299,33 @@ class LLMClient:
             raw_response=response,
         )
     
-    def _format_hf_prompt(self, system_prompt: str, user_prompt: str) -> str:
-        """Format prompt based on model type for HuggingFace models."""
-        model_lower = self.model.lower()
-        if "mistral" in model_lower or "mixtral" in model_lower:
-            return "<s>[INST] " + system_prompt + "\n\n" + user_prompt + " [/INST]"
-        elif "llama" in model_lower:
-            return "<s>[INST] <<SYS>>\n" + system_prompt + "\n<</SYS>>\n\n" + user_prompt + " [/INST]"
-        elif "zephyr" in model_lower:
-            return "<|system|>\n" + system_prompt + "</s>\n" + user_prompt + "<|assistant|>"
-        else:
-            # Generic format for other models
-            return system_prompt + "\n\n" + user_prompt
-
     def _generate_huggingface(
         self,
         system_prompt: str,
         user_prompt: str,
         start_time: float,
     ) -> LLMResponse:
+        """Generate a response with the Hugging Face chat-completion API.
+
+        The provider applies the model's own chat template, so no manual prompt
+        formatting is needed.
         """
-        Generate a response using Hugging Face Inference API.
-        
-        Supports both the free Inference API and Inference Endpoints.
-        """
-        import json
-        
-        api_url = self._hf_api_url + "/" + self.model
-        full_prompt = self._format_hf_prompt(system_prompt, user_prompt)
-        
-        payload = {
-            "inputs": full_prompt,
-            "parameters": {
-                "temperature": self.temperature if self.temperature > 0 else 0.01,
-                "max_new_tokens": self.max_tokens,
-                "return_full_text": False,
-            },
-        }
-        
-        response = self._client.post(api_url, json=payload, timeout=120)
-        
-        if response.status_code == 503:
-            # Model is loading, wait and retry
-            import time as time_module
-            time_module.sleep(20)
-            response = self._client.post(api_url, json=payload, timeout=120)
-        
-        response.raise_for_status()
-        result = response.json()
-        
-        # Handle different response formats
-        if isinstance(result, list) and len(result) > 0:
-            generated_text = result[0].get("generated_text", "")
-        elif isinstance(result, dict):
-            generated_text = result.get("generated_text", str(result))
-        else:
-            generated_text = str(result)
+        response = self._client.chat_completion(
+            messages=[
+                {"role": "system", "content": system_prompt},
+                {"role": "user", "content": user_prompt},
+            ],
+            model=self.model,
+            temperature=self.temperature,
+            max_tokens=self.max_tokens,
+        )
+        usage = getattr(response, "usage", None)
         
         return LLMResponse(
-            content=generated_text,
+            content=response.choices[0].message.content or "",
             model=self.model,
-            prompt_tokens=0,  # HF API does not return token counts
-            completion_tokens=0,
+            prompt_tokens=getattr(usage, "prompt_tokens", 0) or 0,
+            completion_tokens=getattr(usage, "completion_tokens", 0) or 0,
             latency_seconds=time.time() - start_time,
-            raw_response=result,
+            raw_response=response,
         )

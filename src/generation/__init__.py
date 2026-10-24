@@ -14,12 +14,12 @@ Components:
 """
 
 from .config import GenerationConfig
-from .schemas import LLMResponse, GeneratedAnswer, GenerationResult
-from .context import format_source, format_context
-from .prompts import SYSTEM_PROMPT, build_user_prompt
-from .llm_client import LLMClient
-from .validation import parse_llm_response, validate_answer
+from .context import format_context, format_source
 from .generator import AnswerGenerator
+from .llm_client import LLMClient
+from .prompts import SYSTEM_PROMPT, SYSTEM_PROMPTS, build_user_prompt, get_system_prompt
+from .schemas import GeneratedAnswer, GenerationResult, LLMResponse
+from .validation import parse_llm_response, validate_answer
 
 __all__ = [
     # Config
@@ -33,7 +33,9 @@ __all__ = [
     "format_context",
     # Prompts
     "SYSTEM_PROMPT",
+    "SYSTEM_PROMPTS",
     "build_user_prompt",
+    "get_system_prompt",
     # LLM
     "LLMClient",
     # Validation

@@ -14,7 +14,7 @@ from pathlib import Path
 from ingestion.chunking.chunker import (
     MAX_CHARS, MIN_CHARS, PARSED_DIR, TABLE_MAX_CHARS, chunk_doc_id, list_doc_ids, write_chunks,
 )
-from ingestion.chunking.embedder import CHUNKS_DIR, MODEL_CACHE_DIR, MODEL_NAME, embed_and_save
+from ingestion.chunking.embedder import CHUNKS_DIR, MODEL_CACHE_DIR, embed_and_save
 from ingestion.parser.parser import RAW_DIR, parse_all
 
 
@@ -23,7 +23,7 @@ def process(
     raw_dir: Path = RAW_DIR,
     parsed_dir: Path = PARSED_DIR,
     chunks_dir: Path = CHUNKS_DIR,
-    model_name: str = MODEL_NAME,
+    model_name: str | None = None,
     device: str | None = None,
     batch_size: int = 64,
     skip_parse: bool = False,
@@ -67,7 +67,7 @@ def main() -> None:
     parser.add_argument("--raw-dir", type=Path, default=RAW_DIR)
     parser.add_argument("--parsed-dir", type=Path, default=PARSED_DIR)
     parser.add_argument("--chunks-dir", type=Path, default=CHUNKS_DIR)
-    parser.add_argument("--model", default=MODEL_NAME)
+    parser.add_argument("--model", help="Embedding model (default: EMBEDDING_MODEL from .env)")
     parser.add_argument("--device", help="cuda | cpu (default: cuda if available)")
     parser.add_argument("--model-cache-dir", type=Path, default=MODEL_CACHE_DIR)
     parser.add_argument("--batch-size", type=int, default=64)

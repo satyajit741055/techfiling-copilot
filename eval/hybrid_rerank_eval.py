@@ -49,6 +49,7 @@ from retriever.hybrid_retriever import (
     HybridRetrieverWithReranker,
 )
 from retriever.retriever import DenseRetriever, SearchResult
+from config.settings import settings
 
 ROOT = Path(__file__).resolve().parents[1]
 DEFAULT_GOLDEN_PATH = ROOT / "goldens" / "golden_retriever_dataset_v2.jsonl"
@@ -286,9 +287,9 @@ class HybridEvaluator:
         golden_path: str | Path = DEFAULT_GOLDEN_PATH,
         run_directory: str | Path | None = None,
         mode: str = "hybrid",
-        alpha: float = 0.5,
-        retrieve_k: int = 20,
-        reranker_model: str = "cross-encoder/ms-marco-MiniLM-L-6-v2",
+        alpha: float | None = None,
+        retrieve_k: int | None = None,
+        reranker_model: str | None = None,
         device: str | None = None,
         rrf_k: int = 60,
         dense_k: int = 50,
@@ -318,9 +319,9 @@ class HybridEvaluator:
         self.golden_path = Path(golden_path)
         self.golden_queries = load_golden_dataset(self.golden_path)
         self.mode = mode
-        self.alpha = alpha
-        self.retrieve_k = retrieve_k
-        self.reranker_model = reranker_model
+        self.alpha = settings.RETRIEVAL_ALPHA if alpha is None else alpha
+        self.retrieve_k = settings.RETRIEVAL_K if retrieve_k is None else retrieve_k
+        self.reranker_model = reranker_model or settings.effective_reranker
         self.rrf_config = {
             "rrf_k": rrf_k,
             "dense_k": dense_k,
@@ -329,7 +330,7 @@ class HybridEvaluator:
             "bm25_weight": bm25_weight,
         }
 
-        print(f"Loading retriever (mode={mode}, alpha={alpha})...")
+        print(f"Loading retriever (mode={mode}, alpha={self.alpha})...")
 
         if mode == "dense":
             self.retriever = DenseRetriever(run_directory, device=device)
@@ -337,14 +338,14 @@ class HybridEvaluator:
             self.retriever = BM25Retriever(run_directory)
         elif mode == "hybrid":
             self.retriever = HybridRetriever(
-                run_directory, alpha=alpha, device=device
+                run_directory, alpha=self.alpha, device=device
             )
         elif mode == "rerank":
             self.retriever = HybridRetrieverWithReranker(
                 run_directory,
-                alpha=alpha,
-                retrieve_k=retrieve_k,
-                reranker_model=reranker_model,
+                alpha=self.alpha,
+                retrieve_k=self.retrieve_k,
+                reranker_model=self.reranker_model,
                 device=device,
             )
         elif mode == "rrf":
@@ -352,8 +353,8 @@ class HybridEvaluator:
         elif mode == "rrf_rerank":
             self.retriever = BM25SRRFRetrieverWithReranker(
                 run_directory,
-                retrieve_k=retrieve_k,
-                reranker_model=reranker_model,
+                retrieve_k=self.retrieve_k,
+                reranker_model=self.reranker_model,
                 device=device,
                 **self.rrf_config,
             )
@@ -446,6 +447,15 @@ class HybridEvaluator:
 
         retrieval_config = {
             "mode": self.mode,
+            "embedding_backend": getattr(
+                getattr(self.retriever, "embedder", None)
+                or getattr(getattr(self.retriever, "retriever", None), "embedder", None),
+                "backend", None,
+            ),
+            "reranker_backend": getattr(
+                getattr(getattr(self.retriever, "reranker", None), "backend", None),
+                "backend", None,
+            ) or getattr(getattr(self.retriever, "reranker", None), "backend", None),
             "alpha": self.alpha if self.mode in ("hybrid", "rerank") else None,
             "retrieve_k": self.retrieve_k if self.mode in ("rerank", "rrf_rerank") else None,
             "reranker_model": (
@@ -925,8 +935,7 @@ def main():
     parser.add_argument(
         "--alpha",
         type=float,
-        default=0.5,
-        help="Dense weight for hybrid (0=BM25 only, 1=dense only)",
+        help="Dense weight for hybrid (default: RETRIEVAL_ALPHA from .env)",
     )
     parser.add_argument(
         "--k",
@@ -938,13 +947,11 @@ def main():
     parser.add_argument(
         "--retrieve-k",
         type=int,
-        default=20,
-        help="Candidates for reranking",
+        help="Candidates for reranking (default: RETRIEVAL_K from .env)",
     )
     parser.add_argument(
         "--reranker-model",
-        default="cross-encoder/ms-marco-MiniLM-L-6-v2",
-        help="Cross-encoder reranker model name",
+        help="Reranker model (default: environment-aware setting from .env)",
     )
     parser.add_argument("--run-directory", help="Path to chunking run")
     parser.add_argument("--golden-path", default=DEFAULT_GOLDEN_PATH)

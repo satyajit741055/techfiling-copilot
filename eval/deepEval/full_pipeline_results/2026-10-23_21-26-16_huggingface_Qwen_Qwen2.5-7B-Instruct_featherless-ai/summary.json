@@ -1,0 +1,502 @@
+{
+  "run_id": "2026-10-23_21-26-16_huggingface_Qwen_Qwen2.5-7B-Instruct_featherless-ai",
+  "overall": {
+    "cases": 20,
+    "successful_pipeline_cases": 20,
+    "pipeline_error_cases": 0,
+    "triad_mean_score": 0.7637272196054713,
+    "prompt_tokens": 37832,
+    "completion_tokens": 3139,
+    "pipeline_latency_seconds": 87.20601010322571,
+    "metrics": {
+      "contextual_relevancy": {
+        "mean_score": 0.44701499214974716,
+        "pass_rate": 0.3,
+        "scored_cases": 20,
+        "metric_error_cases": 0
+      },
+      "faithfulness": {
+        "mean_score": 0.8920833333333333,
+        "pass_rate": 0.85,
+        "scored_cases": 20,
+        "metric_error_cases": 0
+      },
+      "answer_relevancy": {
+        "mean_score": 0.9520833333333333,
+        "pass_rate": 0.95,
+        "scored_cases": 20,
+        "metric_error_cases": 0
+      }
+    }
+  },
+  "by_category": {
+    "accounting_policy": {
+      "cases": 3,
+      "successful_pipeline_cases": 3,
+      "pipeline_error_cases": 0,
+      "triad_mean_score": 0.8979423868312757,
+      "prompt_tokens": 4770,
+      "completion_tokens": 501,
+      "pipeline_latency_seconds": 11.489861965179443,
+      "metrics": {
+        "contextual_relevancy": {
+          "mean_score": 0.7604938271604939,
+          "pass_rate": 0.6666666666666666,
+          "scored_cases": 3,
+          "metric_error_cases": 0
+        },
+        "faithfulness": {
+          "mean_score": 0.9333333333333333,
+          "pass_rate": 1,
+          "scored_cases": 3,
+          "metric_error_cases": 0
+        },
+        "answer_relevancy": {
+          "mean_score": 1.0,
+          "pass_rate": 1,
+          "scored_cases": 3,
+          "metric_error_cases": 0
+        }
+      }
+    },
+    "business_description": {
+      "cases": 3,
+      "successful_pipeline_cases": 3,
+      "pipeline_error_cases": 0,
+      "triad_mean_score": 0.8288840788840789,
+      "prompt_tokens": 5028,
+      "completion_tokens": 333,
+      "pipeline_latency_seconds": 14.489348888397217,
+      "metrics": {
+        "contextual_relevancy": {
+          "mean_score": 0.48665223665223667,
+          "pass_rate": 0,
+          "scored_cases": 3,
+          "metric_error_cases": 0
+        },
+        "faithfulness": {
+          "mean_score": 1.0,
+          "pass_rate": 1,
+          "scored_cases": 3,
+          "metric_error_cases": 0
+        },
+        "answer_relevancy": {
+          "mean_score": 1.0,
+          "pass_rate": 1,
+          "scored_cases": 3,
+          "metric_error_cases": 0
+        }
+      }
+    },
+    "cross_document": {
+      "cases": 2,
+      "successful_pipeline_cases": 2,
+      "pipeline_error_cases": 0,
+      "triad_mean_score": 0.39694444444444443,
+      "prompt_tokens": 4091,
+      "completion_tokens": 328,
+      "pipeline_latency_seconds": 5.571978807449341,
+      "metrics": {
+        "contextual_relevancy": {
+          "mean_score": 0.045,
+          "pass_rate": 0,
+          "scored_cases": 2,
+          "metric_error_cases": 0
+        },
+        "faithfulness": {
+          "mean_score": 0.3125,
+          "pass_rate": 0,
+          "scored_cases": 2,
+          "metric_error_cases": 0
+        },
+        "answer_relevancy": {
+          "mean_score": 0.8333333333333333,
+          "pass_rate": 0.5,
+          "scored_cases": 2,
+          "metric_error_cases": 0
+        }
+      }
+    },
+    "cross_section": {
+      "cases": 1,
+      "successful_pipeline_cases": 1,
+      "pipeline_error_cases": 0,
+      "triad_mean_score": 0.8825757575757576,
+      "prompt_tokens": 1670,
+      "completion_tokens": 191,
+      "pipeline_latency_seconds": 5.187880277633667,
+      "metrics": {
+        "contextual_relevancy": {
+          "mean_score": 0.7727272727272727,
+          "pass_rate": 1,
+          "scored_cases": 1,
+          "metric_error_cases": 0
+        },
+        "faithfulness": {
+          "mean_score": 1.0,
+          "pass_rate": 1,
+          "scored_cases": 1,
+          "metric_error_cases": 0
+        },
+        "answer_relevancy": {
+          "mean_score": 0.875,
+          "pass_rate": 1,
+          "scored_cases": 1,
+          "metric_error_cases": 0
+        }
+      }
+    },
+    "exact_numeric": {
+      "cases": 2,
+      "successful_pipeline_cases": 2,
+      "pipeline_error_cases": 0,
+      "triad_mean_score": 0.689327485380117,
+      "prompt_tokens": 3659,
+      "completion_tokens": 183,
+      "pipeline_latency_seconds": 7.313722372055054,
+      "metrics": {
+        "contextual_relevancy": {
+          "mean_score": 0.06798245614035087,
+          "pass_rate": 0,
+          "scored_cases": 2,
+          "metric_error_cases": 0
+        },
+        "faithfulness": {
+          "mean_score": 1.0,
+          "pass_rate": 1,
+          "scored_cases": 2,
+          "metric_error_cases": 0
+        },
+        "answer_relevancy": {
+          "mean_score": 1.0,
+          "pass_rate": 1,
+          "scored_cases": 2,
+          "metric_error_cases": 0
+        }
+      }
+    },
+    "negative": {
+      "cases": 2,
+      "successful_pipeline_cases": 2,
+      "pipeline_error_cases": 0,
+      "triad_mean_score": 0.5833333333333334,
+      "prompt_tokens": 4607,
+      "completion_tokens": 274,
+      "pipeline_latency_seconds": 6.3744988441467285,
+      "metrics": {
+        "contextual_relevancy": {
+          "mean_score": 0.0,
+          "pass_rate": 0,
+          "scored_cases": 2,
+          "metric_error_cases": 0
+        },
+        "faithfulness": {
+          "mean_score": 1.0,
+          "pass_rate": 1,
+          "scored_cases": 2,
+          "metric_error_cases": 0
+        },
+        "answer_relevancy": {
+          "mean_score": 0.75,
+          "pass_rate": 1,
+          "scored_cases": 2,
+          "metric_error_cases": 0
+        }
+      }
+    },
+    "risk_factor": {
+      "cases": 3,
+      "successful_pipeline_cases": 3,
+      "pipeline_error_cases": 0,
+      "triad_mean_score": 0.9253086419753086,
+      "prompt_tokens": 5125,
+      "completion_tokens": 746,
+      "pipeline_latency_seconds": 11.579332113265991,
+      "metrics": {
+        "contextual_relevancy": {
+          "mean_score": 0.7759259259259259,
+          "pass_rate": 0.6666666666666666,
+          "scored_cases": 3,
+          "metric_error_cases": 0
+        },
+        "faithfulness": {
+          "mean_score": 1.0,
+          "pass_rate": 1,
+          "scored_cases": 3,
+          "metric_error_cases": 0
+        },
+        "answer_relevancy": {
+          "mean_score": 1.0,
+          "pass_rate": 1,
+          "scored_cases": 3,
+          "metric_error_cases": 0
+        }
+      }
+    },
+    "table_structure": {
+      "cases": 2,
+      "successful_pipeline_cases": 2,
+      "pipeline_error_cases": 0,
+      "triad_mean_score": 0.8101495726495727,
+      "prompt_tokens": 4790,
+      "completion_tokens": 337,
+      "pipeline_latency_seconds": 19.053698778152466,
+      "metrics": {
+        "contextual_relevancy": {
+          "mean_score": 0.5971153846153846,
+          "pass_rate": 0.5,
+          "scored_cases": 2,
+          "metric_error_cases": 0
+        },
+        "faithfulness": {
+          "mean_score": 0.8333333333333333,
+          "pass_rate": 0.5,
+          "scored_cases": 2,
+          "metric_error_cases": 0
+        },
+        "answer_relevancy": {
+          "mean_score": 1.0,
+          "pass_rate": 1,
+          "scored_cases": 2,
+          "metric_error_cases": 0
+        }
+      }
+    },
+    "trend_explanation": {
+      "cases": 2,
+      "successful_pipeline_cases": 2,
+      "pipeline_error_cases": 0,
+      "triad_mean_score": 0.7380268199233716,
+      "prompt_tokens": 4092,
+      "completion_tokens": 246,
+      "pipeline_latency_seconds": 6.145688056945801,
+      "metrics": {
+        "contextual_relevancy": {
+          "mean_score": 0.3390804597701149,
+          "pass_rate": 0,
+          "scored_cases": 2,
+          "metric_error_cases": 0
+        },
+        "faithfulness": {
+          "mean_score": 0.875,
+          "pass_rate": 1,
+          "scored_cases": 2,
+          "metric_error_cases": 0
+        },
+        "answer_relevancy": {
+          "mean_score": 1.0,
+          "pass_rate": 1,
+          "scored_cases": 2,
+          "metric_error_cases": 0
+        }
+      }
+    }
+  },
+  "by_difficulty": {
+    "easy": {
+      "cases": 8,
+      "successful_pipeline_cases": 8,
+      "pipeline_error_cases": 0,
+      "triad_mean_score": 0.8323593073593074,
+      "prompt_tokens": 13710,
+      "completion_tokens": 1183,
+      "pipeline_latency_seconds": 32.91137623786926,
+      "metrics": {
+        "contextual_relevancy": {
+          "mean_score": 0.49707792207792206,
+          "pass_rate": 0.125,
+          "scored_cases": 8,
+          "metric_error_cases": 0
+        },
+        "faithfulness": {
+          "mean_score": 1.0,
+          "pass_rate": 1,
+          "scored_cases": 8,
+          "metric_error_cases": 0
+        },
+        "answer_relevancy": {
+          "mean_score": 1.0,
+          "pass_rate": 1,
+          "scored_cases": 8,
+          "metric_error_cases": 0
+        }
+      }
+    },
+    "hard": {
+      "cases": 4,
+      "successful_pipeline_cases": 4,
+      "pipeline_error_cases": 0,
+      "triad_mean_score": 0.7662777197259956,
+      "prompt_tokens": 7728,
+      "completion_tokens": 744,
+      "pipeline_latency_seconds": 15.449897527694702,
+      "metrics": {
+        "contextual_relevancy": {
+          "mean_score": 0.48633315917798675,
+          "pass_rate": 0.5,
+          "scored_cases": 4,
+          "metric_error_cases": 0
+        },
+        "faithfulness": {
+          "mean_score": 0.84375,
+          "pass_rate": 0.75,
+          "scored_cases": 4,
+          "metric_error_cases": 0
+        },
+        "answer_relevancy": {
+          "mean_score": 0.96875,
+          "pass_rate": 1,
+          "scored_cases": 4,
+          "metric_error_cases": 0
+        }
+      }
+    },
+    "medium": {
+      "cases": 8,
+      "successful_pipeline_cases": 8,
+      "pipeline_error_cases": 0,
+      "triad_mean_score": 0.693819881791373,
+      "prompt_tokens": 16394,
+      "completion_tokens": 1212,
+      "pipeline_latency_seconds": 38.84473633766174,
+      "metrics": {
+        "contextual_relevancy": {
+          "mean_score": 0.3772929787074524,
+          "pass_rate": 0.375,
+          "scored_cases": 8,
+          "metric_error_cases": 0
+        },
+        "faithfulness": {
+          "mean_score": 0.8083333333333333,
+          "pass_rate": 0.75,
+          "scored_cases": 8,
+          "metric_error_cases": 0
+        },
+        "answer_relevancy": {
+          "mean_score": 0.8958333333333334,
+          "pass_rate": 0.875,
+          "scored_cases": 8,
+          "metric_error_cases": 0
+        }
+      }
+    }
+  },
+  "by_doc": {
+    "AAPL_10-K_2025": {
+      "cases": 6,
+      "successful_pipeline_cases": 6,
+      "pipeline_error_cases": 0,
+      "triad_mean_score": 0.8250060125060125,
+      "prompt_tokens": 10836,
+      "completion_tokens": 952,
+      "pipeline_latency_seconds": 24.990928173065186,
+      "metrics": {
+        "contextual_relevancy": {
+          "mean_score": 0.5375180375180375,
+          "pass_rate": 0.3333333333333333,
+          "scored_cases": 6,
+          "metric_error_cases": 0
+        },
+        "faithfulness": {
+          "mean_score": 1.0,
+          "pass_rate": 1,
+          "scored_cases": 6,
+          "metric_error_cases": 0
+        },
+        "answer_relevancy": {
+          "mean_score": 0.9375,
+          "pass_rate": 1,
+          "scored_cases": 6,
+          "metric_error_cases": 0
+        }
+      }
+    },
+    "MSFT_10-K_2026": {
+      "cases": 6,
+      "successful_pipeline_cases": 6,
+      "pipeline_error_cases": 0,
+      "triad_mean_score": 0.7655048247481198,
+      "prompt_tokens": 11980,
+      "completion_tokens": 927,
+      "pipeline_latency_seconds": 24.412734746932983,
+      "metrics": {
+        "contextual_relevancy": {
+          "mean_score": 0.4354033631332482,
+          "pass_rate": 0.3333333333333333,
+          "scored_cases": 6,
+          "metric_error_cases": 0
+        },
+        "faithfulness": {
+          "mean_score": 0.9027777777777778,
+          "pass_rate": 0.8333333333333334,
+          "scored_cases": 6,
+          "metric_error_cases": 0
+        },
+        "answer_relevancy": {
+          "mean_score": 0.9583333333333334,
+          "pass_rate": 1,
+          "scored_cases": 6,
+          "metric_error_cases": 0
+        }
+      }
+    },
+    "None": {
+      "cases": 2,
+      "successful_pipeline_cases": 2,
+      "pipeline_error_cases": 0,
+      "triad_mean_score": 0.39694444444444443,
+      "prompt_tokens": 4091,
+      "completion_tokens": 328,
+      "pipeline_latency_seconds": 5.571978807449341,
+      "metrics": {
+        "contextual_relevancy": {
+          "mean_score": 0.045,
+          "pass_rate": 0,
+          "scored_cases": 2,
+          "metric_error_cases": 0
+        },
+        "faithfulness": {
+          "mean_score": 0.3125,
+          "pass_rate": 0,
+          "scored_cases": 2,
+          "metric_error_cases": 0
+        },
+        "answer_relevancy": {
+          "mean_score": 0.8333333333333333,
+          "pass_rate": 0.5,
+          "scored_cases": 2,
+          "metric_error_cases": 0
+        }
+      }
+    },
+    "TSLA_10-K_2025": {
+      "cases": 6,
+      "successful_pipeline_cases": 6,
+      "pipeline_error_cases": 0,
+      "triad_mean_score": 0.8229317466159571,
+      "prompt_tokens": 10925,
+      "completion_tokens": 932,
+      "pipeline_latency_seconds": 32.2303683757782,
+      "metrics": {
+        "contextual_relevancy": {
+          "mean_score": 0.5021285731812047,
+          "pass_rate": 0.3333333333333333,
+          "scored_cases": 6,
+          "metric_error_cases": 0
+        },
+        "faithfulness": {
+          "mean_score": 0.9666666666666667,
+          "pass_rate": 1,
+          "scored_cases": 6,
+          "metric_error_cases": 0
+        },
+        "answer_relevancy": {
+          "mean_score": 1.0,
+          "pass_rate": 1,
+          "scored_cases": 6,
+          "metric_error_cases": 0
+        }
+      }
+    }
+  }
+}

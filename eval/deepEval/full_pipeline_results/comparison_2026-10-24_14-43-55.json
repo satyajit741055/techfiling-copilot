@@ -1,0 +1,201 @@
+{
+  "timestamp": "2026-10-24_14-43-55",
+  "directly_comparable": false,
+  "runs": [
+    {
+      "run_id": "2026-10-23_14-05-34_huggingface_Qwen_Qwen2.5-7B-Instruct_featherless-ai",
+      "provider": "huggingface",
+      "model": "Qwen/Qwen2.5-7B-Instruct:featherless-ai",
+      "execution_modes": {
+        "embedding": "huggingface_api",
+        "reranker": "huggingface_api",
+        "generation_provider": "huggingface"
+      },
+      "cases": 20,
+      "pipeline_errors": 2,
+      "triad_mean": 0.7161713385826348,
+      "contextual_relevancy": 0.4115859111727409,
+      "faithfulness": 0.9313725490196079,
+      "answer_relevancy": 0.8055555555555556,
+      "signature": {
+        "golden_path": "D:\\techfiling-copilot\\goldens\\golden_retriever_dataset_v3.jsonl",
+        "selected_query_count": 20,
+        "filters": {
+          "query_ids": null,
+          "categories": null,
+          "difficulties": null,
+          "limit": null
+        },
+        "judge_model": "gpt-4o-mini",
+        "metrics": [
+          "contextual_relevancy",
+          "faithfulness",
+          "answer_relevancy"
+        ],
+        "threshold": 0.7,
+        "strict": false,
+        "system_prompt_sha256": "db6cdda1e9313ff12835061d74104c82d3bf77aaacf9eaf739af0ea4ba71c835",
+        "context_k": 5,
+        "temperature": 0.0,
+        "max_tokens": 1024,
+        "prompt_version": "v1_strict_grounded"
+      }
+    },
+    {
+      "run_id": "2026-10-23_21-00-36_huggingface_Qwen_Qwen2.5-7B-Instruct_featherless-ai",
+      "provider": "huggingface",
+      "model": "Qwen/Qwen2.5-7B-Instruct:featherless-ai",
+      "execution_modes": {
+        "embedding": "huggingface_api",
+        "reranker": "huggingface_api",
+        "generation_provider": "huggingface"
+      },
+      "cases": 20,
+      "pipeline_errors": 0,
+      "triad_mean": 0.7637327940537828,
+      "contextual_relevancy": 0.4157438367068028,
+      "faithfulness": 0.9333333333333333,
+      "answer_relevancy": 0.9421212121212121,
+      "signature": {
+        "golden_path": "D:\\techfiling-copilot\\goldens\\golden_retriever_dataset_v3.jsonl",
+        "selected_query_count": 20,
+        "filters": {
+          "query_ids": null,
+          "categories": null,
+          "difficulties": null,
+          "limit": null
+        },
+        "judge_model": "gpt-4o",
+        "metrics": [
+          "contextual_relevancy",
+          "faithfulness",
+          "answer_relevancy"
+        ],
+        "threshold": 0.7,
+        "strict": false,
+        "system_prompt_sha256": "cdf7afc1e69ab45588d6480d5556d3ab4eeb435d17a3300aa27f3e9435af925e",
+        "context_k": 5,
+        "temperature": 0.0,
+        "max_tokens": 1024,
+        "prompt_version": "v2_complete_precise"
+      }
+    },
+    {
+      "run_id": "2026-10-23_21-26-16_huggingface_Qwen_Qwen2.5-7B-Instruct_featherless-ai",
+      "provider": "huggingface",
+      "model": "Qwen/Qwen2.5-7B-Instruct:featherless-ai",
+      "execution_modes": {
+        "embedding": "huggingface_api",
+        "reranker": "huggingface_api",
+        "generation_provider": "huggingface"
+      },
+      "cases": 20,
+      "pipeline_errors": 0,
+      "triad_mean": 0.7637272196054713,
+      "contextual_relevancy": 0.44701499214974716,
+      "faithfulness": 0.8920833333333333,
+      "answer_relevancy": 0.9520833333333333,
+      "signature": {
+        "golden_path": "D:\\techfiling-copilot\\goldens\\golden_retriever_dataset_v3.jsonl",
+        "selected_query_count": 20,
+        "filters": {
+          "query_ids": null,
+          "categories": null,
+          "difficulties": null,
+          "limit": null
+        },
+        "judge_model": "gpt-4o",
+        "metrics": [
+          "contextual_relevancy",
+          "faithfulness",
+          "answer_relevancy"
+        ],
+        "threshold": 0.7,
+        "strict": false,
+        "system_prompt_sha256": "cdf7afc1e69ab45588d6480d5556d3ab4eeb435d17a3300aa27f3e9435af925e",
+        "context_k": 5,
+        "temperature": 0.0,
+        "max_tokens": 1024,
+        "prompt_version": "v2_complete_precise"
+      }
+    },
+    {
+      "run_id": "2026-10-24_13-42-39_huggingface_Qwen_Qwen2.5-7B-Instruct_featherless-ai",
+      "provider": "huggingface",
+      "model": "Qwen/Qwen2.5-7B-Instruct:featherless-ai",
+      "execution_modes": {
+        "embedding": "huggingface_api",
+        "reranker": "huggingface_api",
+        "generation_provider": "huggingface"
+      },
+      "cases": 20,
+      "pipeline_errors": 0,
+      "triad_mean": 0.7525972253347153,
+      "contextual_relevancy": 0.44052977124224096,
+      "faithfulness": 0.9047619047619048,
+      "answer_relevancy": 0.9125,
+      "signature": {
+        "golden_path": "D:\\techfiling-copilot\\goldens\\golden_retriever_dataset_v3_enriched.jsonl",
+        "selected_query_count": 20,
+        "filters": {
+          "query_ids": null,
+          "categories": null,
+          "difficulties": null,
+          "limit": null
+        },
+        "judge_model": "gpt-4o-mini",
+        "metrics": [
+          "contextual_relevancy",
+          "faithfulness",
+          "answer_relevancy"
+        ],
+        "threshold": 0.7,
+        "strict": false,
+        "system_prompt_sha256": "cdf7afc1e69ab45588d6480d5556d3ab4eeb435d17a3300aa27f3e9435af925e",
+        "context_k": 5,
+        "temperature": 0.0,
+        "max_tokens": 1024,
+        "prompt_version": "v2_complete_precise"
+      }
+    },
+    {
+      "run_id": "2026-10-24_14-20-37_huggingface_Qwen_Qwen2.5-7B-Instruct_featherless-ai",
+      "provider": "huggingface",
+      "model": "Qwen/Qwen2.5-7B-Instruct:featherless-ai",
+      "execution_modes": {
+        "embedding": "huggingface_api",
+        "reranker": "huggingface_api",
+        "generation_provider": "huggingface"
+      },
+      "cases": 20,
+      "pipeline_errors": 0,
+      "triad_mean": 0.7346911859124244,
+      "contextual_relevancy": 0.37282355773727316,
+      "faithfulness": 0.9333333333333333,
+      "answer_relevancy": 0.8979166666666667,
+      "signature": {
+        "golden_path": "D:\\techfiling-copilot\\goldens\\golden_retriever_dataset_v3_enriched.jsonl",
+        "selected_query_count": 20,
+        "filters": {
+          "query_ids": null,
+          "categories": null,
+          "difficulties": null,
+          "limit": null
+        },
+        "judge_model": "gpt-4o-mini",
+        "metrics": [
+          "contextual_relevancy",
+          "faithfulness",
+          "answer_relevancy"
+        ],
+        "threshold": 0.7,
+        "strict": false,
+        "system_prompt_sha256": "cdf7afc1e69ab45588d6480d5556d3ab4eeb435d17a3300aa27f3e9435af925e",
+        "context_k": 8,
+        "temperature": 0.0,
+        "max_tokens": 1024,
+        "prompt_version": "v2_complete_precise"
+      }
+    }
+  ]
+}

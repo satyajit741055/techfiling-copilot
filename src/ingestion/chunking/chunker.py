@@ -18,9 +18,9 @@ ROOT = Path(__file__).resolve().parents[3]
 PARSED_DIR = ROOT / "data" / "parsed"
 
 # Sizes include breadcrumb + text. [ Need to adjust according to Embedder Cotext window ]
-MAX_CHARS = 1400
+MAX_CHARS = 1200
 MIN_CHARS = 200
-TABLE_MAX_CHARS = 1000
+TABLE_MAX_CHARS = 900
 
 SENT_SPLIT = re.compile(r"(?<=[.!?])\s+(?=[A-Z(\"'])")
 

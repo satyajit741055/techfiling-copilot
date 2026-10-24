@@ -9,9 +9,9 @@ from pathlib import Path
 from typing import Any, NamedTuple
 
 import numpy as np
-from sentence_transformers import SentenceTransformer
 
-BGE_QUERY_PREFIX = "Represent this sentence for searching relevant passages: "
+from model_runtime import Embedder, check_index_compatibility, create_embedder
+
 ROOT = Path(__file__).resolve().parents[2]
 DEFAULT_RUNS_DIRECTORY = ROOT / "data" / "chunks"
 DEFAULT_MODEL_CACHE_DIRECTORY = ROOT / "models" / "sentence_transformers"
@@ -31,16 +31,17 @@ class DenseRetriever:
         self,
         run_directory: str | Path | None = None,
         *,
-        model: SentenceTransformer | None = None,
+        embedder: Embedder | None = None,
         device: str | None = None,
         model_cache_directory: str | Path = DEFAULT_MODEL_CACHE_DIRECTORY,
     ) -> None:
-        """Load a retrieval run and its matching sentence-transformers model.
+        """Load a retrieval run and its matching embedding model.
 
         Args:
             run_directory: Directory containing chunks, embeddings, and the run
                 manifest. When omitted, the latest complete run is selected.
-            model: Optional preloaded model for reuse or testing.
+            embedder: Optional pre-built embedder for reuse or testing; otherwise
+                the configured execution mode decides the backend.
             device: Explicit model device, such as ``cuda`` or ``cpu``.
             model_cache_directory: Directory used to cache model files.
 
@@ -56,10 +57,11 @@ class DenseRetriever:
             self.run_directory / "embeddings_gpu_base.npy",
             mmap_mode="r",
         )
-        self.model_name = self.manifest["embedding_model"]["name"]
-        self.model = model or SentenceTransformer(
-            self.model_name, device=device, cache_folder=str(model_cache_directory)
+        self.embedder = embedder or create_embedder(
+            device=device,
+            cache_dir=model_cache_directory,
         )
+        self.model_name = self.embedder.model_name
         self._validate_artifacts()
 
 
@@ -125,12 +127,7 @@ class DenseRetriever:
                 "Embedding dimension differs from manifest: "
                 f"{self.embeddings.shape[1]} versus {expected_dimension}"
             )
-        model_dimension = self.model.get_embedding_dimension()
-        if model_dimension is not None and model_dimension != self.embeddings.shape[1]:
-            raise ValueError(
-                "Loaded model and stored embedding dimensions differ: "
-                f"{model_dimension} versus {self.embeddings.shape[1]}"
-            )
+        check_index_compatibility(self.manifest, self.embedder, self.embeddings.shape[1])
 
     def search(
         self,
@@ -164,11 +161,7 @@ class DenseRetriever:
         if k < 1:
             raise ValueError("k must be at least 1")
 
-        query_embedding = self.model.encode(
-            BGE_QUERY_PREFIX + query,
-            normalize_embeddings=True,
-            convert_to_numpy=True,
-        ).astype("float32")
+        query_embedding = self.embedder.encode_query(query)
         scores = self.embeddings @ query_embedding
         matches = self._matching_indices(
             doc_id=doc_id,
