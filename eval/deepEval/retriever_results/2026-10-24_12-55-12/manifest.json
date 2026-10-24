@@ -1,0 +1,32 @@
+{
+  "run_id": "2026-10-24_12-55-12",
+  "timestamp": "2026-10-24_12-55-12",
+  "golden_path": "D:\\techfiling-copilot\\goldens\\golden_retriever_dataset_v3.jsonl",
+  "selected_query_count": 20,
+  "filters": {
+    "query_ids": null,
+    "categories": null,
+    "difficulties": null,
+    "limit": null
+  },
+  "retrieval_config": {
+    "run_directory": "data/chunks/2026-10-24_12-46-23",
+    "alpha": 0.85,
+    "retrieve_k": 50,
+    "reranker_model": "cross-encoder/ettin-reranker-150m-v1",
+    "context_k": 5
+  },
+  "execution_modes": {
+    "embedding": "huggingface_api",
+    "reranker": "huggingface_api"
+  },
+  "judge_model": null,
+  "metrics": [
+    "contextual_precision",
+    "contextual_recall"
+  ],
+  "threshold": 0.5,
+  "strict": false,
+  "python_version": "3.13.17",
+  "platform": "Windows-10-10.0.19045-SP0"
+}

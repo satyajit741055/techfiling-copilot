@@ -1,0 +1,103 @@
+{
+  "run_timestamp": "2026-10-24_12-46-23",
+  "output_directory": "data\\chunks\\2026-10-24_12-46-23",
+  "chunking_config": {
+    "max_chars": 1200,
+    "min_chars": 200,
+    "table_max_chars": 900,
+    "pseudo_headings": true
+  },
+  "embedding_model": {
+    "name": "BAAI/bge-base-en-v1.5",
+    "backend": "huggingface_api",
+    "dimension": 768,
+    "normalized": true,
+    "query_prefix": "Represent this sentence for searching relevant passages: ",
+    "model_max_tokens": 512,
+    "tokenizer_max_tokens": 512,
+    "effective_max_tokens": 512,
+    "recommended_token_limit": 481
+  },
+  "overall": {
+    "chunks": 1447,
+    "chunks_by_type": {
+      "text": 1110,
+      "table": 337
+    },
+    "tiny_chunks": 118,
+    "over_recommended_limit": 0,
+    "over_model_limit": 0,
+    "token_statistics": {
+      "count": 1447,
+      "mean": 182.1,
+      "std": 73.17,
+      "min": 31,
+      "p25": 127.5,
+      "p50": 186.0,
+      "p75": 233.0,
+      "max": 420
+    }
+  },
+  "documents": {
+    "AAPL_10-K_2025": {
+      "chunks": 342,
+      "chunks_by_type": {
+        "text": 255,
+        "table": 87
+      },
+      "tiny_chunks": 32,
+      "over_recommended_limit": 0,
+      "over_model_limit": 0,
+      "token_statistics": {
+        "count": 342,
+        "mean": 181.27,
+        "std": 77.35,
+        "min": 31,
+        "p25": 116.5,
+        "p50": 186.5,
+        "p75": 236.0,
+        "max": 408
+      }
+    },
+    "MSFT_10-K_2026": {
+      "chunks": 520,
+      "chunks_by_type": {
+        "text": 383,
+        "table": 137
+      },
+      "tiny_chunks": 46,
+      "over_recommended_limit": 0,
+      "over_model_limit": 0,
+      "token_statistics": {
+        "count": 520,
+        "mean": 177.7,
+        "std": 73.7,
+        "min": 31,
+        "p25": 125.0,
+        "p50": 179.5,
+        "p75": 230.0,
+        "max": 399
+      }
+    },
+    "TSLA_10-K_2025": {
+      "chunks": 585,
+      "chunks_by_type": {
+        "text": 472,
+        "table": 113
+      },
+      "tiny_chunks": 40,
+      "over_recommended_limit": 0,
+      "over_model_limit": 0,
+      "token_statistics": {
+        "count": 585,
+        "mean": 186.49,
+        "std": 69.98,
+        "min": 31,
+        "p25": 139.0,
+        "p50": 196.0,
+        "p75": 236.0,
+        "max": 420
+      }
+    }
+  }
+}
