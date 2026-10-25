@@ -295,6 +295,38 @@ class TestRateLimiting:
         assert allowed is False
         assert info["remaining"] == 0
 
+    def test_redis_branch_limits_and_sets_retry_after(self, monkeypatch):
+        """The Redis code path (limits moving window) must allow up to the limit, then 429."""
+        from fastapi import HTTPException
+        from limits.storage import storage_from_string
+        from limits.strategies import MovingWindowRateLimiter
+
+        from api import rate_limit
+
+        monkeypatch.setattr(rate_limit, "redis_url", "redis://test")
+        monkeypatch.setattr(rate_limit, "moving_window", MovingWindowRateLimiter(storage_from_string("memory://")))
+
+        class Req:
+            state = type("S", (), {})()
+            client = type("C", (), {"host": "1.2.3.4"})()
+            headers = {}
+            scope = {"client": ("1.2.3.4", 0)}
+
+        for _ in range(2):
+            rate_limit.check_rate_limit(Req(), limit=2, period=60)
+        with pytest.raises(HTTPException) as exc:
+            rate_limit.check_rate_limit(Req(), limit=2, period=60)
+        assert exc.value.status_code == 429
+        assert int(exc.value.headers["Retry-After"]) >= 1
+
+    def test_rate_limit_key_prefers_user(self):
+        from api.rate_limit import get_rate_limit_key
+
+        class Req:
+            state = type("S", (), {"user_id": "u1"})()
+
+        assert get_rate_limit_key(Req()) == "user:u1"
+
     def test_correlation_id_header(self, client, monkeypatch):
         """Test that correlation ID is added to responses."""
         monkeypatch.setattr(api_settings, "API_ACCESS_KEY", None)

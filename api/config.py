@@ -115,10 +115,10 @@ class APISettings(BaseSettings):
             return [str(item).strip().rstrip("/") for item in value if str(item).strip()]
         return value
 
-    @field_validator("API_ACCESS_KEY", mode="before")
+    @field_validator("API_ACCESS_KEY", "SUPABASE_JWT_SECRET", "RATE_LIMIT_REDIS_URL", mode="before")
     @classmethod
     def _empty_key_is_unset(cls, value: object) -> object:
-        """Treat an empty API_ACCESS_KEY as not set."""
+        """Treat empty API_ACCESS_KEY / SUPABASE_JWT_SECRET / RATE_LIMIT_REDIS_URL as not set."""
         if isinstance(value, str):
             return value.strip() or None
         return value

@@ -14,13 +14,17 @@ Features:
 """
 
 import logging
+import math
+import time
 from collections import defaultdict
 from typing import Literal
 
-from fastapi import Request, HTTPException, status
-from slowapi import Limiter, _rate_limit_exceeded_handler
+from fastapi import HTTPException, Request, status
+from limits import RateLimitItemPerSecond
+from limits.storage import storage_from_string
+from limits.strategies import MovingWindowRateLimiter
+from slowapi import Limiter
 from slowapi.util import get_remote_address
-from slowapi.errors import RateLimitExceeded
 
 from api.config import api_settings
 
@@ -140,6 +144,7 @@ limiter = Limiter(
     strategy="moving-window",  # More accurate than fixed-window
     default_limits=[],  # No default limits; we use custom dependencies
 )
+moving_window = MovingWindowRateLimiter(storage_from_string(redis_url if redis_url else "memory://"))
 
 
 # =============================================================================
@@ -150,7 +155,7 @@ def check_rate_limit(
     request: Request,
     limit: int,
     period: int,
-    key_func: callable = get_remote_address,
+    key_func: callable = get_rate_limit_key,
     scope: Literal["ip", "global"] = "ip",
 ) -> None:
     """
@@ -168,41 +173,28 @@ def check_rate_limit(
     """
     key = key_func(request)
 
-    # Use slowapi if Redis is available, otherwise use in-memory fallback
     if redis_url:
-        try:
-            # Use slowapi's internal check
-            limiter._check_request_limit(request, limit=limit, period=period)
-        except RateLimitExceeded as e:
-            logger.warning(f"Rate limit exceeded for {scope}={key}: {limit}/{period}s")
-            raise HTTPException(
-                status_code=status.HTTP_429_TOO_MANY_REQUESTS,
-                detail={
-                    "error": "Rate limit exceeded",
-                    "scope": scope,
-                    "limit": limit,
-                    "period": period,
-                    "retry_after": e.retry_after,
-                },
-                headers={"Retry-After": str(e.retry_after)},
-            )
+        item = RateLimitItemPerSecond(limit, period)
+        scoped_key = f"{scope}:{key}"
+        allowed = moving_window.hit(item, scoped_key)
+        retry_after = 0 if allowed else max(1, math.ceil(moving_window.get_window_stats(item, scoped_key).reset_time - time.time()))
     else:
-        # Fallback to in-memory limiter
         allowed, info = in_memory_limiter.is_allowed(key, limit, period)
-        if not allowed:
-            logger.warning(f"Rate limit exceeded for {scope}={key}: {limit}/{period}s")
-            retry_after = max(0, info["reset"] - int(__import__("time").time()))
-            raise HTTPException(
-                status_code=status.HTTP_429_TOO_MANY_REQUESTS,
-                detail={
-                    "error": "Rate limit exceeded",
-                    "scope": scope,
-                    "limit": limit,
-                    "period": period,
-                    "retry_after": retry_after,
-                },
-                headers={"Retry-After": str(retry_after)},
-            )
+        retry_after = 0 if allowed else max(0, info["reset"] - int(time.time()))
+
+    if not allowed:
+        logger.warning(f"Rate limit exceeded for {scope}={key}: {limit}/{period}s")
+        raise HTTPException(
+            status_code=status.HTTP_429_TOO_MANY_REQUESTS,
+            detail={
+                "error": "Rate limit exceeded",
+                "scope": scope,
+                "limit": limit,
+                "period": period,
+                "retry_after": retry_after,
+            },
+            headers={"Retry-After": str(retry_after)},
+        )
 
 
 # =============================================================================
