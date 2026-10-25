@@ -7,7 +7,7 @@ Handles API-specific settings (host, port, CORS, auth) separate from RAG pipelin
 from pathlib import Path
 from typing import Annotated, Literal
 
-from pydantic import Field, field_validator, model_validator
+from pydantic import AliasChoices, Field, field_validator, model_validator
 from pydantic_settings import BaseSettings, NoDecode, SettingsConfigDict
 
 # Project root (techfiling-copilot/)
@@ -61,8 +61,14 @@ class APISettings(BaseSettings):
     )
     SUPABASE_JWT_SECRET: str | None = Field(
         default=None,
-        description="Supabase JWT secret for token verification (from Supabase project settings > API > JWT secret). "
-                    "Required for per-user authentication and rate limiting."
+        description="Legacy HS256 JWT secret. Only needed if your Supabase project still signs tokens with "
+                    "the shared secret; projects using asymmetric keys (ES256/RS256) only need SUPABASE_URL."
+    )
+    SUPABASE_URL: str | None = Field(
+        default=None,
+        validation_alias=AliasChoices("SUPABASE_URL", "NEXT_PUBLIC_SUPABASE_URL"),
+        description="Supabase project URL. Used to fetch the public signing keys (JWKS) that verify "
+                    "ES256/RS256 tokens. Falls back to NEXT_PUBLIC_SUPABASE_URL."
     )
 
     # Rate limiting
@@ -115,7 +121,7 @@ class APISettings(BaseSettings):
             return [str(item).strip().rstrip("/") for item in value if str(item).strip()]
         return value
 
-    @field_validator("API_ACCESS_KEY", "SUPABASE_JWT_SECRET", "RATE_LIMIT_REDIS_URL", mode="before")
+    @field_validator("API_ACCESS_KEY", "SUPABASE_JWT_SECRET", "SUPABASE_URL", "RATE_LIMIT_REDIS_URL", mode="before")
     @classmethod
     def _empty_key_is_unset(cls, value: object) -> object:
         """Treat empty API_ACCESS_KEY / SUPABASE_JWT_SECRET / RATE_LIMIT_REDIS_URL as not set."""
@@ -140,6 +146,11 @@ class APISettings(BaseSettings):
         if problems:
             raise ValueError("; ".join(problems))
         return self
+
+    @property
+    def supabase_auth_enabled(self) -> bool:
+        """True when a JWT secret or project URL is configured."""
+        return bool(self.SUPABASE_JWT_SECRET or self.SUPABASE_URL)
 
     @property
     def is_prod(self) -> bool:

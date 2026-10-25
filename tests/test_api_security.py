@@ -411,9 +411,71 @@ class TestSupabaseAuth:
         from fastapi import HTTPException
 
         monkeypatch.setattr(api_settings, "SUPABASE_JWT_SECRET", None)
+        monkeypatch.setattr(api_settings, "SUPABASE_URL", None)
 
         with pytest.raises(HTTPException, match="not configured"):
             verify_supabase_token("any_token")
+
+    @pytest.fixture
+    def es256(self, monkeypatch):
+        """ES256 keypair with the public JWK served through a mocked JWKS endpoint."""
+        from cryptography.hazmat.primitives import serialization
+        from cryptography.hazmat.primitives.asymmetric import ec
+        from jose import jwk
+
+        from api import auth
+
+        private = ec.generate_private_key(ec.SECP256R1())
+        private_pem = private.private_bytes(
+            serialization.Encoding.PEM,
+            serialization.PrivateFormat.PKCS8,
+            serialization.NoEncryption(),
+        )
+        public_pem = private.public_key().public_bytes(
+            serialization.Encoding.PEM, serialization.PublicFormat.SubjectPublicKeyInfo
+        )
+        public_jwk = {**jwk.construct(public_pem, "ES256").to_dict(), "kid": "key-1"}
+
+        monkeypatch.setattr(api_settings, "SUPABASE_URL", "https://proj.supabase.co")
+        monkeypatch.setattr(api_settings, "SUPABASE_JWT_SECRET", None)
+        monkeypatch.setattr(auth, "_fetch_jwks", lambda: [public_jwk])
+        monkeypatch.setitem(auth._jwks_cache, "keys", None)
+        monkeypatch.setitem(auth._jwks_cache, "fetched_at", 0.0)
+        return private_pem
+
+    def test_verify_es256_token_via_jwks(self, es256):
+        from api.auth import verify_supabase_token
+
+        token = jwt.encode(
+            {"sub": "user_es", "email": "es@example.com", "aud": "authenticated"},
+            es256, algorithm="ES256", headers={"kid": "key-1"},
+        )
+        user = verify_supabase_token(token)
+        assert user.user_id == "user_es" and user.email == "es@example.com"
+
+    def test_es256_unknown_kid_rejected(self, es256):
+        from fastapi import HTTPException
+
+        from api.auth import verify_supabase_token
+
+        token = jwt.encode(
+            {"sub": "x", "aud": "authenticated"}, es256, algorithm="ES256", headers={"kid": "other"},
+        )
+        with pytest.raises(HTTPException) as exc:
+            verify_supabase_token(token)
+        assert exc.value.status_code == 401
+
+    def test_hs256_rejected_when_only_url_configured(self, monkeypatch):
+        from fastapi import HTTPException
+
+        from api.auth import verify_supabase_token
+
+        monkeypatch.setattr(api_settings, "SUPABASE_URL", "https://proj.supabase.co")
+        monkeypatch.setattr(api_settings, "SUPABASE_JWT_SECRET", None)
+        token = jwt.encode({"sub": "x", "aud": "authenticated"}, "guess", algorithm="HS256")
+        with pytest.raises(HTTPException) as exc:
+            verify_supabase_token(token)
+        assert exc.value.status_code == 401
 
     def test_auth_middleware_extracts_user(self, monkeypatch):
         """Test that auth middleware extracts user info from JWT."""

@@ -6,8 +6,11 @@ This enables per-user rate limiting and user tracking.
 """
 
 import logging
+import threading
+import time
 from typing import Annotated
 
+import httpx
 from fastapi import Header, HTTPException, status
 from jose import JWTError, jwt
 from pydantic import BaseModel
@@ -17,12 +20,56 @@ from api.config import api_settings
 logger = logging.getLogger(__name__)
 
 
+ASYMMETRIC_ALGORITHMS = ("ES256", "RS256")
+JWKS_TTL_SECONDS = 600
+JWKS_TIMEOUT_SECONDS = 5
+
+_jwks_cache: dict = {"keys": None, "fetched_at": 0.0}
+_jwks_lock = threading.Lock()
+
+
 class AuthUser(BaseModel):
     """Authenticated user information extracted from JWT."""
 
     user_id: str
     email: str | None = None
     role: str = "authenticated"
+
+
+def _fetch_jwks() -> list[dict]:
+    """Fetch the project's public signing keys from Supabase."""
+    url = f"{api_settings.SUPABASE_URL.rstrip('/')}/auth/v1/.well-known/jwks.json"
+    response = httpx.get(url, timeout=JWKS_TIMEOUT_SECONDS)
+    response.raise_for_status()
+    return response.json().get("keys", [])
+
+
+def _get_signing_key(kid: str | None) -> dict:
+    """
+    Return the public JWK matching `kid`, using a TTL cache.
+
+    An unknown kid triggers one refresh (key rotation), rate-limited to avoid
+    letting forged tokens force a fetch on every request.
+    """
+    def find(keys):
+        return next((k for k in keys or [] if k.get("kid") == kid), None)
+
+    with _jwks_lock:
+        now = time.time()
+        fresh = _jwks_cache["keys"] is not None and now - _jwks_cache["fetched_at"] < JWKS_TTL_SECONDS
+        key = find(_jwks_cache["keys"]) if fresh else None
+        if key:
+            return key
+        if not fresh or now - _jwks_cache["fetched_at"] > 30:
+            try:
+                _jwks_cache.update(keys=_fetch_jwks(), fetched_at=now)
+            except httpx.HTTPError as e:
+                logger.error(f"Failed to fetch Supabase JWKS: {e}")
+                raise JWTError("Unable to fetch signing keys") from e
+            key = find(_jwks_cache["keys"])
+        if not key:
+            raise JWTError(f"No signing key found for kid={kid}")
+        return key
 
 
 def verify_supabase_token(token: str) -> AuthUser:
@@ -38,21 +85,24 @@ def verify_supabase_token(token: str) -> AuthUser:
     Raises:
         HTTPException: If token is invalid or verification fails
     """
-    if not api_settings.SUPABASE_JWT_SECRET:
-        logger.warning("SUPABASE_JWT_SECRET not set, authentication disabled")
+    if not api_settings.supabase_auth_enabled:
+        logger.warning("Neither SUPABASE_URL nor SUPABASE_JWT_SECRET set, authentication disabled")
         raise HTTPException(
             status_code=status.HTTP_501_NOT_IMPLEMENTED,
-            detail="Authentication not configured (SUPABASE_JWT_SECRET not set)",
+            detail="Authentication not configured (SUPABASE_URL / SUPABASE_JWT_SECRET not set)",
         )
 
     try:
-        # Decode and verify the JWT
-        payload = jwt.decode(
-            token,
-            api_settings.SUPABASE_JWT_SECRET,
-            algorithms=["HS256"],
-            audience="authenticated",
-        )
+        header = jwt.get_unverified_header(token)
+        alg = header.get("alg")
+        if alg == "HS256" and api_settings.SUPABASE_JWT_SECRET:
+            key, algorithms = api_settings.SUPABASE_JWT_SECRET, ["HS256"]
+        elif alg in ASYMMETRIC_ALGORITHMS and api_settings.SUPABASE_URL:
+            key, algorithms = _get_signing_key(header.get("kid")), [alg]
+        else:
+            raise JWTError(f"Unsupported or unconfigured token algorithm: {alg}")
+
+        payload = jwt.decode(token, key, algorithms=algorithms, audience="authenticated")
 
         # Extract user information
         user_id = payload.get("sub")

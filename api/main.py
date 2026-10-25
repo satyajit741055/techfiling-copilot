@@ -138,11 +138,11 @@ app.add_middleware(
 )
 
 # Add auth middleware to extract user info from JWT (optional, enables per-user rate limiting)
-if api_settings.SUPABASE_JWT_SECRET:
+if api_settings.supabase_auth_enabled:
     app.add_middleware(AuthMiddleware)
     logger.info("Supabase JWT authentication: ENABLED (per-user rate limiting)")
 else:
-    logger.info("Supabase JWT authentication: DISABLED (SUPABASE_JWT_SECRET not set; rate limiting uses IP)")
+    logger.info("Supabase JWT authentication: DISABLED (SUPABASE_URL / SUPABASE_JWT_SECRET not set; rate limiting uses IP)")
 
 # Add correlation ID middleware for request tracking
 app.add_middleware(CorrelationIDMiddleware)
