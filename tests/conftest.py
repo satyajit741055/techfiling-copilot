@@ -38,6 +38,18 @@ def client():
 
 
 @pytest.fixture(autouse=True)
+def supabase_auth_disabled_by_default(monkeypatch):
+    """
+    Tests run with login enforcement off regardless of the developer's .env.
+    Auth tests turn it on explicitly via monkeypatch.
+    """
+    from api.config import api_settings
+
+    monkeypatch.setattr(api_settings, "SUPABASE_URL", None)
+    monkeypatch.setattr(api_settings, "SUPABASE_JWT_SECRET", None)
+
+
+@pytest.fixture(autouse=True)
 def clear_rate_limiter():
     """
     Clear rate limiter state before each test to avoid rate limit errors in tests.

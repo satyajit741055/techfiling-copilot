@@ -177,13 +177,17 @@ def check_rate_limit(
         item = RateLimitItemPerSecond(limit, period)
         scoped_key = f"{scope}:{key}"
         allowed = moving_window.hit(item, scoped_key)
-        retry_after = 0 if allowed else max(1, math.ceil(moving_window.get_window_stats(item, scoped_key).reset_time - time.time()))
+        stats = moving_window.get_window_stats(item, scoped_key)
+        remaining, reset = stats.remaining, math.ceil(stats.reset_time)
     else:
         allowed, info = in_memory_limiter.is_allowed(key, limit, period)
-        retry_after = 0 if allowed else max(0, info["reset"] - int(time.time()))
+        remaining, reset = info["remaining"], info["reset"]
+
+    request.state.rate_limit = {"limit": limit, "remaining": remaining, "reset": reset}
+    retry_after = 0 if allowed else max(1, reset - int(time.time()))
 
     if not allowed:
-        logger.warning(f"Rate limit exceeded for {scope}={key}: {limit}/{period}s")
+        logger.warning(f"Rate limit exceeded for {key}: {limit}/{period}s")
         raise HTTPException(
             status_code=status.HTTP_429_TOO_MANY_REQUESTS,
             detail={

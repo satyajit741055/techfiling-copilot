@@ -11,7 +11,7 @@ import time
 from typing import Annotated
 
 import httpx
-from fastapi import Header, HTTPException, status
+from fastapi import Header, HTTPException, Request, status
 from jose import JWTError, jwt
 from pydantic import BaseModel
 
@@ -124,6 +124,22 @@ def verify_supabase_token(token: str) -> AuthUser:
             status_code=status.HTTP_401_UNAUTHORIZED,
             detail="Invalid or expired token",
         ) from e
+
+
+def require_user(request: Request) -> None:
+    """
+    Router-level dependency: require a signed-in user on protected endpoints.
+
+    AuthMiddleware has already verified any Bearer token and set request.state.user_id.
+    When Supabase auth is not configured (local dev) this check is skipped.
+    """
+    if not api_settings.supabase_auth_enabled or getattr(request.state, "user_id", None):
+        return
+    raise HTTPException(
+        status_code=status.HTTP_401_UNAUTHORIZED,
+        detail="Please sign in to continue.",
+        headers={"WWW-Authenticate": "Bearer"},
+    )
 
 
 def get_current_user(

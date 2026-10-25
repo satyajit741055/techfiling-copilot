@@ -9,6 +9,7 @@ import uuid
 from typing import Callable
 
 from fastapi import Request, Response
+from starlette.concurrency import run_in_threadpool
 from starlette.middleware.base import BaseHTTPMiddleware
 from starlette.types import ASGIApp
 
@@ -50,6 +51,13 @@ class CorrelationIDMiddleware(BaseHTTPMiddleware):
 
         # Add correlation ID to response headers
         response.headers["X-Correlation-ID"] = correlation_id
+
+        # Expose the caller's remaining quota (set by the rate limit dependency)
+        rate_limit = getattr(request.state, "rate_limit", None)
+        if rate_limit:
+            response.headers["X-RateLimit-Limit"] = str(rate_limit["limit"])
+            response.headers["X-RateLimit-Remaining"] = str(max(0, rate_limit["remaining"]))
+            response.headers["X-RateLimit-Reset"] = str(rate_limit["reset"])
 
         # Log response with correlation ID
         logger.info(
@@ -125,7 +133,8 @@ class AuthMiddleware(BaseHTTPMiddleware):
             try:
                 from api.auth import verify_supabase_token
                 token = authorization[7:]  # Remove "Bearer " prefix
-                user = verify_supabase_token(token)
+                # Threadpool: the first call may fetch the JWKS over the network
+                user = await run_in_threadpool(verify_supabase_token, token)
                 # Add user info to request state for rate limiting
                 request.state.user_id = user.user_id
                 request.state.user_email = user.email

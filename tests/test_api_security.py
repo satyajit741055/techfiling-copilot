@@ -477,40 +477,65 @@ class TestSupabaseAuth:
             verify_supabase_token(token)
         assert exc.value.status_code == 401
 
-    def test_auth_middleware_extracts_user(self, monkeypatch):
-        """Test that auth middleware extracts user info from JWT."""
-        from api.middleware import AuthMiddleware
-        from fastapi import Request
 
-        secret = "test_jwt_secret_for_testing"
-        monkeypatch.setattr(api_settings, "SUPABASE_JWT_SECRET", secret)
 
-        payload = {
-            "sub": "user_456",
-            "email": "user@example.com",
-            "role": "authenticated",
-            "aud": "authenticated"
-        }
-        token = jwt.encode(payload, secret, algorithm="HS256")
+# =============================================================================
+# LOGIN REQUIRED + PER-USER LIMITS + RATE LIMIT HEADERS (through the real app)
+# =============================================================================
 
-        # Create a mock request with Authorization header
-        request = Request(
-            {
-                "type": "http",
-                "method": "GET",
-                "headers": [(b"authorization", f"Bearer {token}".encode())],
-                "query_string": b"",
-                "path": "/test",
-            }
-        )
+SECRET = "test_jwt_secret_for_testing"
 
-        async def call_next(req):
-            # Check that user info was added to request state
-            assert hasattr(req.state, "user_id")
-            assert req.state.user_id == "user_456"
-            assert req.state.user_email == "user@example.com"
-            from fastapi import Response
-            return Response()
 
-        middleware = AuthMiddleware(app)
-        # Note: This is a simplified test; in practice, the middleware is tested via integration tests
+def _token(user_id: str, secret: str = SECRET) -> dict:
+    token = jwt.encode({"sub": user_id, "aud": "authenticated"}, secret, algorithm="HS256")
+    return {"Authorization": f"Bearer {token}"}
+
+
+@pytest.fixture
+def auth_on(monkeypatch):
+    monkeypatch.setattr(api_settings, "API_ACCESS_KEY", None)
+    monkeypatch.setattr(api_settings, "SUPABASE_JWT_SECRET", SECRET)
+
+
+class TestLoginRequired:
+    def test_missing_token_rejected(self, client, auth_on):
+        response = client.get("/filings")
+        assert response.status_code == 401
+        assert response.headers["www-authenticate"] == "Bearer"
+
+    def test_questions_rejects_guests_before_validation(self, client, auth_on):
+        assert client.post("/questions", json={}).status_code == 401
+        assert client.post("/questions", json={}, headers=_token("u1")).status_code == 422
+
+    def test_invalid_and_wrong_secret_tokens_rejected(self, client, auth_on):
+        assert client.get("/filings", headers={"Authorization": "Bearer garbage"}).status_code == 401
+        assert client.get("/filings", headers=_token("u1", secret="other-secret")).status_code == 401
+
+    def test_valid_token_accepted(self, client, auth_on):
+        assert client.get("/filings", headers=_token("u1")).status_code == 200
+
+    def test_health_stays_open(self, client, auth_on):
+        assert client.get("/health").status_code == 200
+
+    def test_open_when_auth_not_configured(self, client, monkeypatch):
+        monkeypatch.setattr(api_settings, "API_ACCESS_KEY", None)
+        assert client.get("/filings").status_code == 200
+
+    def test_limits_are_per_user(self, client, auth_on):
+        limit = api_settings.RATE_LIMIT_FILINGS_PER_MINUTE
+        for _ in range(limit):
+            assert client.get("/filings", headers=_token("user_a")).status_code == 200
+        blocked = client.get("/filings", headers=_token("user_a"))
+        assert blocked.status_code == 429
+        assert int(blocked.headers["Retry-After"]) >= 1
+        assert client.get("/filings", headers=_token("user_b")).status_code == 200
+
+    def test_rate_limit_headers(self, client, monkeypatch):
+        monkeypatch.setattr(api_settings, "API_ACCESS_KEY", None)
+        first = client.get("/filings")
+        limit = api_settings.RATE_LIMIT_FILINGS_PER_MINUTE
+        assert first.headers["X-RateLimit-Limit"] == str(limit)
+        assert first.headers["X-RateLimit-Remaining"] == str(limit - 1)
+        assert int(first.headers["X-RateLimit-Reset"]) > 0
+        second = client.get("/filings")
+        assert second.headers["X-RateLimit-Remaining"] == str(limit - 2)

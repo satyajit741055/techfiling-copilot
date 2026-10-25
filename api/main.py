@@ -28,6 +28,7 @@ from fastapi.middleware.cors import CORSMiddleware
 from slowapi import _rate_limit_exceeded_handler
 from slowapi.errors import RateLimitExceeded
 
+from api.auth import require_user
 from api.config import api_settings
 from api.dependencies import init_generator, shutdown_generator
 from api.middleware import AuthMiddleware, CorrelationIDMiddleware, RequestLoggingMiddleware
@@ -138,9 +139,9 @@ app.add_middleware(
 )
 
 # Add auth middleware to extract user info from JWT (optional, enables per-user rate limiting)
+app.add_middleware(AuthMiddleware)
 if api_settings.supabase_auth_enabled:
-    app.add_middleware(AuthMiddleware)
-    logger.info("Supabase JWT authentication: ENABLED (per-user rate limiting)")
+    logger.info("Supabase JWT authentication: ENABLED (login required; per-user rate limiting)")
 else:
     logger.info("Supabase JWT authentication: DISABLED (SUPABASE_URL / SUPABASE_JWT_SECRET not set; rate limiting uses IP)")
 
@@ -157,8 +158,8 @@ if api_settings.ENVIRONMENT == "dev":
 # =============================================================================
 
 app.include_router(health.router, tags=["Health"])
-app.include_router(filings.router, tags=["Filings"], dependencies=[Depends(require_api_key)])
-app.include_router(questions.router, tags=["Questions"], dependencies=[Depends(require_api_key)])
+app.include_router(filings.router, tags=["Filings"], dependencies=[Depends(require_api_key), Depends(require_user)])
+app.include_router(questions.router, tags=["Questions"], dependencies=[Depends(require_api_key), Depends(require_user)])
 
 
 # =============================================================================
