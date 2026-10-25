@@ -1,4 +1,5 @@
 import type { FilingsResponse, QuestionResponse, HealthResponse, ErrorResponse } from '@/types';
+import { getAccessToken } from '@/lib/supabase';
 
 // Calls go to this app's own server-side proxy (app/api/[...path]/route.ts),
 // which adds the backend API key. No secret is ever shipped to the browser.
@@ -26,12 +27,16 @@ async function fetchAPI<T>(
   options?: RequestInit
 ): Promise<T> {
   const url = `${API_BASE}${endpoint}`;
-  
+
+  // Get JWT token if user is authenticated
+  const token = await getAccessToken();
+
   try {
     const response = await fetch(url, {
       ...options,
       headers: {
         'Content-Type': 'application/json',
+        ...(token && { 'Authorization': `Bearer ${token}` }),
         ...options?.headers,
       },
     });

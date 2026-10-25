@@ -12,6 +12,8 @@ from fastapi import Request, Response
 from starlette.middleware.base import BaseHTTPMiddleware
 from starlette.types import ASGIApp
 
+from api.auth import optional_get_current_user
+
 logger = logging.getLogger(__name__)
 
 
@@ -105,3 +107,32 @@ class RequestLoggingMiddleware(BaseHTTPMiddleware):
         )
 
         return response
+
+
+class AuthMiddleware(BaseHTTPMiddleware):
+    """
+    Middleware to extract user information from JWT and add to request state.
+
+    This enables per-user rate limiting without requiring authentication on every endpoint.
+    If no valid token is provided, the request continues without user info (rate limiting falls back to IP).
+    """
+
+    async def dispatch(self, request: Request, call_next: Callable) -> Response:
+        # Try to extract user from Authorization header
+        authorization = request.headers.get("Authorization")
+
+        if authorization and authorization.startswith("Bearer "):
+            try:
+                from api.auth import verify_supabase_token
+                token = authorization[7:]  # Remove "Bearer " prefix
+                user = verify_supabase_token(token)
+                # Add user info to request state for rate limiting
+                request.state.user_id = user.user_id
+                request.state.user_email = user.email
+                logger.debug(f"Authenticated request from user: {user.user_id}")
+            except Exception as e:
+                # Auth failed, but continue without user info (rate limiting will use IP)
+                logger.debug(f"Auth middleware: failed to verify token: {e}")
+
+        # Process request
+        return await call_next(request)

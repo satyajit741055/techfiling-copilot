@@ -37,6 +37,10 @@ async function proxy(
   if (contentType) headers['Content-Type'] = contentType;
   if (apiKey) headers['X-API-Key'] = apiKey;
 
+  // Forward Authorization header if present (for JWT authentication)
+  const authHeader = request.headers.get('authorization');
+  if (authHeader) headers['Authorization'] = authHeader;
+
   try {
     const upstream = await fetch(`${backendUrl}/${target}`, {
       method: request.method,

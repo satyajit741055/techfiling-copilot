@@ -30,7 +30,7 @@ from slowapi.errors import RateLimitExceeded
 
 from api.config import api_settings
 from api.dependencies import init_generator, shutdown_generator
-from api.middleware import CorrelationIDMiddleware, RequestLoggingMiddleware
+from api.middleware import AuthMiddleware, CorrelationIDMiddleware, RequestLoggingMiddleware
 from api.rate_limit import limiter
 from api.routers import filings, health, questions
 from api.security import require_api_key
@@ -134,8 +134,15 @@ app.add_middleware(
     allow_origins=api_settings.CORS_ORIGINS,
     allow_credentials=False,
     allow_methods=["GET", "POST", "OPTIONS"],
-    allow_headers=["Content-Type", "X-API-Key", "X-Correlation-ID"],
+    allow_headers=["Content-Type", "X-API-Key", "X-Correlation-ID", "Authorization"],
 )
+
+# Add auth middleware to extract user info from JWT (optional, enables per-user rate limiting)
+if api_settings.SUPABASE_JWT_SECRET:
+    app.add_middleware(AuthMiddleware)
+    logger.info("Supabase JWT authentication: ENABLED (per-user rate limiting)")
+else:
+    logger.info("Supabase JWT authentication: DISABLED (SUPABASE_JWT_SECRET not set; rate limiting uses IP)")
 
 # Add correlation ID middleware for request tracking
 app.add_middleware(CorrelationIDMiddleware)

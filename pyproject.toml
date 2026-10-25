@@ -24,6 +24,8 @@ dependencies = [
     # Rate limiting
     "slowapi>=0.1.9",
     "redis>=5.2.1",
+    # Authentication
+    "python-jose[cryptography]>=3.3.0",
 ]
 
 [project.optional-dependencies]

@@ -59,6 +59,11 @@ class APISettings(BaseSettings):
         description="Shared secret required in the X-API-Key header on /questions and /filings. "
                     "Required when ENVIRONMENT=prod; auth is disabled in dev when unset."
     )
+    SUPABASE_JWT_SECRET: str | None = Field(
+        default=None,
+        description="Supabase JWT secret for token verification (from Supabase project settings > API > JWT secret). "
+                    "Required for per-user authentication and rate limiting."
+    )
 
     # Rate limiting
     RATE_LIMIT_REDIS_URL: str | None = Field(

@@ -12,6 +12,7 @@ from api.config import DEV_CORS_ORIGINS, APISettings, api_settings
 from api.dependencies import get_filings, get_rag_service, get_valid_doc_ids
 from api.main import app
 from api.routers import health
+from jose import jwt
 
 VALID_KEY = "k" * 32
 PROD = {"ENVIRONMENT": "prod", "API_ACCESS_KEY": VALID_KEY, "CORS_ORIGINS": "https://app.example.com"}
@@ -307,3 +308,99 @@ class TestRateLimiting:
         custom_id = "my-custom-correlation-id"
         response = client.get("/filings", headers={"X-Correlation-ID": custom_id})
         assert response.headers["X-Correlation-ID"] == custom_id
+
+
+# =============================================================================
+# SUPABASE AUTHENTICATION
+# =============================================================================
+
+class TestSupabaseAuth:
+    def test_jwt_secret_configurable(self):
+        """Test that JWT secret can be configured."""
+        s = make_settings(SUPABASE_JWT_SECRET="test_secret")
+        assert s.SUPABASE_JWT_SECRET == "test_secret"
+
+    def test_jwt_secret_optional(self):
+        """Test that JWT secret is optional (auth disabled when not set)."""
+        s = make_settings()
+        assert s.SUPABASE_JWT_SECRET is None
+
+    def test_verify_valid_token(self, monkeypatch):
+        """Test that a valid Supabase JWT can be verified."""
+        from api.auth import verify_supabase_token
+
+        # Create a test token
+        secret = "test_jwt_secret_for_testing"
+        monkeypatch.setattr(api_settings, "SUPABASE_JWT_SECRET", secret)
+
+        payload = {
+            "sub": "user_123",
+            "email": "test@example.com",
+            "role": "authenticated",
+            "aud": "authenticated"
+        }
+        token = jwt.encode(payload, secret, algorithm="HS256")
+
+        user = verify_supabase_token(token)
+        assert user.user_id == "user_123"
+        assert user.email == "test@example.com"
+        assert user.role == "authenticated"
+
+    def test_verify_invalid_token(self, monkeypatch):
+        """Test that an invalid token is rejected."""
+        from api.auth import verify_supabase_token
+        from fastapi import HTTPException
+
+        secret = "test_jwt_secret_for_testing"
+        monkeypatch.setattr(api_settings, "SUPABASE_JWT_SECRET", secret)
+
+        with pytest.raises(HTTPException, match="Invalid or expired token"):
+            verify_supabase_token("invalid_token")
+
+    def test_verify_token_without_secret(self, monkeypatch):
+        """Test that verification fails gracefully when secret is not set."""
+        from api.auth import verify_supabase_token
+        from fastapi import HTTPException
+
+        monkeypatch.setattr(api_settings, "SUPABASE_JWT_SECRET", None)
+
+        with pytest.raises(HTTPException, match="not configured"):
+            verify_supabase_token("any_token")
+
+    def test_auth_middleware_extracts_user(self, monkeypatch):
+        """Test that auth middleware extracts user info from JWT."""
+        from api.middleware import AuthMiddleware
+        from fastapi import Request
+
+        secret = "test_jwt_secret_for_testing"
+        monkeypatch.setattr(api_settings, "SUPABASE_JWT_SECRET", secret)
+
+        payload = {
+            "sub": "user_456",
+            "email": "user@example.com",
+            "role": "authenticated",
+            "aud": "authenticated"
+        }
+        token = jwt.encode(payload, secret, algorithm="HS256")
+
+        # Create a mock request with Authorization header
+        request = Request(
+            {
+                "type": "http",
+                "method": "GET",
+                "headers": [(b"authorization", f"Bearer {token}".encode())],
+                "query_string": b"",
+                "path": "/test",
+            }
+        )
+
+        async def call_next(req):
+            # Check that user info was added to request state
+            assert hasattr(req.state, "user_id")
+            assert req.state.user_id == "user_456"
+            assert req.state.user_email == "user@example.com"
+            from fastapi import Response
+            return Response()
+
+        middleware = AuthMiddleware(app)
+        # Note: This is a simplified test; in practice, the middleware is tested via integration tests

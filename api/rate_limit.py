@@ -2,12 +2,13 @@
 Rate Limiting with Redis Backend.
 
 Implements distributed rate limiting using slowapi with Redis storage.
-Supports per-IP and global rate limits with in-memory fallback for development.
+Supports per-IP, per-user, and global rate limits with in-memory fallback for development.
 
 Features:
 - Redis-backed distributed rate limiting (production)
 - In-memory fallback for development (no Redis required)
-- Per-IP rate limiting for all endpoints
+- Per-IP rate limiting (fallback when no auth)
+- Per-user rate limiting (when JWT is present)
 - Global rate limiting for expensive operations
 - Configurable limits via environment variables
 """
@@ -24,6 +25,29 @@ from slowapi.errors import RateLimitExceeded
 from api.config import api_settings
 
 logger = logging.getLogger(__name__)
+
+
+# =============================================================================
+# RATE LIMIT KEY FUNCTIONS
+# =============================================================================
+
+def get_rate_limit_key(request: Request) -> str:
+    """
+    Get rate limit key based on authentication status.
+
+    Priority:
+    1. User ID from JWT (if authenticated)
+    2. IP address (fallback for unauthenticated requests)
+
+    This enables per-user rate limiting when auth is enabled,
+    while falling back to per-IP for backward compatibility.
+    """
+    # Try to get user ID from request state (set by auth middleware)
+    if hasattr(request.state, "user_id") and request.state.user_id:
+        return f"user:{request.state.user_id}"
+
+    # Fallback to IP address
+    return f"ip:{get_remote_address(request)}"
 
 
 # =============================================================================
@@ -111,7 +135,7 @@ def get_redis_storage():
 # Create limiter with moving window strategy (more accurate than fixed window)
 redis_url = get_redis_storage()
 limiter = Limiter(
-    key_func=get_remote_address,
+    key_func=get_rate_limit_key,
     storage_uri=redis_url if redis_url else "memory://",
     strategy="moving-window",  # More accurate than fixed-window
     default_limits=[],  # No default limits; we use custom dependencies
