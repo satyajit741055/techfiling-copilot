@@ -1,5 +1,6 @@
 'use client';
 
+import { AlertIcon } from '@/components/icons';
 import type { Answer } from '@/types';
 
 interface AnswerCardProps {
@@ -8,21 +9,27 @@ interface AnswerCardProps {
   onCitationClick: (sourceId: string) => void;
 }
 
+function QuestionEcho({ question }: { question: string }) {
+  return (
+    <p className="mb-3 text-sm text-slate-500">
+      <span className="font-semibold text-slate-600">Q</span> {question}
+    </p>
+  );
+}
+
 export function AnswerCard({ answer, question, onCitationClick }: AnswerCardProps) {
-  // Insufficient context - show warning
   if (answer.insufficient_context) {
     return (
-      <div className="p-5 bg-amber-50 border border-amber-200 rounded-lg">
+      <div className="rounded-2xl border border-amber-200 bg-amber-50 p-5">
+        <QuestionEcho question={question} />
         <div className="flex items-start gap-3">
-          <span className="text-2xl">⚠️</span>
-          <div className="flex-1">
-            <h3 className="font-semibold text-amber-800 mb-2">
-              Insufficient Evidence
-            </h3>
-            <p className="text-amber-700">{answer.explanation}</p>
-            <p className="text-sm text-amber-600 mt-3">
-              The filing does not contain enough information to answer this question
-              with confidence.
+          <AlertIcon className="mt-0.5 h-5 w-5 shrink-0 text-amber-600" />
+          <div>
+            <h3 className="font-semibold text-amber-900">Not enough evidence in this filing</h3>
+            <p className="mt-1.5 leading-relaxed text-amber-800">{answer.explanation}</p>
+            <p className="mt-3 text-sm text-amber-700">
+              The filing does not contain enough information to answer this with confidence. Try rephrasing, or pick a
+              different filing.
             </p>
           </div>
         </div>
@@ -30,81 +37,52 @@ export function AnswerCard({ answer, question, onCitationClick }: AnswerCardProp
     );
   }
 
-  // Validation errors - show warning but still display answer
-  if (!answer.is_valid && answer.validation_errors.length > 0) {
-    return (
-      <div className="space-y-4">
-        <div className="p-4 bg-red-50 border border-red-200 rounded-lg">
-          <h3 className="font-semibold text-red-800 mb-2">Validation Issues</h3>
-          <ul className="list-disc list-inside text-red-700 text-sm">
+  const hasValidationIssues = !answer.is_valid && answer.validation_errors.length > 0;
+
+  return (
+    <div className="space-y-4">
+      {hasValidationIssues && (
+        <div className="rounded-2xl border border-red-200 bg-red-50 p-4">
+          <h3 className="font-semibold text-red-800">Validation issues</h3>
+          <ul className="mt-1.5 list-inside list-disc text-sm text-red-700">
             {answer.validation_errors.map((err, i) => (
               <li key={i}>{err}</li>
             ))}
           </ul>
         </div>
+      )}
+
+      <div className="rounded-2xl border border-slate-200 bg-white p-6 shadow-sm">
+        <QuestionEcho question={question} />
+
         {answer.answer && (
-          <div className="p-5 bg-white border border-gray-200 rounded-lg shadow-sm">
-            <div className="text-xl font-bold text-gray-900 mb-3">
-              {answer.answer}
-            </div>
-            <p className="text-gray-700">{answer.explanation}</p>
+          <div className="mb-3 text-2xl font-bold leading-snug tracking-tight text-slate-900">{answer.answer}</div>
+        )}
+
+        <p className="leading-relaxed text-slate-700">{answer.explanation}</p>
+
+        {answer.calculation && (
+          <div className="mt-5 rounded-xl border border-slate-200 bg-slate-50 p-3.5">
+            <div className="mb-1 text-xs font-semibold uppercase tracking-wide text-slate-500">Calculation</div>
+            <code className="whitespace-pre-wrap font-mono text-sm text-slate-800">{answer.calculation}</code>
           </div>
         )}
-      </div>
-    );
-  }
 
-  // Normal answer
-  return (
-    <div className="p-5 bg-white border border-gray-200 rounded-lg shadow-sm">
-      {/* Question echo */}
-      <div className="text-sm text-gray-500 mb-3">
-        <span className="font-medium">Q:</span> {question}
-      </div>
-
-      {/* Main answer */}
-      {answer.answer && (
-        <div className="text-2xl font-bold text-gray-900 mb-3">
-          {answer.answer}
-        </div>
-      )}
-
-      {/* Explanation */}
-      <p className="text-gray-700 leading-relaxed">{answer.explanation}</p>
-
-      {/* Calculation (if present) */}
-      {answer.calculation && (
-        <div className="mt-4 p-3 bg-gray-50 rounded-lg border border-gray-100">
-          <div className="text-xs text-gray-500 mb-1 font-medium">Calculation</div>
-          <code className="text-sm text-gray-800 font-mono whitespace-pre-wrap">
-            {answer.calculation}
-          </code>
-        </div>
-      )}
-
-      {/* Citations */}
-      {answer.citations.length > 0 && (
-        <div className="mt-4 pt-4 border-t border-gray-100">
-          <div className="flex items-center gap-2 flex-wrap">
-            <span className="text-sm text-gray-500">Sources:</span>
+        {answer.citations.length > 0 && (
+          <div className="mt-5 flex flex-wrap items-center gap-2 border-t border-slate-100 pt-4">
+            <span className="text-sm text-slate-500">Sources</span>
             {answer.citations.map((citation) => (
               <button
                 key={citation}
                 onClick={() => onCitationClick(citation)}
-                className={`
-                  px-2.5 py-1 rounded-md text-sm font-medium
-                  bg-blue-100 text-blue-700
-                  hover:bg-blue-200
-                  focus:ring-2 focus:ring-blue-500 focus:ring-offset-1
-                  transition-colors
-                `}
+                className="rounded-md bg-brand-50 px-2.5 py-1 text-sm font-medium text-brand-700 ring-1 ring-inset ring-brand-100 transition-colors hover:bg-brand-100 focus:outline-none focus:ring-2 focus:ring-brand-500"
               >
                 [{citation}]
               </button>
             ))}
           </div>
-        </div>
-      )}
+        )}
+      </div>
     </div>
   );
 }

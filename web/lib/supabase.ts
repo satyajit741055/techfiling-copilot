@@ -17,6 +17,8 @@ export const supabase = supabaseUrl && supabaseAnonKey
   ? createClient(supabaseUrl, supabaseAnonKey)
   : null;
 
+export const isAuthConfigured = supabase !== null;
+
 /**
  * Get the current session's access token for API requests
  */

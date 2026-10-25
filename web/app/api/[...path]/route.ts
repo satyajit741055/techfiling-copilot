@@ -14,6 +14,15 @@ const ALLOWED: Record<string, string[]> = {
   POST: ['questions'],
 };
 
+// Backend response headers the UI needs (quota display, retry timing, support reference).
+const FORWARDED_RESPONSE_HEADERS = [
+  'retry-after',
+  'x-ratelimit-limit',
+  'x-ratelimit-remaining',
+  'x-ratelimit-reset',
+  'x-correlation-id',
+];
+
 function errorResponse(status: number, detail: string): Response {
   return Response.json({ detail }, { status });
 }
@@ -50,9 +59,17 @@ async function proxy(
       signal: AbortSignal.timeout(UPSTREAM_TIMEOUT_MS),
     });
 
+    const responseHeaders: Record<string, string> = {
+      'Content-Type': upstream.headers.get('content-type') || 'application/json',
+    };
+    for (const name of FORWARDED_RESPONSE_HEADERS) {
+      const value = upstream.headers.get(name);
+      if (value) responseHeaders[name] = value;
+    }
+
     return new Response(await upstream.text(), {
       status: upstream.status,
-      headers: { 'Content-Type': upstream.headers.get('content-type') || 'application/json' },
+      headers: responseHeaders,
     });
   } catch {
     return errorResponse(502, 'Backend unavailable');
