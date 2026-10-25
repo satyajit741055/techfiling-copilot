@@ -60,6 +60,29 @@ class APISettings(BaseSettings):
                     "Required when ENVIRONMENT=prod; auth is disabled in dev when unset."
     )
 
+    # Rate limiting
+    RATE_LIMIT_REDIS_URL: str | None = Field(
+        default=None,
+        description="Redis URL for distributed rate limiting (e.g., redis://localhost:6379/0). "
+                    "If not set, uses in-memory storage (development only)."
+    )
+    RATE_LIMIT_DEFAULT_PER_MINUTE: int = Field(
+        default=60,
+        description="Default rate limit per IP per minute for all endpoints"
+    )
+    RATE_LIMIT_QUESTIONS_PER_MINUTE: int = Field(
+        default=2,
+        description="Rate limit per IP per minute for /questions endpoint (expensive LLM calls)"
+    )
+    RATE_LIMIT_FILINGS_PER_MINUTE: int = Field(
+        default=30,
+        description="Rate limit per IP per minute for /filings endpoint"
+    )
+    RATE_LIMIT_GLOBAL_PER_MINUTE: int = Field(
+        default=100,
+        description="Global rate limit across all IPs per minute (system protection)"
+    )
+
     # Paths
     PARSED_DATA_DIR: Path = Field(
         default=ROOT / "data" / "parsed",

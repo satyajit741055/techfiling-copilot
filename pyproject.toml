@@ -21,6 +21,9 @@ dependencies = [
     "deepeval==4.2.8",
     "huggingface-hub>=1.16.1",
     "httpx>=0.28.1",
+    # Rate limiting
+    "slowapi>=0.1.9",
+    "redis>=5.2.1",
 ]
 
 [project.optional-dependencies]

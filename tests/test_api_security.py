@@ -1,5 +1,5 @@
 """
-Offline tests for API security (config validation, API-key auth, CORS) and
+Offline tests for API security (config validation, API-key auth, CORS, rate limiting) and
 readiness checks. These never load the RAG pipeline: dependencies are overridden.
 """
 
@@ -23,7 +23,16 @@ def make_settings(**overrides) -> APISettings:
 
 @pytest.fixture(autouse=True)
 def clean_env(monkeypatch):
-    for name in ("ENVIRONMENT", "API_ACCESS_KEY", "CORS_ORIGINS"):
+    for name in (
+        "ENVIRONMENT",
+        "API_ACCESS_KEY",
+        "CORS_ORIGINS",
+        "RATE_LIMIT_REDIS_URL",
+        "RATE_LIMIT_DEFAULT_PER_MINUTE",
+        "RATE_LIMIT_QUESTIONS_PER_MINUTE",
+        "RATE_LIMIT_FILINGS_PER_MINUTE",
+        "RATE_LIMIT_GLOBAL_PER_MINUTE",
+    ):
         monkeypatch.delenv(name, raising=False)
 
 
@@ -95,6 +104,9 @@ def client():
         yield TestClient(app)
     finally:
         app.dependency_overrides.clear()
+        # Clear rate limiter state between tests
+        from api.rate_limit import in_memory_limiter
+        in_memory_limiter.requests.clear()
 
 
 class TestAuth:
@@ -224,3 +236,74 @@ class TestReadiness:
         monkeypatch.setattr(cls, "effective_embedding_mode", property(lambda self: "huggingface_api"))
         remote = health.run_readiness_checks()
         assert "huggingface_api" in remote and "ollama" not in remote
+
+
+# =============================================================================
+# RATE LIMITING
+# =============================================================================
+
+class TestRateLimiting:
+    def test_rate_limit_config_defaults(self):
+        """Test that rate limit configuration has sensible defaults."""
+        s = make_settings()
+        assert s.RATE_LIMIT_DEFAULT_PER_MINUTE > 0
+        assert s.RATE_LIMIT_QUESTIONS_PER_MINUTE > 0
+        assert s.RATE_LIMIT_FILINGS_PER_MINUTE > 0
+        assert s.RATE_LIMIT_GLOBAL_PER_MINUTE > 0
+        assert s.RATE_LIMIT_REDIS_URL is None  # Default to in-memory for dev
+
+    def test_rate_limit_config_custom(self):
+        """Test that rate limit configuration can be customized."""
+        s = make_settings(
+            RATE_LIMIT_DEFAULT_PER_MINUTE=100,
+            RATE_LIMIT_QUESTIONS_PER_MINUTE=20,
+            RATE_LIMIT_FILINGS_PER_MINUTE=50,
+            RATE_LIMIT_GLOBAL_PER_MINUTE=200,
+            RATE_LIMIT_REDIS_URL="redis://localhost:6379/0"
+        )
+        assert s.RATE_LIMIT_DEFAULT_PER_MINUTE == 100
+        assert s.RATE_LIMIT_QUESTIONS_PER_MINUTE == 20
+        assert s.RATE_LIMIT_FILINGS_PER_MINUTE == 50
+        assert s.RATE_LIMIT_GLOBAL_PER_MINUTE == 200
+        assert s.RATE_LIMIT_REDIS_URL == "redis://localhost:6379/0"
+
+    def test_in_memory_limiter_basic(self):
+        """Test that in-memory limiter correctly tracks requests."""
+        from api.rate_limit import in_memory_limiter
+
+        # Clear state
+        in_memory_limiter.requests.clear()
+
+        # First request should be allowed
+        allowed, info = in_memory_limiter.is_allowed("test_ip", limit=3, period=60)
+        assert allowed is True
+        assert info["remaining"] == 2
+
+        # Second request should be allowed
+        allowed, info = in_memory_limiter.is_allowed("test_ip", limit=3, period=60)
+        assert allowed is True
+        assert info["remaining"] == 1
+
+        # Third request should be allowed
+        allowed, info = in_memory_limiter.is_allowed("test_ip", limit=3, period=60)
+        assert allowed is True
+        assert info["remaining"] == 0
+
+        # Fourth request should be rate limited
+        allowed, info = in_memory_limiter.is_allowed("test_ip", limit=3, period=60)
+        assert allowed is False
+        assert info["remaining"] == 0
+
+    def test_correlation_id_header(self, client, monkeypatch):
+        """Test that correlation ID is added to responses."""
+        monkeypatch.setattr(api_settings, "API_ACCESS_KEY", None)
+        response = client.get("/filings")
+        assert "X-Correlation-ID" in response.headers
+        assert len(response.headers["X-Correlation-ID"]) > 0
+
+    def test_correlation_id_preserved(self, client, monkeypatch):
+        """Test that client-provided correlation ID is preserved."""
+        monkeypatch.setattr(api_settings, "API_ACCESS_KEY", None)
+        custom_id = "my-custom-correlation-id"
+        response = client.get("/filings", headers={"X-Correlation-ID": custom_id})
+        assert response.headers["X-Correlation-ID"] == custom_id

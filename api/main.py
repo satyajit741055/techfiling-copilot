@@ -23,11 +23,15 @@ Endpoints:
 import logging
 from contextlib import asynccontextmanager
 
-from fastapi import Depends, FastAPI
+from fastapi import Depends, FastAPI, Request
 from fastapi.middleware.cors import CORSMiddleware
+from slowapi import _rate_limit_exceeded_handler
+from slowapi.errors import RateLimitExceeded
 
 from api.config import api_settings
 from api.dependencies import init_generator, shutdown_generator
+from api.middleware import CorrelationIDMiddleware, RequestLoggingMiddleware
+from api.rate_limit import limiter
 from api.routers import filings, health, questions
 from api.security import require_api_key
 
@@ -92,6 +96,7 @@ SEC 10-K Document Q&A with RAG (Retrieval-Augmented Generation).
 - **Citation Traceability**: Full source metadata for verification
 - **Multi-Provider LLM**: Supports Ollama, OpenAI, Anthropic, Google
 - **Hybrid Retrieval**: BM25 + Dense embeddings + Cross-encoder reranking
+- **Rate Limiting**: Per-IP and global rate limits with Redis backend
 
 ## Available Filings
 
@@ -115,6 +120,10 @@ SEC 10-K Document Q&A with RAG (Retrieval-Augmented Generation).
     openapi_url=None if api_settings.is_prod else "/openapi.json",
 )
 
+# Add rate limit exception handler
+app.state.limiter = limiter
+app.add_exception_handler(RateLimitExceeded, _rate_limit_exceeded_handler)
+
 
 # =============================================================================
 # MIDDLEWARE
@@ -125,8 +134,15 @@ app.add_middleware(
     allow_origins=api_settings.CORS_ORIGINS,
     allow_credentials=False,
     allow_methods=["GET", "POST", "OPTIONS"],
-    allow_headers=["Content-Type", "X-API-Key"],
+    allow_headers=["Content-Type", "X-API-Key", "X-Correlation-ID"],
 )
+
+# Add correlation ID middleware for request tracking
+app.add_middleware(CorrelationIDMiddleware)
+
+# Add request logging middleware (debug level only)
+if api_settings.ENVIRONMENT == "dev":
+    app.add_middleware(RequestLoggingMiddleware)
 
 
 # =============================================================================

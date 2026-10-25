@@ -12,6 +12,19 @@
 # =============================================================================
 
 services:
+  redis:
+    image: redis:7-alpine
+    ports:
+      - "6379:6379"
+    volumes:
+      - redis_data:/data
+    restart: unless-stopped
+    healthcheck:
+      test: ["CMD", "redis-cli", "ping"]
+      interval: 10s
+      timeout: 3s
+      retries: 3
+
   backend:
     build: .
     env_file: .env
@@ -23,11 +36,16 @@ services:
       GENERATION_EXECUTION_MODE: ""
       # Absolute path inside the writable, mounted logs volume
       LOG_FILE: /app/src/logs/app.log
+      # Redis for rate limiting (production)
+      RATE_LIMIT_REDIS_URL: redis://redis:6379/0
     ports:
       # Loopback only: for local debugging. Remove in production so only the frontend is exposed.
       - "127.0.0.1:8000:8000"
     volumes:
       - ./src/logs:/app/src/logs
+    depends_on:
+      redis:
+        condition: service_healthy
     restart: unless-stopped
 
   frontend:
@@ -41,3 +59,6 @@ services:
     depends_on:
       - backend
     restart: unless-stopped
+
+volumes:
+  redis_data:

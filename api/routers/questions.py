@@ -8,7 +8,9 @@ import logging
 
 from fastapi import APIRouter, Depends, HTTPException
 
+from api.config import api_settings
 from api.dependencies import get_rag_service, get_valid_doc_ids
+from api.rate_limit import rate_limit_dependency
 from api.schemas import QuestionRequest, QuestionResponse
 from api.services import RAGService
 
@@ -26,8 +28,16 @@ router = APIRouter()
         200: {"description": "Successful response with answer and citations"},
         404: {"description": "Filing not found"},
         422: {"description": "Validation error in request"},
+        429: {"description": "Rate limit exceeded"},
         503: {"description": "Generation failed"},
     },
+    dependencies=[
+        Depends(rate_limit_dependency(
+            limit=api_settings.RATE_LIMIT_QUESTIONS_PER_MINUTE,
+            period=60,
+            scope="ip"
+        ))
+    ],
 )
 def ask_question(
     request: QuestionRequest,

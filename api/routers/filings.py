@@ -6,7 +6,9 @@ Provides endpoints for listing available SEC filings.
 
 from fastapi import APIRouter, Depends
 
+from api.config import api_settings
 from api.dependencies import get_filings
+from api.rate_limit import rate_limit_dependency
 from api.schemas import FilingInfo, FilingsResponse
 
 router = APIRouter()
@@ -17,6 +19,17 @@ router = APIRouter()
     response_model=FilingsResponse,
     summary="List available filings",
     description="Get a list of all SEC 10-K filings available for querying",
+    responses={
+        200: {"description": "Successful response with filings list"},
+        429: {"description": "Rate limit exceeded"},
+    },
+    dependencies=[
+        Depends(rate_limit_dependency(
+            limit=api_settings.RATE_LIMIT_FILINGS_PER_MINUTE,
+            period=60,
+            scope="ip"
+        ))
+    ],
 )
 def list_filings(
     filings: list[dict] = Depends(get_filings),

@@ -29,6 +29,26 @@ def client():
     headers = {"X-API-Key": api_settings.API_ACCESS_KEY} if api_settings.API_ACCESS_KEY else {}
     with TestClient(app, headers=headers) as test_client:
         yield test_client
+    # Clear rate limiter state after all tests in module
+    try:
+        from api.rate_limit import in_memory_limiter
+        in_memory_limiter.requests.clear()
+    except ImportError:
+        pass
+
+
+@pytest.fixture(autouse=True)
+def clear_rate_limiter():
+    """
+    Clear rate limiter state before each test to avoid rate limit errors in tests.
+    This is autouse so it runs for every test automatically.
+    """
+    yield
+    try:
+        from api.rate_limit import in_memory_limiter
+        in_memory_limiter.requests.clear()
+    except ImportError:
+        pass
 
 
 @pytest.fixture
