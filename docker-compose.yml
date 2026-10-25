@@ -38,6 +38,8 @@ services:
       LOG_FILE: /app/src/logs/app.log
       # Redis for rate limiting (production)
       RATE_LIMIT_REDIS_URL: redis://redis:6379/0
+      # Supabase JWT secret for authentication
+      SUPABASE_JWT_SECRET: ${SUPABASE_JWT_SECRET:-}
     ports:
       # Loopback only: for local debugging. Remove in production so only the frontend is exposed.
       - "127.0.0.1:8000:8000"
@@ -54,6 +56,9 @@ services:
     environment:
       BACKEND_URL: http://backend:8000
       API_ACCESS_KEY: ${API_ACCESS_KEY:-}
+      # Supabase configuration for frontend
+      NEXT_PUBLIC_SUPABASE_URL: ${NEXT_PUBLIC_SUPABASE_URL:-}
+      NEXT_PUBLIC_SUPABASE_ANON_KEY: ${NEXT_PUBLIC_SUPABASE_ANON_KEY:-}
     ports:
       - "3000:3000"
     depends_on:
