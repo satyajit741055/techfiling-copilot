@@ -346,6 +346,22 @@ class TestRateLimiting:
 # SUPABASE AUTHENTICATION
 # =============================================================================
 
+class TestErrorSanitization:
+    def test_generation_error_does_not_leak_details(self, client, monkeypatch):
+        monkeypatch.setattr(api_settings, "API_ACCESS_KEY", None)
+
+        class _Boom:
+            def answer(self, request):
+                raise RuntimeError("provider-secret-detail Request ID: Root=1-abc")
+
+        app.dependency_overrides[get_rag_service] = lambda: _Boom()
+        response = client.post("/questions", json={"question": "What was net income?", "doc_id": "AAPL_10-K_2025"})
+        assert response.status_code == 503
+        detail = response.json()["detail"]
+        assert "provider-secret-detail" not in detail and "Request ID" not in detail
+        assert response.headers["X-Correlation-ID"] in detail
+
+
 class TestSupabaseAuth:
     def test_jwt_secret_configurable(self):
         """Test that JWT secret can be configured."""

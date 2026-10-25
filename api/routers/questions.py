@@ -6,7 +6,7 @@ Provides the core Q&A endpoint for asking questions about SEC filings.
 
 import logging
 
-from fastapi import APIRouter, Depends, HTTPException
+from fastapi import APIRouter, Depends, HTTPException, Request
 
 from api.config import api_settings
 from api.dependencies import get_rag_service, get_valid_doc_ids
@@ -40,6 +40,7 @@ router = APIRouter()
     ],
 )
 def ask_question(
+    http_request: Request,
     request: QuestionRequest,
     rag_service: RAGService = Depends(get_rag_service),
     valid_doc_ids: set[str] = Depends(get_valid_doc_ids),
@@ -68,8 +69,12 @@ def ask_question(
         return response
 
     except Exception as e:
-        logger.error(f"Generation failed: {type(e).__name__}: {e}", exc_info=True)
+        correlation_id = getattr(http_request.state, "correlation_id", "unknown")
+        logger.error(
+            f"Generation failed [correlation_id={correlation_id}]: {type(e).__name__}: {e}",
+            exc_info=True,
+        )
         raise HTTPException(
             status_code=503,
-            detail=f"Generation failed: {str(e)}"
+            detail=f"Unable to generate an answer right now. Please try again shortly. (Reference: {correlation_id})",
         )
