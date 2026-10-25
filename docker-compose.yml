@@ -53,12 +53,13 @@ services:
   frontend:
     build:
       context: ./web
+      # Inlined into the browser bundle at build time; rebuild the frontend after changing them
+      args:
+        NEXT_PUBLIC_SUPABASE_URL: ${NEXT_PUBLIC_SUPABASE_URL:-}
+        NEXT_PUBLIC_SUPABASE_ANON_KEY: ${NEXT_PUBLIC_SUPABASE_ANON_KEY:-}
     environment:
       BACKEND_URL: http://backend:8000
       API_ACCESS_KEY: ${API_ACCESS_KEY:-}
-      # Supabase configuration for frontend
-      NEXT_PUBLIC_SUPABASE_URL: ${NEXT_PUBLIC_SUPABASE_URL:-}
-      NEXT_PUBLIC_SUPABASE_ANON_KEY: ${NEXT_PUBLIC_SUPABASE_ANON_KEY:-}
     ports:
       - "3000:3000"
     depends_on:

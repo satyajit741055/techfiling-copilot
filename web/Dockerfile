@@ -26,6 +26,13 @@ COPY . .
 # are read at runtime on the server (see docker-compose.yml), not baked in here.
 ENV NEXT_TELEMETRY_DISABLED=1
 
+# NEXT_PUBLIC_* values are inlined into the browser bundle at build time, so they
+# must be build args (runtime env vars are too late). Both are safe for the browser.
+ARG NEXT_PUBLIC_SUPABASE_URL
+ARG NEXT_PUBLIC_SUPABASE_ANON_KEY
+ENV NEXT_PUBLIC_SUPABASE_URL=$NEXT_PUBLIC_SUPABASE_URL \
+    NEXT_PUBLIC_SUPABASE_ANON_KEY=$NEXT_PUBLIC_SUPABASE_ANON_KEY
+
 # public/ is empty and untracked by git, so make sure it exists in fresh clones
 RUN mkdir -p public && npm run build
 
