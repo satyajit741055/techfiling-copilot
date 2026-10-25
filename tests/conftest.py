@@ -23,9 +23,11 @@ def client():
     Uses module scope to avoid reinitializing the heavy RAG pipeline
     for each test function.
     """
+    from api.config import api_settings
     from api.main import app
 
-    with TestClient(app) as test_client:
+    headers = {"X-API-Key": api_settings.API_ACCESS_KEY} if api_settings.API_ACCESS_KEY else {}
+    with TestClient(app, headers=headers) as test_client:
         yield test_client
 
 

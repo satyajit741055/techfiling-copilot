@@ -1,16 +1,20 @@
 """
 API Configuration.
 
-Handles API-specific settings (host, port, CORS) separate from RAG pipeline settings.
+Handles API-specific settings (host, port, CORS, auth) separate from RAG pipeline settings.
 """
 
 from pathlib import Path
+from typing import Annotated, Literal
 
-from pydantic import Field
-from pydantic_settings import BaseSettings, SettingsConfigDict
+from pydantic import Field, field_validator, model_validator
+from pydantic_settings import BaseSettings, NoDecode, SettingsConfigDict
 
 # Project root (techfiling-copilot/)
 ROOT = Path(__file__).resolve().parents[1]
+
+DEV_CORS_ORIGINS = ["http://localhost:3000", "http://127.0.0.1:3000"]
+MIN_API_KEY_LENGTH = 24
 
 
 class APISettings(BaseSettings):
@@ -25,6 +29,12 @@ class APISettings(BaseSettings):
         env_file_encoding="utf-8",
         case_sensitive=False,
         extra="ignore",
+        hide_input_in_errors=True,
+    )
+
+    ENVIRONMENT: Literal["dev", "prod"] = Field(
+        default="dev",
+        description="Running environment: 'dev' or 'prod' (same variable as the pipeline settings)"
     )
 
     # Server settings
@@ -37,10 +47,17 @@ class APISettings(BaseSettings):
         description="Port to bind the API server"
     )
 
-    # CORS settings - use ["*"] to allow all origins
-    CORS_ORIGINS: list[str] = Field(
-        default=["*"],
-        description="Allowed CORS origins for frontend"
+    # CORS settings: comma-separated list or JSON array
+    CORS_ORIGINS: Annotated[list[str], NoDecode] = Field(
+        default_factory=lambda: list(DEV_CORS_ORIGINS),
+        description="Allowed CORS origins. Must be set explicitly in prod; '*' is rejected in prod."
+    )
+
+    # Authentication
+    API_ACCESS_KEY: str | None = Field(
+        default=None,
+        description="Shared secret required in the X-API-Key header on /questions and /filings. "
+                    "Required when ENVIRONMENT=prod; auth is disabled in dev when unset."
     )
 
     # Paths
@@ -48,6 +65,58 @@ class APISettings(BaseSettings):
         default=ROOT / "data" / "parsed",
         description="Directory containing parsed document metadata"
     )
+
+    @field_validator("ENVIRONMENT", mode="before")
+    @classmethod
+    def _normalize_environment(cls, value: object) -> object:
+        return value.strip().lower() if isinstance(value, str) else value
+
+    @field_validator("CORS_ORIGINS", mode="before")
+    @classmethod
+    def _parse_cors_origins(cls, value: object) -> object:
+        """Accept 'a,b' or '["a","b"]'; trim whitespace and trailing slashes."""
+        if isinstance(value, str):
+            text = value.strip()
+            if text.startswith("["):
+                import json
+
+                value = json.loads(text)
+            else:
+                value = text.split(",")
+        if isinstance(value, list):
+            return [str(item).strip().rstrip("/") for item in value if str(item).strip()]
+        return value
+
+    @field_validator("API_ACCESS_KEY", mode="before")
+    @classmethod
+    def _empty_key_is_unset(cls, value: object) -> object:
+        """Treat an empty API_ACCESS_KEY as not set."""
+        if isinstance(value, str):
+            return value.strip() or None
+        return value
+
+    @model_validator(mode="after")
+    def _validate_production(self) -> "APISettings":
+        if self.ENVIRONMENT != "prod":
+            return self
+        problems = []
+        if not self.API_ACCESS_KEY:
+            problems.append("API_ACCESS_KEY is required when ENVIRONMENT=prod")
+        elif len(self.API_ACCESS_KEY) < MIN_API_KEY_LENGTH:
+            problems.append(f"API_ACCESS_KEY must be at least {MIN_API_KEY_LENGTH} characters in prod")
+        if not self.CORS_ORIGINS or "*" in self.CORS_ORIGINS or self.CORS_ORIGINS == DEV_CORS_ORIGINS:
+            problems.append(
+                "CORS_ORIGINS must be set explicitly to your frontend origin(s) in prod "
+                "(no '*', no localhost defaults)"
+            )
+        if problems:
+            raise ValueError("; ".join(problems))
+        return self
+
+    @property
+    def is_prod(self) -> bool:
+        """True when running with ENVIRONMENT=prod."""
+        return self.ENVIRONMENT == "prod"
 
     @property
     def project_root(self) -> Path:

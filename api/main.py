@@ -23,12 +23,13 @@ Endpoints:
 import logging
 from contextlib import asynccontextmanager
 
-from fastapi import FastAPI
+from fastapi import Depends, FastAPI
 from fastapi.middleware.cors import CORSMiddleware
 
 from api.config import api_settings
 from api.dependencies import init_generator, shutdown_generator
 from api.routers import filings, health, questions
+from api.security import require_api_key
 
 # Configure logging
 logger = logging.getLogger(__name__)
@@ -54,6 +55,11 @@ async def lifespan(app: FastAPI):
     logger.info("=" * 60)
     logger.info("TechFiling Copilot API - Starting up...")
     logger.info("=" * 60)
+    logger.info(f"Environment: {api_settings.ENVIRONMENT} | CORS origins: {api_settings.CORS_ORIGINS}")
+    if api_settings.API_ACCESS_KEY:
+        logger.info("API key authentication: ENABLED")
+    else:
+        logger.warning("API key authentication: DISABLED (API_ACCESS_KEY not set; allowed in dev only)")
 
     init_generator()
 
@@ -104,8 +110,9 @@ SEC 10-K Document Q&A with RAG (Retrieval-Augmented Generation).
     """,
     version="1.0.0",
     lifespan=lifespan,
-    docs_url="/docs",
-    redoc_url="/redoc",
+    docs_url=None if api_settings.is_prod else "/docs",
+    redoc_url=None if api_settings.is_prod else "/redoc",
+    openapi_url=None if api_settings.is_prod else "/openapi.json",
 )
 
 
@@ -116,9 +123,9 @@ SEC 10-K Document Q&A with RAG (Retrieval-Augmented Generation).
 app.add_middleware(
     CORSMiddleware,
     allow_origins=api_settings.CORS_ORIGINS,
-    allow_credentials=False,  # Must be False when using allow_origins=["*"]
-    allow_methods=["*"],
-    allow_headers=["*"],
+    allow_credentials=False,
+    allow_methods=["GET", "POST", "OPTIONS"],
+    allow_headers=["Content-Type", "X-API-Key"],
 )
 
 
@@ -127,8 +134,8 @@ app.add_middleware(
 # =============================================================================
 
 app.include_router(health.router, tags=["Health"])
-app.include_router(filings.router, tags=["Filings"])
-app.include_router(questions.router, tags=["Questions"])
+app.include_router(filings.router, tags=["Filings"], dependencies=[Depends(require_api_key)])
+app.include_router(questions.router, tags=["Questions"], dependencies=[Depends(require_api_key)])
 
 
 # =============================================================================

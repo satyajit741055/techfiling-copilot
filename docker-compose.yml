@@ -4,6 +4,11 @@
 # Backend config comes from the same .env used for local runs
 # (src/config/settings.py holds the defaults). The container always runs in
 # Hugging Face API mode: the image has no torch/CUDA, so local mode cannot work.
+#
+# Auth: the browser talks only to the frontend. The frontend's server-side
+# proxy calls the backend over the Docker network and adds API_ACCESS_KEY, so
+# the key never reaches the browser. Set API_ACCESS_KEY in .env (required when
+# ENVIRONMENT=prod; Compose substitutes it into the frontend below).
 # =============================================================================
 
 services:
@@ -19,7 +24,8 @@ services:
       # Absolute path inside the writable, mounted logs volume
       LOG_FILE: /app/src/logs/app.log
     ports:
-      - "8000:8000"
+      # Loopback only: for local debugging. Remove in production so only the frontend is exposed.
+      - "127.0.0.1:8000:8000"
     volumes:
       - ./src/logs:/app/src/logs
     restart: unless-stopped
@@ -27,9 +33,9 @@ services:
   frontend:
     build:
       context: ./web
-      args:
-        # Called from the browser, so it must be reachable from the host, not the Docker network
-        NEXT_PUBLIC_API_URL: ${DOCKER_PUBLIC_API_URL:-http://localhost:8000}
+    environment:
+      BACKEND_URL: http://backend:8000
+      API_ACCESS_KEY: ${API_ACCESS_KEY:-}
     ports:
       - "3000:3000"
     depends_on:

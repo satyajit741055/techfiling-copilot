@@ -193,3 +193,17 @@ class HealthResponse(BaseModel):
     environment: str = Field(..., description="Running environment (dev/prod)")
     model: str = Field(..., description="Loaded LLM model")
     filings_loaded: int = Field(..., description="Number of filings available")
+
+
+class DependencyCheck(BaseModel):
+    """Result of a single readiness check."""
+
+    status: str = Field(..., description="'ok' or 'fail'")
+    detail: str = Field(..., description="Short human-readable outcome (never contains secrets)")
+
+
+class ReadinessResponse(BaseModel):
+    """Response for GET /health/ready."""
+
+    status: str = Field(..., description="'ready' when every check passes, otherwise 'not_ready'")
+    checks: dict[str, DependencyCheck] = Field(..., description="Per-dependency results")

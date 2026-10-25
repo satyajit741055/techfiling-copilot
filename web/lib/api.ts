@@ -1,7 +1,8 @@
 import type { FilingsResponse, QuestionResponse, HealthResponse, ErrorResponse } from '@/types';
 
-// API base URL - defaults to localhost for development
-const API_BASE = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:8000';
+// Calls go to this app's own server-side proxy (app/api/[...path]/route.ts),
+// which adds the backend API key. No secret is ever shipped to the browser.
+const API_BASE = '/api';
 
 /**
  * Custom error class for API errors

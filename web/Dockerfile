@@ -22,11 +22,9 @@ WORKDIR /app
 COPY --from=deps /app/node_modules ./node_modules
 COPY . .
 
-# NEXT_PUBLIC_* values are inlined into the browser bundle at build time.
-# The browser calls the API directly, so this must be a host-reachable URL.
-ARG NEXT_PUBLIC_API_URL=http://localhost:8000
-ENV NEXT_PUBLIC_API_URL=$NEXT_PUBLIC_API_URL \
-    NEXT_TELEMETRY_DISABLED=1
+# The browser only calls this app's /api/* proxy; BACKEND_URL and API_ACCESS_KEY
+# are read at runtime on the server (see docker-compose.yml), not baked in here.
+ENV NEXT_TELEMETRY_DISABLED=1
 
 # public/ is empty and untracked by git, so make sure it exists in fresh clones
 RUN mkdir -p public && npm run build
