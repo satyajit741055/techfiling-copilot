@@ -64,6 +64,31 @@ def _load_filings_from_disk() -> list[dict]:
     return filings
 
 
+def _load_filings() -> list[dict]:
+    """Filing catalog from Qdrant when it is the vector store, otherwise from disk."""
+    from config.settings import settings
+
+    if settings.VECTOR_STORE == "qdrant":
+        from vector_store import QdrantChunkStore
+
+        store = QdrantChunkStore.from_settings()
+        try:
+            filings = store.list_filings()
+        finally:
+            store.client.close()
+        missing = [f["doc_id"] for f in filings if "company" not in f]
+        if filings and not missing:
+            return filings
+        logger.warning(
+            f"Filing metadata missing in Qdrant for {missing or 'all documents'}; filling from "
+            "data/parsed. Re-run scripts/migrate_npy_to_qdrant.py to store it with the chunks."
+        )
+        on_disk = {f["doc_id"]: f for f in _load_filings_from_disk()}
+        merged = [f if "company" in f else on_disk.get(f["doc_id"]) for f in filings]
+        return [f for f in merged if f] or list(on_disk.values())
+    return _load_filings_from_disk()
+
+
 def init_generator() -> None:
     """
     Initialize the AnswerGenerator and load filings.
@@ -75,7 +100,7 @@ def init_generator() -> None:
 
     # Load filings metadata
     logger.info("Loading filings metadata...")
-    _filings = _load_filings_from_disk()
+    _filings = _load_filings()
     logger.info(f"  Loaded {len(_filings)} filings: {[f['doc_id'] for f in _filings]}")
 
     # Initialize the generator (this is the slow part)

@@ -98,6 +98,20 @@ class AnswerGenerator:
 
     def _init_retriever(self) -> None:
         """Initialize the hybrid retriever with reranker."""
+        from config.settings import settings
+
+        if settings.VECTOR_STORE == "qdrant":
+            from retriever.qdrant_retriever import QdrantRetrieverWithReranker
+
+            self._retriever = QdrantRetrieverWithReranker(
+                retrieve_k=self.config.retrieve_k,
+                rerank_k=self.config.context_k,
+                reranker_model=self.config.reranker_model,
+                device=self.config.device,
+            )
+            logger.info(f"Retriever ready with {self._retriever.chunk_count:,} chunks (qdrant)")
+            return
+
         from retriever.hybrid_retriever import HybridRetrieverWithReranker
 
         run_directory = self.config.resolve_run_directory(self.root)

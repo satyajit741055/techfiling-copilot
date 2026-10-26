@@ -73,7 +73,26 @@ def _check_filings() -> DependencyCheck:
     return _ok(f"{count} filings loaded") if count else _fail("no filings found")
 
 
+def _check_qdrant() -> DependencyCheck:
+    from vector_store import QdrantChunkStore
+
+    store = None
+    try:
+        store = QdrantChunkStore.from_settings()
+        if not store.exists():
+            return _fail(f"Qdrant collection not found: {settings.QDRANT_COLLECTION}")
+        count = store.count()
+    except Exception as exc:
+        return _fail(f"Qdrant unreachable ({type(exc).__name__})")
+    finally:
+        if store is not None:
+            store.client.close()
+    return _ok(f"Qdrant collection {settings.QDRANT_COLLECTION}: {count} chunks") if count else _fail("Qdrant collection is empty")
+
+
 def _check_index_data() -> DependencyCheck:
+    if settings.VECTOR_STORE == "qdrant":
+        return _check_qdrant()
     run_dir = ROOT / Path(settings.RUN_DIRECTORY)
     if not run_dir.is_dir():
         return _fail(f"run directory not found: {settings.RUN_DIRECTORY}")

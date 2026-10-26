@@ -25,8 +25,25 @@ services:
       timeout: 3s
       retries: 3
 
+  qdrant:
+    image: qdrant/qdrant:v1.20.0
+    ports:
+      - "127.0.0.1:6333:6333"
+    volumes:
+      - qdrant_data:/qdrant/storage
+    healthcheck:
+      test: ["CMD-SHELL", "bash -c ':> /dev/tcp/127.0.0.1/6333'"]
+      interval: 5s
+      timeout: 3s
+      retries: 10
+    restart: unless-stopped
+
   backend:
-    build: .
+    build:
+      context: .
+      args:
+        # false = no data/ in the image (VECTOR_STORE=qdrant keeps index and filing catalog in Qdrant)
+        INCLUDE_DATA: ${INCLUDE_DATA:-true}
     env_file: .env
     environment:
       MODEL_EXECUTION_MODE: huggingface_api
@@ -38,6 +55,8 @@ services:
       LOG_FILE: /app/src/logs/app.log
       # Redis for rate limiting (production)
       RATE_LIMIT_REDIS_URL: redis://redis:6379/0
+      # Qdrant over the Docker network (used when VECTOR_STORE=qdrant)
+      QDRANT_URL: http://qdrant:6333
       # Supabase JWT secret for authentication
       SUPABASE_JWT_SECRET: ${SUPABASE_JWT_SECRET:-}
     ports:
@@ -47,6 +66,8 @@ services:
       - ./src/logs:/app/src/logs
     depends_on:
       redis:
+        condition: service_healthy
+      qdrant:
         condition: service_healthy
     restart: unless-stopped
 
@@ -68,3 +89,4 @@ services:
 
 volumes:
   redis_data:
+  qdrant_data:

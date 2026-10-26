@@ -9,6 +9,7 @@ A production-ready research assistant that helps equity analysts extract insight
 - **Grounded Answers**: Every answer is backed by explicit citations from the filing
 - **Citation Traceability**: Click any citation to view the exact source passage
 - **Hybrid Retrieval**: BM25 + Dense embeddings + Cross-encoder reranking for high-quality results
+- **Scalable Vector Store**: default in-process NumPy index, or Qdrant (dense + sparse hybrid search with server-side RRF fusion) via `VECTOR_STORE=qdrant`
 - **Multi-Provider LLM**: Supports Ollama (local), OpenAI, Anthropic, Google, and Hugging Face
 - **Financial Table Support**: Properly renders and extracts data from complex financial tables
 
@@ -43,7 +44,9 @@ A production-ready research assistant that helps equity analysts extract insight
                               ▼
 ┌─────────────────────────────────────────────────────────────────┐
 │                     Data Layer                                  │
-│  Parsed Chunks (.jsonl) │ Embeddings (.npy) │ BM25 Index        │
+│  numpy (default): Chunks (.jsonl) │ Embeddings (.npy) │ BM25    │
+│  qdrant (optional): dense + sparse vectors, payload filters,    │
+│                     filing catalog                              │
 └─────────────────────────────────────────────────────────────────┘
 ```
 
@@ -135,6 +138,21 @@ DEEPEVAL_JUDGE_MODEL=gpt-4o-mini
 DEVICE=auto  # auto | cuda | cpu
 ```
 
+### Vector store (NumPy or Qdrant)
+
+By default retrieval uses the `.npy` embeddings and an in-memory BM25 index from `RUN_DIRECTORY`. For a scalable setup, use Qdrant (dense + sparse hybrid search with server-side RRF, indexed metadata filters, incremental upserts, and the filing catalog stored with the chunks):
+
+```bash
+docker compose up -d qdrant
+uv run python scripts/migrate_npy_to_qdrant.py   # loads an existing run, no re-embedding
+# in .env
+VECTOR_STORE=qdrant
+QDRANT_URL=http://localhost:6333
+QDRANT_COLLECTION=filings_bge_base_v1
+```
+
+New filings ingested with `VECTOR_STORE=qdrant` are indexed automatically. See `DOCKER.md` for the Docker setup (including a data-free backend image with `INCLUDE_DATA=false`) and `study/12_qdrant_vector_store.md` for the rationale and tradeoffs.
+
 See `.env.example` for all options and `study/11_model_execution_modes.md` for backend selection, component overrides, reranker endpoint formats, and embedding-index compatibility.
 
 ## API Endpoints
@@ -201,7 +219,8 @@ techfiling-copilot/
 │   ├── config/            # Centralized settings
 │   ├── generation/        # LLM generation & prompts
 │   ├── ingestion/         # Document parsing & chunking
-│   └── retriever/         # Hybrid retrieval & reranking
+│   ├── retriever/         # Hybrid retrieval & reranking (numpy and Qdrant)
+│   └── vector_store/      # Qdrant chunk store & sparse (BM25) vectors
 │
 ├── web/                    # Next.js frontend
 │   ├── app/               # Pages and layouts
@@ -209,6 +228,7 @@ techfiling-copilot/
 │   ├── lib/               # API client
 │   └── types/             # TypeScript types
 │
+├── scripts/                # Utilities (e.g. migrate_npy_to_qdrant.py)
 ├── data/                   # Parsed documents & embeddings
 ├── eval/                   # Evaluation scripts & results
 ├── goldens/               # Golden test datasets

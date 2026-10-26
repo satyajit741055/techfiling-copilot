@@ -6,6 +6,8 @@
 # installed. Those packages are only imported lazily by the "local" backends.
 # =============================================================================
 
+ARG INCLUDE_DATA=true
+
 FROM python:3.13-slim AS builder
 
 COPY --from=ghcr.io/astral-sh/uv:0.11.26 /uv /bin/uv
@@ -24,6 +26,19 @@ RUN --mount=type=cache,target=/root/.cache/uv \
         --no-install-package transformers
 
 # =============================================================================
+# Data stage: INCLUDE_DATA=true bakes ./data (chunks, embeddings, parsed metadata) into the
+# image (VECTOR_STORE=numpy). INCLUDE_DATA=false ships no data: with VECTOR_STORE=qdrant the
+# index and the filing catalog both live in Qdrant, so the image is stateless.
+# =============================================================================
+FROM python:3.13-slim AS data-true
+COPY data/ /data/
+
+FROM python:3.13-slim AS data-false
+RUN mkdir /data
+
+FROM data-${INCLUDE_DATA} AS data
+
+# =============================================================================
 # Runtime stage
 # =============================================================================
 FROM python:3.13-slim
@@ -40,7 +55,7 @@ WORKDIR /app
 COPY --from=builder /app/.venv /app/.venv
 COPY --chown=app:app api/ ./api/
 COPY --chown=app:app src/ ./src/
-COPY --chown=app:app data/ ./data/
+COPY --from=data --chown=app:app /data/ ./data/
 
 RUN mkdir -p src/logs && chown app:app src/logs
 
