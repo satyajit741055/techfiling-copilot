@@ -6,13 +6,13 @@ readiness checks. These never load the RAG pipeline: dependencies are overridden
 import httpx
 import pytest
 from fastapi.testclient import TestClient
+from jose import jwt
 from pydantic import ValidationError
 
 from api.config import DEV_CORS_ORIGINS, APISettings, api_settings
 from api.dependencies import get_filings, get_rag_service, get_valid_doc_ids
 from api.main import app
 from api.routers import health
-from jose import jwt
 
 VALID_KEY = "k" * 32
 PROD = {"ENVIRONMENT": "prod", "API_ACCESS_KEY": VALID_KEY, "CORS_ORIGINS": "https://app.example.com"}
@@ -396,8 +396,9 @@ class TestSupabaseAuth:
 
     def test_verify_invalid_token(self, monkeypatch):
         """Test that an invalid token is rejected."""
-        from api.auth import verify_supabase_token
         from fastapi import HTTPException
+
+        from api.auth import verify_supabase_token
 
         secret = "test_jwt_secret_for_testing"
         monkeypatch.setattr(api_settings, "SUPABASE_JWT_SECRET", secret)
@@ -407,8 +408,9 @@ class TestSupabaseAuth:
 
     def test_verify_token_without_secret(self, monkeypatch):
         """Test that verification fails gracefully when secret is not set."""
-        from api.auth import verify_supabase_token
         from fastapi import HTTPException
+
+        from api.auth import verify_supabase_token
 
         monkeypatch.setattr(api_settings, "SUPABASE_JWT_SECRET", None)
         monkeypatch.setattr(api_settings, "SUPABASE_URL", None)

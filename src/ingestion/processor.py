@@ -60,13 +60,25 @@ def process(
         logger.info(f"{doc_id}: {len(chunks)} chunks")
     logger.info(f"Total chunks: {len(all_chunks)}")
 
-    embeddings, _ = embed_and_save(
+    embeddings, manifest = embed_and_save(
         all_chunks, out_dir, model_name, device, batch_size,
         {"max_chars": max_chars, "min_chars": min_chars, "table_max_chars": table_max_chars,
          "pseudo_headings": pseudo_headings},
         model_cache_dir=model_cache_dir,
     )
     logger.info(f"Embeddings shape: {embeddings.shape} -> {out_dir}")
+
+    from config.settings import settings
+
+    if settings.VECTOR_STORE == "qdrant":
+        from vector_store import QdrantChunkStore, load_filing_metadata
+
+        store = QdrantChunkStore.from_settings()
+        n = store.index_chunks(
+            all_chunks, embeddings, manifest["embedding_model"],
+            filings=load_filing_metadata(parsed_dir, doc_ids),
+        )
+        logger.info(f"Indexed {n} chunks into Qdrant collection {store.collection!r}")
     return out_dir
 
 

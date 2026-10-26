@@ -11,9 +11,6 @@ from typing import Callable
 from fastapi import Request, Response
 from starlette.concurrency import run_in_threadpool
 from starlette.middleware.base import BaseHTTPMiddleware
-from starlette.types import ASGIApp
-
-from api.auth import optional_get_current_user
 
 logger = logging.getLogger(__name__)
 
@@ -37,7 +34,7 @@ class CorrelationIDMiddleware(BaseHTTPMiddleware):
 
         # Log request with correlation ID
         logger.info(
-            f"Request started",
+            "Request started",
             extra={
                 "correlation_id": correlation_id,
                 "method": request.method,
@@ -61,7 +58,7 @@ class CorrelationIDMiddleware(BaseHTTPMiddleware):
 
         # Log response with correlation ID
         logger.info(
-            f"Request completed",
+            "Request completed",
             extra={
                 "correlation_id": correlation_id,
                 "method": request.method,
@@ -87,7 +84,7 @@ class RequestLoggingMiddleware(BaseHTTPMiddleware):
 
         # Log request details
         logger.debug(
-            f"Incoming request",
+            "Incoming request",
             extra={
                 "method": request.method,
                 "path": request.url.path,
@@ -105,7 +102,7 @@ class RequestLoggingMiddleware(BaseHTTPMiddleware):
 
         # Log response details
         logger.debug(
-            f"Outgoing response",
+            "Outgoing response",
             extra={
                 "method": request.method,
                 "path": request.url.path,

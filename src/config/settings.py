@@ -264,6 +264,25 @@ class Settings(BaseSettings):
     )
 
     # =========================================================================
+    # VECTOR STORE
+    # =========================================================================
+    VECTOR_STORE: Literal["numpy", "qdrant"] = Field(
+        default="numpy",
+        description="Retrieval index backend: 'numpy' (.npy + in-memory BM25) or 'qdrant' "
+                    "(server-side dense + sparse hybrid search)"
+    )
+    QDRANT_URL: str = Field(
+        default="http://localhost:6333",
+        description="Qdrant URL (use ':memory:' for an ephemeral in-process store)"
+    )
+    QDRANT_API_KEY: str | None = Field(default=None, description="Qdrant API key (cloud / secured server)")
+    QDRANT_COLLECTION: str = Field(
+        default="filings_bge_base_v1",
+        description="Qdrant collection (use one per embedding model/version)"
+    )
+    QDRANT_TIMEOUT: float = Field(default=30.0, gt=0, description="Qdrant request timeout in seconds")
+
+    # =========================================================================
     # PATHS
     # =========================================================================
     DATA_DIR: Path = Field(
