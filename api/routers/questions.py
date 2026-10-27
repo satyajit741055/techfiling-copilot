@@ -33,6 +33,11 @@ router = APIRouter()
     },
     dependencies=[
         Depends(rate_limit_dependency(
+            limit=api_settings.RATE_LIMIT_GLOBAL_PER_MINUTE,
+            period=60,
+            scope="global"
+        )),
+        Depends(rate_limit_dependency(
             limit=api_settings.RATE_LIMIT_QUESTIONS_PER_MINUTE,
             period=60,
             scope="ip"

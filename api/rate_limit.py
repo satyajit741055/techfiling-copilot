@@ -181,15 +181,20 @@ def check_rate_limit(
     """
     key = "global" if scope == "global" else key_func(request)
 
+    outcome = None
     if redis_url:
-        item = RateLimitItemPerSecond(limit, period)
-        scoped_key = f"{scope}:{key}"
-        allowed = moving_window.hit(item, scoped_key)
-        stats = moving_window.get_window_stats(item, scoped_key)
-        remaining, reset = stats.remaining, math.ceil(stats.reset_time)
-    else:
+        try:
+            item = RateLimitItemPerSecond(limit, period)
+            scoped_key = f"{scope}:{key}"
+            allowed = moving_window.hit(item, scoped_key)
+            stats = moving_window.get_window_stats(item, scoped_key)
+            outcome = allowed, stats.remaining, math.ceil(stats.reset_time)
+        except Exception as exc:
+            logger.warning(f"Redis rate limiter unavailable ({type(exc).__name__}); using in-memory limits")
+    if outcome is None:
         allowed, info = in_memory_limiter.is_allowed(f"{scope}:{limit}/{period}:{key}", limit, period)
-        remaining, reset = info["remaining"], info["reset"]
+        outcome = allowed, info["remaining"], info["reset"]
+    allowed, remaining, reset = outcome
 
     request.state.rate_limit = {"limit": limit, "remaining": remaining, "reset": reset}
     retry_after = 0 if allowed else max(1, reset - int(time.time()))
