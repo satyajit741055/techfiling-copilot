@@ -1,0 +1,188 @@
+# =============================================================================
+# CI Workflow for TechFiling Copilot
+# =============================================================================
+# This workflow runs on every push and pull request to ensure code quality.
+# It checks linting, type safety, and runs tests.
+# =============================================================================
+
+# WHEN should this workflow run?
+name: CI
+
+on:
+  # Run on push to main branch
+  push:
+    branches: [main]
+  # Run on pull requests targeting main
+  pull_request:
+    branches: [main]
+
+# WHAT jobs should run?
+jobs:
+  # Job 1: Code quality checks (linting and formatting)
+  lint:
+    name: Lint & Format Check
+    runs-on: ubuntu-latest  # GitHub's hosted runner (Linux)
+
+    steps:
+      # Step 1: Checkout the code
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      # Step 2: Set up Python
+      - name: Set up Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: '3.13'
+
+      # Step 3: Install uv (fast Python package manager)
+      - name: Install uv
+        uses: astral-sh/setup-uv@v4
+
+      # Step 4: Cache dependencies (speeds up builds)
+      - name: Cache uv dependencies
+        uses: actions/cache@v4
+        with:
+          path: .venv
+          key: ${{ runner.os }}-uv-${{ hashFiles('uv.lock') }}
+          restore-keys: |
+            ${{ runner.os }}-uv-
+
+      # Step 5: Install dependencies
+      - name: Install dependencies
+        run: uv sync --dev
+
+      # Step 6: Run ruff linting
+      - name: Run ruff check
+        run: uv run ruff check .
+
+      # Step 7: Check code formatting
+      - name: Run ruff format check
+        run: uv run ruff format --check .
+
+  # Job 2: Type checking with mypy
+  type-check:
+    name: Type Check (mypy)
+    runs-on: ubuntu-latest
+
+    steps:
+      # Step 1: Checkout the code
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      # Step 2: Set up Python
+      - name: Set up Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: '3.13'
+
+      # Step 3: Install uv
+      - name: Install uv
+        uses: astral-sh/setup-uv@v4
+
+      # Step 4: Cache dependencies
+      - name: Cache uv dependencies
+        uses: actions/cache@v4
+        with:
+          path: .venv
+          key: ${{ runner.os }}-uv-${{ hashFiles('uv.lock') }}
+          restore-keys: |
+            ${{ runner.os }}-uv-
+
+      # Step 5: Install dependencies
+      - name: Install dependencies
+        run: uv sync --dev
+
+      # Step 6: Install mypy (not in dev dependencies)
+      - name: Install mypy
+        run: uv add --dev mypy
+
+      # Step 7: Run mypy type checking
+      - name: Run mypy
+        run: uv run mypy src api
+
+  # Job 3: Run fast unit tests
+  test:
+    name: Unit Tests
+    runs-on: ubuntu-latest
+
+    steps:
+      # Step 1: Checkout the code
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      # Step 2: Set up Python
+      - name: Set up Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: '3.13'
+
+      # Step 3: Install uv
+      - name: Install uv
+        uses: astral-sh/setup-uv@v4
+
+      # Step 4: Cache dependencies
+      - name: Cache uv dependencies
+        uses: actions/cache@v4
+        with:
+          path: .venv
+          key: ${{ runner.os }}-uv-${{ hashFiles('uv.lock') }}
+          restore-keys: |
+            ${{ runner.os }}-uv-
+
+      # Step 5: Install dependencies
+      - name: Install dependencies
+        run: uv sync --dev
+
+      # Step 6: Run fast unit tests (exclude slow integration tests)
+      # test_api.py loads the real pipeline (~4 min) and needs data/
+      # test_qdrant_store.py uses :memory: mode (fast, offline)
+      # test_model_runtime.py is fast and offline
+      - name: Run fast unit tests
+        run: |
+          mkdir -p test-results
+          uv run python -m pytest tests -q --ignore=tests/test_api.py
+
+      # Step 7: Upload test results (even if tests fail)
+      - name: Upload test results
+        if: always()  # Run even if previous step fails
+        uses: actions/upload-artifact@v4
+        with:
+          name: test-results
+          path: test-results/
+          retention-days: 7
+
+  # Job 4: Build Docker image
+  docker-build:
+    name: Docker Build
+    runs-on: ubuntu-latest
+
+    steps:
+      # Step 1: Checkout the code
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      # Step 2: Set up Docker Buildx (for advanced build features)
+      - name: Set up Docker Buildx
+        uses: docker/setup-buildx-action@v3
+
+      # Step 3: Cache Docker layers (speeds up builds)
+      - name: Cache Docker layers
+        uses: actions/cache@v4
+        with:
+          path: /tmp/.buildx-cache
+          key: ${{ runner.os }}-buildx-${{ github.sha }}
+          restore-keys: |
+            ${{ runner.os }}-buildx-
+
+      # Step 4: Build Docker image
+      - name: Build Docker image
+        uses: docker/build-push-action@v6
+        with:
+          context: .
+          file: ./Dockerfile
+          push: false  # Don't push to registry, just build
+          tags: techfiling-copilot:latest
+          cache-from: type=local,src=/tmp/.buildx-cache
+          cache-to: type=local,dest=/tmp/.buildx-cache,mode=max
+          build-args: |
+            INCLUDE_DATA=false
