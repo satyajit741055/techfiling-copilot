@@ -12,6 +12,8 @@ A production-ready research assistant that helps equity analysts extract insight
 - **Scalable Vector Store**: default in-process NumPy index, or Qdrant (dense + sparse hybrid search with server-side RRF fusion) via `VECTOR_STORE=qdrant`
 - **Multi-Provider LLM**: Supports Ollama (local), OpenAI, Anthropic, Google, and Hugging Face
 - **Financial Table Support**: Properly renders and extracts data from complex financial tables
+- **Authentication**: Supabase sign-in (JWT verified by the backend via JWKS or the legacy HS256 secret) plus a shared `X-API-Key` added by the frontend's server-side proxy
+- **Rate Limiting**: per-user (or per-IP) and global limits, Redis-backed in Docker and in-memory in dev; remaining quota is exposed in `X-RateLimit-*` headers
 
 ## Supported Filings
 
@@ -26,13 +28,15 @@ A production-ready research assistant that helps equity analysts extract insight
 ```
 ┌─────────────────────────────────────────────────────────────────┐
 │                     Frontend (Next.js)                          │
-│  Filing Selector │ Question Input │ Answer Card │ Source Cards  │
+│  Landing │ Login/Signup (Supabase) │ Workspace │ History │ Quota │
+│  Server-side proxy /api/* adds X-API-Key (never sent to browser)│
 └─────────────────────────────────────────────────────────────────┘
-                              │ REST API
+                              │ REST API (Bearer JWT + X-API-Key)
                               ▼
 ┌─────────────────────────────────────────────────────────────────┐
 │                     Backend (FastAPI)                           │
-│  /health │ /filings │ /questions                                │
+│  /health │ /health/ready │ /filings │ /questions                │
+│  Auth (JWT + API key) │ Rate limiting (Redis / in-memory)       │
 └─────────────────────────────────────────────────────────────────┘
                               │
                               ▼
@@ -56,6 +60,8 @@ A production-ready research assistant that helps equity analysts extract insight
 
 - Python 3.13+
 - Node.js 18+
+- [Docker](https://www.docker.com/) (optional: Redis, Qdrant, or the full stack; see `DOCKER.md`)
+- A [Supabase](https://supabase.com/) project (optional in dev; required to enable sign-in)
 - [uv](https://github.com/astral-sh/uv) (Python package manager)
 - [Ollama](https://ollama.ai/) (for local LLM) or API keys for cloud providers
 
@@ -74,6 +80,7 @@ cp .env.local.example .env          # local CUDA/CPU + Ollama
 cp .env.huggingface.example .env    # fully hosted Hugging Face APIs
 
 # .env.example remains the combined reference containing every option.
+# For the frontend, copy web/.env.local.example to web/.env.local.
 ```
 
 ### 2. Start Ollama (if using local LLM)
@@ -96,6 +103,8 @@ uv run uvicorn api.main:app --reload --host 0.0.0.0 --port 8000
 The API will be available at:
 - Swagger UI: http://localhost:8000/docs
 - ReDoc: http://localhost:8000/redoc
+
+Docs are disabled when `ENVIRONMENT=prod`. To run the whole stack (backend, frontend, Redis, Qdrant) use Docker Compose; see `DOCKER.md`.
 
 ### 4. Start the Frontend
 
@@ -136,7 +145,25 @@ DEEPEVAL_JUDGE_MODEL=gpt-4o-mini
 
 # Local embedding/reranker hardware
 DEVICE=auto  # auto | cuda | cpu
+
+# API security (required when ENVIRONMENT=prod; see DOCKER.md)
+ENVIRONMENT=dev                # dev | prod
+API_ACCESS_KEY=                # >= 24 chars in prod; sent as X-API-Key by the frontend proxy
+CORS_ORIGINS=                  # must be set explicitly in prod
+
+# Supabase authentication (leave unset to disable login in local dev)
+NEXT_PUBLIC_SUPABASE_URL=https://xxxxx.supabase.co
+NEXT_PUBLIC_SUPABASE_ANON_KEY=...
+# SUPABASE_JWT_SECRET=         # only for legacy HS256 projects
+
+# Rate limiting (per minute; Redis if RATE_LIMIT_REDIS_URL is set, else in-memory)
+RATE_LIMIT_REDIS_URL=
+RATE_LIMIT_QUESTIONS_PER_MINUTE=10
+RATE_LIMIT_FILINGS_PER_MINUTE=30
+RATE_LIMIT_GLOBAL_PER_MINUTE=100
 ```
+
+When Supabase is configured, `/filings` and `/questions` require a signed-in user (`Authorization: Bearer <token>`); when `API_ACCESS_KEY` is set they also require `X-API-Key`. `/health` and `/health/ready` are public.
 
 ### Vector store (NumPy or Qdrant)
 
@@ -159,13 +186,16 @@ See `.env.example` for all options and `study/11_model_execution_modes.md` for b
 
 ### Health Check
 ```bash
-GET /health
+GET /health          # cheap liveness check (public)
+GET /health/ready    # readiness: filings, index (numpy or Qdrant) and model/provider reachability; 503 if a dependency is down
 ```
 
 ### List Filings
 ```bash
 GET /filings
 ```
+
+`/filings` and `/questions` require `X-API-Key` (when `API_ACCESS_KEY` is set) and a Supabase `Authorization: Bearer` token (when Supabase is configured). Responses include `X-RateLimit-Limit`, `X-RateLimit-Remaining`, `X-RateLimit-Reset` and `X-Correlation-ID`; exceeding a limit returns `429` with `Retry-After`.
 
 ### Ask a Question
 ```bash
@@ -209,7 +239,11 @@ Content-Type: application/json
 techfiling-copilot/
 ├── api/                    # FastAPI backend
 │   ├── main.py            # Application entry point
-│   ├── config.py          # API configuration
+│   ├── config.py          # API configuration (CORS, API key, Supabase, rate limits)
+│   ├── auth.py            # Supabase JWT verification (JWKS / HS256)
+│   ├── security.py        # X-API-Key check
+│   ├── rate_limit.py      # Redis / in-memory rate limiting
+│   ├── middleware.py      # Correlation ID, auth, request logging
 │   ├── dependencies.py    # Dependency injection
 │   ├── routers/           # API endpoints
 │   ├── schemas/           # Pydantic models
@@ -219,16 +253,18 @@ techfiling-copilot/
 │   ├── config/            # Centralized settings
 │   ├── generation/        # LLM generation & prompts
 │   ├── ingestion/         # Document parsing & chunking
+│   ├── model_runtime/     # Local vs Hugging Face API backends (embed/rerank/generate)
 │   ├── retriever/         # Hybrid retrieval & reranking (numpy and Qdrant)
 │   └── vector_store/      # Qdrant chunk store & sparse (BM25) vectors
 │
 ├── web/                    # Next.js frontend
-│   ├── app/               # Pages and layouts
-│   ├── components/        # React components
-│   ├── lib/               # API client
+│   ├── app/               # Pages, login/signup, server-side API proxy (app/api/[...path])
+│   ├── components/        # React components (Workspace, AnswerCard, HistorySidebar, ...)
+│   ├── lib/               # API client, Supabase client, local history
 │   └── types/             # TypeScript types
 │
-├── scripts/                # Utilities (e.g. migrate_npy_to_qdrant.py)
+├── scripts/                # Utilities (migrate_npy_to_qdrant.py, golden validation, ...)
+├── Dockerfile, docker-compose.yml  # Backend image + Redis, Qdrant, frontend (see DOCKER.md)
 ├── data/                   # Parsed documents & embeddings
 ├── eval/                   # Evaluation scripts & results
 ├── goldens/               # Golden test datasets
@@ -255,9 +291,9 @@ The RAG system was systematically evaluated across all pipeline stages using bot
 | Metric | Baseline (Dense only) | Final (Hybrid + Reranker) | Improvement |
 |---|---:|---:|---:|
 | Hit@5 | 94.6% | **98.2%** | +3.6% |
-| MRR@5 | 88.7% | **93.5%** | +4.8% |
-| Recall@5 | 74.3% | 76.1% | +1.8% |
-| nDCG@5 | 75.8% | **77.5%** | +1.7% |
+| MRR@5 | 80.4% | **90.5%** | +10.1% |
+| Recall@5 | 68.9% | **76.1%** | +7.2% |
+| nDCG@5 | 65.9% | **75.8%** | +9.9% |
 
 **Key changes**: Added BM25 with RRF, Ettin reranker, tuned hybrid alpha to 0.85, implemented pseudo-heading chunking
 
@@ -296,9 +332,9 @@ The RAG system was systematically evaluated across all pipeline stages using bot
 | Setting | Value |
 |---|---|
 | **Prompt version** | `v2_complete_precise` |
-| **Chunk directory** | `data/chunks/2026-10-20_16-33-24` (pseudo-heading chunking) |
+| **Chunk directory** | `data/chunks/2026-10-24_12-46-23` (pseudo-heading chunking; same chunks as `2026-10-20_16-33-24`, re-embedded via the Hugging Face API; use the `2026-10-20_16-33-24` run for local embeddings) |
 | **Context-k** | 5 |
-| **Embedding mode** | local |
+| **Embedding mode** | local (or `huggingface_api`; keep it matching the chunk run's embeddings) |
 | **Reranker mode** | local |
 | **Hybrid alpha** | 0.85 |
 | **Retrieve-k** | 50 |
@@ -312,9 +348,12 @@ The RAG system was systematically evaluated across all pipeline stages using bot
 
 ```bash
 # Traditional metrics (human labels)
-uv run python eval/hybrid_rerank_eval.py --mode rerank --golden-path goldens/golden_retriever_dataset_v2.jsonl --run-directory data/chunks/2026-10-20_16-33-24
+uv run python eval/hybrid_rerank_eval.py --mode rerank --golden-path goldens/golden_retriever_dataset_v2.jsonl --run-directory data/chunks/2026-10-24_12-46-23
 
-# DeepEval metrics (LLM judge)
+# Same eval against Qdrant (needs a running, populated collection); modes: qdrant, qdrant_rerank, qdrant_dense, qdrant_sparse
+uv run python eval/hybrid_rerank_eval.py --mode qdrant_rerank --golden-path goldens/golden_retriever_dataset_v2.jsonl
+
+# DeepEval metrics (LLM judge; add --vector-store qdrant to use Qdrant)
 uv run python eval/deepEval/retriever_eval.py --judge-model gpt-4o-mini
 uv run python eval/deepEval/retriever_eval.py --compare
 ```
@@ -369,8 +408,9 @@ For complete experiment documentation, case studies, and analysis:
 ### Running Tests
 
 ```bash
-# Run all tests
-uv run pytest
+# Run all tests (tests/test_api.py loads the real local pipeline and takes ~4 min;
+# tests/test_model_runtime.py and tests/test_qdrant_store.py are fast and offline)
+uv run python -m pytest tests -q
 
 # Run with coverage
 uv run pytest --cov=api --cov=src
@@ -392,7 +432,7 @@ uv run mypy src api
 ## Roadmap
 
 - [ ] Multi-turn conversations with context
-- [ ] User authentication (Supabase)
+- [x] User authentication (Supabase)
 - [ ] Analytics dashboard
 - [ ] Historical filing comparison
 - [ ] Additional companies and filing types

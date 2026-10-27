@@ -106,6 +106,20 @@ production so only the frontend is reachable.
 CORS only matters if a browser calls the backend directly. With the proxy it normally does not, but
 `CORS_ORIGINS` is still validated in prod as defense in depth.
 
+## Authentication and rate limiting
+
+- **Supabase login**: set `NEXT_PUBLIC_SUPABASE_URL` and `NEXT_PUBLIC_SUPABASE_ANON_KEY` in `.env`.
+  Compose passes them to the frontend as build args (inlined into the browser bundle, so rebuild the
+  frontend after changing them). The backend verifies the user's JWT via the project's JWKS
+  (ES256/RS256), or with `SUPABASE_JWT_SECRET` for legacy HS256 projects. When Supabase is
+  configured, `/filings` and `/questions` require a signed-in user; when it is not, login is off
+  and limits are per IP.
+- **Rate limiting**: Compose runs a `redis` service (published on `127.0.0.1:6379` only) and sets
+  `RATE_LIMIT_REDIS_URL=redis://redis:6379/0`, so limits are shared across backend processes. Per-user
+  (or per-IP) limits: `RATE_LIMIT_QUESTIONS_PER_MINUTE` (code default 2, `.env` examples use 10) and
+  `RATE_LIMIT_FILINGS_PER_MINUTE`; plus `RATE_LIMIT_GLOBAL_PER_MINUTE`. Without Redis the backend uses
+  an in-memory limiter (development only). Responses carry `X-RateLimit-*` headers and `429` + `Retry-After`.
+
 ## Health checks
 
 - `GET /health` is a cheap liveness check, used by the Compose healthcheck.
