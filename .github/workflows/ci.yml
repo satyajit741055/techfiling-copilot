@@ -92,11 +92,7 @@ jobs:
       - name: Install dependencies
         run: uv sync --dev
 
-      # Step 6: Install mypy (not in dev dependencies)
-      - name: Install mypy
-        run: uv add --dev mypy
-
-      # Step 7: Run mypy type checking
+      # Step 6: Run mypy type checking
       - name: Run mypy
         run: uv run mypy src api
 
