@@ -63,6 +63,7 @@ ignore = ["E501"]  # Line too long (handled by formatter)
 "eval/deepEval/generator_eval.py" = ["E402"]
 "eval/deepEval/retriever_eval.py" = ["E402"]
 "eval/generation_eval.py" = ["E402"]
+"eval/performance/performance_eval.py" = ["E402"]
 
 
 [[tool.uv.index]]

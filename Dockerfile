@@ -57,7 +57,7 @@ COPY --chown=app:app api/ ./api/
 COPY --chown=app:app src/ ./src/
 COPY --from=data --chown=app:app /data/ ./data/
 
-RUN mkdir -p src/logs && chown app:app src/logs
+RUN mkdir -p src/logs logs/metrics && chown -R app:app src/logs logs
 
 USER app
 

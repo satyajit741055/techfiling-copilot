@@ -1,0 +1,30 @@
+{
+  "mode": "direct",
+  "timestamp": "2026-10-27T14:17:48.703097+00:00",
+  "golden_path": "C:\\Users\\Satyajit_Khot\\Downloads\\techfiling-copilot\\goldens\\golden_retriever_dataset_v3.jsonl",
+  "requests": 3,
+  "warmup": 1,
+  "execution_modes": {
+    "embedding": "local",
+    "reranker": "local",
+    "generation": "local"
+  },
+  "llm_provider": "ollama",
+  "vector_store": "numpy",
+  "llm_max_retries": 0,
+  "local_compute_cost_per_hour": 0.0,
+  "api_url": null,
+  "timeout_seconds": null,
+  "python_version": "3.13.3",
+  "platform": "Windows-11-10.0.26200-SP0",
+  "command": [
+    "eval/performance/performance_eval.py",
+    "direct",
+    "--limit",
+    "3",
+    "--repeat",
+    "1",
+    "--warmup",
+    "1"
+  ]
+}
