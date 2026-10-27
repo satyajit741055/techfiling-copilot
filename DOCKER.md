@@ -36,7 +36,7 @@ QDRANT_COLLECTION=filings_bge_base_v1
 
 # 2. start Qdrant and load an existing run from the host (no re-embedding)
 docker compose up -d qdrant
-uv run python scripts/migrate_npy_to_qdrant.py            # uses RUN_DIRECTORY and http://localhost:6333
+uv run python scripts/migrate_npy_to_qdrant.py            # uses RUN_DIRECTORY and http://127.0.0.1:6333
 
 # 3. start the rest
 docker compose up --build -d

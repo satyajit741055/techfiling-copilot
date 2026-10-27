@@ -272,7 +272,7 @@ class Settings(BaseSettings):
                     "(server-side dense + sparse hybrid search)"
     )
     QDRANT_URL: str = Field(
-        default="http://localhost:6333",
+        default="http://127.0.0.1:6333",
         description="Qdrant URL (use ':memory:' for an ephemeral in-process store)"
     )
     QDRANT_API_KEY: str | None = Field(default=None, description="Qdrant API key (cloud / secured server)")

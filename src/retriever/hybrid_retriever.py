@@ -774,7 +774,7 @@ class HybridRetrieverWithReranker:
         rerank_k: int = 5,
         reranker_model: str | None = None,
         device: str | None = None,
-        model_cache_directory: str | Path = DEFAULT_MODEL_CACHE_DIRECTORY,
+        model_cache_directory: str | Path | None = None,
     ) -> None:
         """Initialize the hybrid candidate retriever and cross-encoder reranker."""
         self.retrieve_k = retrieve_k
@@ -831,7 +831,7 @@ class HybridRetrieverWithReranker:
         # Stage 1: Hybrid retrieval
         candidates = self.retriever.search(
             query,
-            k=self.retrieve_k,
+            k=max(k, self.retrieve_k),
             doc_id=doc_id,
             section=section,
             type_=type_,

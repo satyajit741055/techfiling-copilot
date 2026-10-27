@@ -117,3 +117,25 @@ def test_reindex_removes_only_stale_chunks_of_that_document(store):
     store.index_chunks(changed, VECTORS[:1], {"name": "fake"})
     ids = {c["chunk_id"] for c in store.scroll_chunks()}
     assert ids == {"A_new", "T_0"}
+
+
+class _FakeEmbedder:
+    backend = "local"
+    model_name = "fake"
+    query_prefix = ""
+    dimension = DIM
+
+    def encode_query(self, query):
+        return VECTORS[0]
+
+
+def test_retriever_rrf_weights_follow_alpha(store):
+    from retriever.qdrant_retriever import QdrantRetriever
+
+    default = QdrantRetriever(store, embedder=_FakeEmbedder(), alpha=0.85)
+    assert (default.dense_weight, default.sparse_weight) == (0.85, pytest.approx(0.15))
+    explicit = QdrantRetriever(store, embedder=_FakeEmbedder(), dense_weight=2.0, sparse_weight=0.5)
+    assert (explicit.dense_weight, explicit.sparse_weight) == (2.0, 0.5)
+    with pytest.raises(ValueError):
+        QdrantRetriever(store, embedder=_FakeEmbedder(), alpha=1.5)
+    assert default.search("net sales", k=2)

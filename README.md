@@ -147,7 +147,7 @@ docker compose up -d qdrant
 uv run python scripts/migrate_npy_to_qdrant.py   # loads an existing run, no re-embedding
 # in .env
 VECTOR_STORE=qdrant
-QDRANT_URL=http://localhost:6333
+QDRANT_URL=http://127.0.0.1:6333
 QDRANT_COLLECTION=filings_bge_base_v1
 ```
 

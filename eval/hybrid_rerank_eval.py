@@ -358,14 +358,45 @@ class HybridEvaluator:
                 device=device,
                 **self.rrf_config,
             )
+        elif mode.startswith("qdrant"):
+            from retriever.qdrant_retriever import QdrantRetriever, QdrantRetrieverWithReranker
+
+            qdrant_kwargs = {"dense_k": dense_k, "sparse_k": bm25_k, "rrf_k": rrf_k}
+            if (dense_weight, bm25_weight) == (1.0, 1.0):
+                qdrant_kwargs["alpha"] = self.alpha
+            else:
+                qdrant_kwargs.update(dense_weight=dense_weight, sparse_weight=bm25_weight)
+            if mode == "qdrant_rerank":
+                self.retriever = QdrantRetrieverWithReranker(
+                    retrieve_k=self.retrieve_k,
+                    reranker_model=self.reranker_model,
+                    device=device,
+                    **qdrant_kwargs,
+                )
+            elif mode in ("qdrant", "qdrant_dense", "qdrant_sparse"):
+                self.retriever = QdrantRetriever(
+                    mode={"qdrant": "hybrid", "qdrant_dense": "dense", "qdrant_sparse": "sparse"}[mode],
+                    device=device,
+                    **qdrant_kwargs,
+                )
+            else:
+                raise ValueError(f"Unknown mode: {mode}")
         else:
             raise ValueError(f"Unknown mode: {mode}")
 
-        self.chunks = self.retriever.chunks
-        self.run_directory = self.retriever.run_directory
-        self.manifest = self.retriever.manifest
+        if mode.startswith("qdrant"):
+            store = getattr(self.retriever, "store", None) or self.retriever.retriever.store
+            self.chunks = None
+            self.chunk_count = store.count()
+            self.run_directory = f"qdrant:{store.collection}"
+            self.manifest = store.index_metadata()
+        else:
+            self.chunks = self.retriever.chunks
+            self.chunk_count = len(self.chunks)
+            self.run_directory = self.retriever.run_directory
+            self.manifest = self.retriever.manifest
 
-        print(f"  Loaded {len(self.chunks)} chunks")
+        print(f"  Loaded {self.chunk_count} chunks")
         print(f"Loaded {len(self.golden_queries)} golden queries")
 
     def _search(self, query: str, k: int, doc_id: str | None) -> list[SearchResult]:
@@ -447,6 +478,7 @@ class HybridEvaluator:
 
         retrieval_config = {
             "mode": self.mode,
+            "vector_store": "qdrant" if self.mode.startswith("qdrant") else "numpy",
             "embedding_backend": getattr(
                 getattr(self.retriever, "embedder", None)
                 or getattr(getattr(self.retriever, "retriever", None), "embedder", None),
@@ -457,11 +489,11 @@ class HybridEvaluator:
                 "backend", None,
             ) or getattr(getattr(self.retriever, "reranker", None), "backend", None),
             "alpha": self.alpha if self.mode in ("hybrid", "rerank") else None,
-            "retrieve_k": self.retrieve_k if self.mode in ("rerank", "rrf_rerank") else None,
+            "retrieve_k": self.retrieve_k if self.mode in ("rerank", "rrf_rerank", "qdrant_rerank") else None,
             "reranker_model": (
-                self.reranker_model if self.mode in ("rerank", "rrf_rerank") else None
+                self.reranker_model if self.mode in ("rerank", "rrf_rerank", "qdrant_rerank") else None
             ),
-            "rrf": self.rrf_config if self.mode in ("rrf", "rrf_rerank") else None,
+            "rrf": self.rrf_config if self.mode in ("rrf", "rrf_rerank", "qdrant", "qdrant_rerank") else None,
         }
 
         query_results: dict[int, list[QueryResult]] = {k: [] for k in k_values}
@@ -517,7 +549,7 @@ class HybridEvaluator:
             chunking_config=chunking_config,
             embedding_model=embedding_model,
             retrieval_config=retrieval_config,
-            total_chunks=len(self.chunks),
+            total_chunks=self.chunk_count,
             total_queries=len(self.golden_queries),
             overall=overall,
             metrics_by_k={str(k): v for k, v in metrics_by_k.items()},
@@ -923,7 +955,10 @@ def main():
     )
     parser.add_argument(
         "--mode",
-        choices=["dense", "bm25", "hybrid", "rerank", "rrf", "rrf_rerank"],
+        choices=[
+            "dense", "bm25", "hybrid", "rerank", "rrf", "rrf_rerank",
+            "qdrant", "qdrant_dense", "qdrant_sparse", "qdrant_rerank",
+        ],
         default="hybrid",
         help="Retrieval mode",
     )

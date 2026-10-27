@@ -276,6 +276,10 @@ def run_evaluation(args: argparse.Namespace) -> Path:
             "reranker": settings.effective_reranker_mode,
             "generation_provider": config.provider,
         },
+        "vector_store": {
+            "backend": settings.VECTOR_STORE,
+            "qdrant_collection": settings.QDRANT_COLLECTION if settings.VECTOR_STORE == "qdrant" else None,
+        },
         "judge_model": args.judge_model,
         "metrics": metric_names,
         "threshold": args.threshold,
@@ -308,6 +312,7 @@ def dry_run(args: argparse.Namespace) -> None:
         "metrics": args.metrics,
         "embedding_mode": settings.effective_embedding_mode,
         "reranker_mode": settings.effective_reranker_mode,
+        "vector_store": settings.VECTOR_STORE,
         "generator": f"{args.provider}/{args.model}",
         "prompt_version": args.prompt_version,
         "system_prompt_sha256": prompt_hash(get_system_prompt(args.prompt_version)),
@@ -327,6 +332,7 @@ def comparison_signature(manifest: dict[str, Any]) -> dict[str, Any]:
         "threshold": manifest.get("threshold"),
         "strict": manifest.get("strict"),
         "system_prompt_sha256": manifest.get("system_prompt_sha256"),
+        "vector_store": manifest.get("vector_store"),
         "context_k": config.get("context_k"),
         "temperature": config.get("temperature"),
         "max_tokens": config.get("max_tokens"),
@@ -414,6 +420,10 @@ def parse_args() -> argparse.Namespace:
     parser.add_argument(
         "--prompt-version", choices=sorted(SYSTEM_PROMPTS), default="v2_complete_precise"
     )
+    parser.add_argument(
+        "--vector-store", choices=["numpy", "qdrant"],
+        help="Retrieval index backend (default: VECTOR_STORE from .env)",
+    )
     parser.add_argument("--device", help="Device for local embedding/reranker models (default: DEVICE)")
     parser.add_argument("--judge-model", help="DeepEval judge (default: DEEPEVAL_JUDGE_MODEL)")
     parser.add_argument("--metrics", nargs="+", choices=METRIC_NAMES, default=list(METRIC_NAMES))
@@ -434,6 +444,8 @@ def parse_args() -> argparse.Namespace:
         parser.error("--context-k must be at least 1")
     if args.limit is not None and args.limit < 1:
         parser.error("--limit must be at least 1")
+    if args.vector_store:
+        settings.VECTOR_STORE = args.vector_store
     args.context_k = args.context_k or settings.CONTEXT_K
     args.provider = args.provider or settings.effective_llm_provider
     args.model = args.model or settings.model_for_provider(args.provider)
