@@ -137,6 +137,34 @@ class Settings(BaseSettings):
         default=0.0, ge=0.0, le=2.0, description="Generation temperature (0 for deterministic)"
     )
     LLM_MAX_TOKENS: int = Field(default=1024, ge=1, le=32768, description="Maximum response tokens")
+    LLM_MAX_RETRIES: int = Field(
+        default=0, ge=0, le=10, description="Retries of a failed LLM call (0 = no retry)"
+    )
+    LLM_RETRY_BACKOFF_SECONDS: float = Field(
+        default=1.0, ge=0.0, description="Base delay for exponential retry backoff"
+    )
+
+    # =========================================================================
+    # OBSERVABILITY (latency / cost / reliability records)
+    # =========================================================================
+    METRICS_ENABLED: bool = Field(
+        default=True, description="Write one JSONL record per /questions request"
+    )
+    METRICS_DIR: str = Field(
+        default="logs/metrics", description="Directory for daily queries-YYYY-MM-DD.jsonl files"
+    )
+    METRICS_COLD_REQUESTS: int = Field(
+        default=2, ge=0, description="First N requests per process are tagged cold"
+    )
+    LLM_INPUT_PRICE_PER_1M: float | None = Field(
+        default=None, ge=0, description="USD per 1M input tokens (overrides built-in price table)"
+    )
+    LLM_OUTPUT_PRICE_PER_1M: float | None = Field(
+        default=None, ge=0, description="USD per 1M output tokens (overrides built-in price table)"
+    )
+    LOCAL_COMPUTE_COST_PER_HOUR: float = Field(
+        default=0.0, ge=0, description="USD per hour of the machine running local models"
+    )
 
     # =========================================================================
     # API KEYS

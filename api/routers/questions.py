@@ -6,13 +6,15 @@ Provides the core Q&A endpoint for asking questions about SEC filings.
 
 import logging
 
-from fastapi import APIRouter, Depends, HTTPException, Request
+from fastapi import APIRouter, Depends, HTTPException, Request, Response
 
 from api.config import api_settings
 from api.dependencies import get_rag_service, get_valid_doc_ids
 from api.rate_limit import rate_limit_dependency
 from api.schemas import QuestionRequest, QuestionResponse
 from api.services import RAGService
+from observability import get_last_record
+from observability.records import set_last_record, set_request_id
 
 logger = logging.getLogger(__name__)
 
@@ -46,6 +48,7 @@ router = APIRouter()
 )
 def ask_question(
     http_request: Request,
+    http_response: Response,
     request: QuestionRequest,
     rag_service: RAGService = Depends(get_rag_service),
     valid_doc_ids: set[str] = Depends(get_valid_doc_ids),
@@ -70,7 +73,18 @@ def ask_question(
 
     try:
         # Call the RAG pipeline
+        set_last_record(None)
+        set_request_id(getattr(http_request.state, "correlation_id", None))
         response = rag_service.answer(request)
+        record = get_last_record()
+        if record is not None:
+            http_response.headers["Server-Timing"] = (
+                f"retrieval;dur={record.retrieval_seconds * 1000:.1f}, "
+                f"generation;dur={record.generation_seconds * 1000:.1f}, "
+                f"total;dur={record.total_seconds * 1000:.1f}"
+            )
+            http_response.headers["X-Cold-Start"] = str(record.is_cold).lower()
+            http_response.headers["X-LLM-Attempts"] = str(record.llm_attempts)
         return response
 
     except Exception as e:

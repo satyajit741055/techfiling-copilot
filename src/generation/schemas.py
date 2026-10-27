@@ -105,6 +105,7 @@ class GenerationResult:
     # Raw data for debugging
     context: str = ""
     raw_response: str = ""
+    llm_attempts: int = 1
 
     def to_dict(self) -> dict:
         """Convert to dictionary for serialization."""

@@ -271,7 +271,7 @@ class AnswerGenerator:
             f"Calling LLM: provider={self.llm_client.provider} model={self.llm_client.model} "
             f"temperature={self.llm_client.temperature} max_tokens={self.llm_client.max_tokens}"
         )
-        llm_response = self.llm_client.generate(self.system_prompt, user_prompt)
+        llm_response, llm_attempts = self._generate_with_retries(user_prompt)
         logger.info(
             f"LLM done: prompt_tokens={llm_response.prompt_tokens} "
             f"completion_tokens={llm_response.completion_tokens} "
@@ -307,7 +307,32 @@ class AnswerGenerator:
             timestamp=timestamp,
             context=context,
             raw_response=llm_response.content,
+            llm_attempts=llm_attempts,
         )
+
+    def _generate_with_retries(self, user_prompt: str) -> tuple[Any, int]:
+        """Call the LLM, retrying transient failures. Returns (response, attempts)."""
+        from config.settings import settings
+
+        max_retries = settings.LLM_MAX_RETRIES
+        attempts = 0
+        while True:
+            attempts += 1
+            try:
+                return self.llm_client.generate(self.system_prompt, user_prompt), attempts
+            except (ValueError, ImportError, TypeError) as error:
+                error.llm_attempts = attempts  # type: ignore[attr-defined]
+                raise
+            except Exception as error:
+                if attempts > max_retries:
+                    error.llm_attempts = attempts  # type: ignore[attr-defined]
+                    raise
+                delay = settings.LLM_RETRY_BACKOFF_SECONDS * 2 ** (attempts - 1)
+                logger.warning(
+                    f"LLM call failed ({type(error).__name__}: {error}); "
+                    f"retry {attempts}/{max_retries} in {delay:.1f}s"
+                )
+                time.sleep(delay)
 
     def answer_batch(
         self,
