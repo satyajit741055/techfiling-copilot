@@ -46,33 +46,62 @@ def parse_llm_response(content: str) -> GeneratedAnswer:
                 json_lines.append(line)
         content = "\n".join(json_lines)
 
-    # Try to extract JSON if there's extra text
-    if not content.startswith("{"):
-        # Look for JSON object in the content
-        match = re.search(r'\{[^{}]*\}', content, re.DOTALL)
-        if match:
-            content = match.group(0)
-
-    try:
-        data = json.loads(content)
-    except json.JSONDecodeError as e:
+    data = _extract_json_object(content)
+    if data is None:
+        error = "no JSON object found in response"
         return GeneratedAnswer(
             answer=None,
-            explanation=f"Failed to parse JSON: {e}",
+            explanation=f"Failed to parse JSON: {error}",
             citations=[],
             calculation=None,
             insufficient_context=False,
             is_valid=False,
-            validation_errors=[f"JSON parse error: {e}"],
+            validation_errors=[f"JSON parse error: {error}"],
         )
 
+    citations = data.get("citations")
+    if isinstance(citations, str):
+        citations = [citations]
+    elif not isinstance(citations, list):
+        citations = []
+
     return GeneratedAnswer(
-        answer=data.get("answer"),
-        explanation=data.get("explanation", ""),
-        citations=data.get("citations", []),
-        calculation=data.get("calculation"),
-        insufficient_context=data.get("insufficient_context", False),
+        answer=_to_text(data.get("answer")),
+        explanation=_to_text(data.get("explanation")) or "",
+        citations=[str(c) for c in citations],
+        calculation=_to_text(data.get("calculation")),
+        insufficient_context=_to_bool(data.get("insufficient_context")),
     )
+
+
+def _extract_json_object(content: str) -> dict | None:
+    """Return the first JSON object in ``content`` (nested objects allowed), else None."""
+    decoder = json.JSONDecoder()
+    for match in re.finditer(r"\{", content):
+        try:
+            value, _ = decoder.raw_decode(content, match.start())
+        except json.JSONDecodeError:
+            continue
+        if isinstance(value, dict):
+            return value
+    return None
+
+
+def _to_text(value: object) -> str | None:
+    """Coerce a JSON value to text; None stays None, containers are re-serialized."""
+    if value is None:
+        return None
+    if isinstance(value, str):
+        return value
+    if isinstance(value, (dict, list)):
+        return json.dumps(value, ensure_ascii=False)
+    return str(value)
+
+
+def _to_bool(value: object) -> bool:
+    if isinstance(value, str):
+        return value.strip().lower() in ("true", "yes", "1")
+    return bool(value)
 
 
 def validate_answer(
@@ -94,7 +123,7 @@ def validate_answer(
     Returns:
         The same answer with is_valid and validation_errors updated
     """
-    errors = []
+    errors = list(answer.validation_errors)
 
     # Check citation validity
     for citation in answer.citations:

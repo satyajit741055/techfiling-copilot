@@ -79,13 +79,13 @@ This document summarizes all DeepEval full-pipeline RAG-triad evaluations conduc
 
 | Metric | Traditional (human labels) | DeepEval (LLM judge) |
 |---|---:|---:|
-| Hit@5 | 100% | — |
-| MRR@5 | 93.5% | — |
-| Recall@5 | 75.0% | — |
+| Hit@5 | 98.2% | — |
+| MRR@5 | 90.5% | — |
+| Recall@5 | 76.1% | — |
 | Contextual Precision | — | 81.0% |
 | Contextual Recall | — | 65.8% |
 
-**Conclusion**: The retriever is performing well (100% hit rate, 93.5% MRR on human labels). The gap between traditional metrics and DeepEval metrics is due to different evaluation semantics (label matching vs semantic usefulness).
+**Conclusion**: The retriever is performing well (98.2% hit rate, 90.5% MRR on human labels). The gap between traditional metrics and DeepEval metrics is due to different evaluation semantics (label matching vs semantic usefulness).
 
 ## Category Analysis (Best Run: 21-26-16)
 

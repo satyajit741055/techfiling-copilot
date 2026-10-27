@@ -40,8 +40,8 @@ This report consolidates all evaluation experiments conducted on the TechFiling 
 | Metric | Baseline (Dense only) | Final (Hybrid + Reranker) | Improvement |
 |---|---:|---:|---:|
 | Hit@5 | 0.946 | **0.982** | +3.6% |
-| MRR@5 | 0.804 | **0.935** | +13.1% |
-| Recall@5 | 0.689 | **0.0.761** | +7.2% |
+| MRR@5 | 0.804 | **0.905** | +10.1% |
+| Recall@5 | 0.689 | **0.761** | +7.2% |
 | Precision@5 | 0.375 | 0.482 | +10.7% |
 | nDCG@5 | 0.659 | **0.758** | +9.9% |
 
@@ -70,7 +70,7 @@ This report consolidates all evaluation experiments conducted on the TechFiling 
 ### 1.3 Retriever Conclusions
 
 **Strengths**:
-- Excellent retrieval performance: 100% hit rate, 93.5% MRR on human labels
+- Excellent retrieval performance: 98.2% hit rate, 90.5% MRR on human labels
 - Strong ranking quality: 81% contextual precision (LLM judge)
 - Good recall: 66% contextual recall (LLM judge)
 
@@ -186,8 +186,8 @@ This report consolidates all evaluation experiments conducted on the TechFiling 
 | Aspect | Before | After | Improvement |
 |---|---|---|---:|
 | Hit@5 | 94.6% | 98.2% | +3.6% |
-| MRR@5 | 88.7% | 93.5% | +4.8% |
-| Recall@5 | 74.3% | 76.1% | +1.8% |
+| MRR@5 | 80.4% | 90.5% | +10.1% |
+| Recall@5 | 68.9% | 76.1% | +7.2% |
 | Contextual Precision | — | 81.0% | New metric |
 | Contextual Recall | 10%* | 65.8% | +55.8% |
 
@@ -374,7 +374,7 @@ uv run python eval/deepEval/run_all_evaluations.py --compare
 
 The TechFiling Copilot RAG system has been systematically evaluated across all pipeline stages:
 
-1. **Retriever**: Achieved excellent performance (98% hit rate, 93.5% MRR) through hybrid retrieval and Ettin reranking
+1. **Retriever**: Achieved excellent performance (98% hit rate, 90.5% MRR) through hybrid retrieval and Ettin reranking
 2. **Generator**: Improved answer correctness from 88.3% to 91.5% with V2 prompt while maintaining 100% faithfulness
 3. **Full-pipeline**: Achieved 80.4% triad mean for single-company questions with strong faithfulness (95.6%) and answer relevancy (96.5%)
 

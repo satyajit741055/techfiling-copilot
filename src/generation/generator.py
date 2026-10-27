@@ -104,6 +104,7 @@ class AnswerGenerator:
             from retriever.qdrant_retriever import QdrantRetrieverWithReranker
 
             self._retriever = QdrantRetrieverWithReranker(
+                alpha=self.config.alpha,
                 retrieve_k=self.config.retrieve_k,
                 rerank_k=self.config.context_k,
                 reranker_model=self.config.reranker_model,
@@ -181,7 +182,7 @@ class AnswerGenerator:
         """
         context_k = context_k or self.config.context_k
         logger.info("=== RETRIEVAL ===")
-        logger.info(f"Question: {question}")
+        logger.debug(f"Question: {question}")
         logger.info(f"Document filter: {doc_id or 'none'} | context_k={context_k}")
         start = time.perf_counter()
         results = self.retriever.search(question, k=context_k, doc_id=doc_id)
@@ -195,7 +196,7 @@ class AnswerGenerator:
                 f"elements={chunk.get('element_orders', [])} table_id={chunk.get('table_id')} "
                 f"chars={len(chunk.get('text', ''))}"
             )
-            logger.info(f"[S{i}] text:\n{chunk.get('text', '')}")
+            logger.debug(f"[S{i}] text:\n{chunk.get('text', '')}")
         return results
 
     def generate(
@@ -227,7 +228,7 @@ class AnswerGenerator:
         context_k = len(chunks)
 
         logger.info("=== GENERATION ===")
-        logger.info(f"Question: {question} | doc={doc_id or 'none'} | context chunks={context_k}")
+        logger.info(f"Generating answer | doc={doc_id or 'none'} | context chunks={context_k}")
 
         if not chunks:
             logger.warning("No relevant context found in the filing")
@@ -262,8 +263,8 @@ class AnswerGenerator:
             f"Prompt: system={len(self.system_prompt):,} chars "
             f"(version={self.config.prompt_version}), user={len(user_prompt):,} chars"
         )
-        logger.info(f"System prompt:\n{self.system_prompt}")
-        logger.info(f"User prompt:\n{user_prompt}")
+        logger.debug(f"System prompt:\n{self.system_prompt}")
+        logger.debug(f"User prompt:\n{user_prompt}")
 
         # Step 3: Generate
         logger.info(
@@ -276,13 +277,13 @@ class AnswerGenerator:
             f"completion_tokens={llm_response.completion_tokens} "
             f"latency={llm_response.latency_seconds:.2f}s"
         )
-        logger.info(f"Raw LLM response:\n{llm_response.content}")
+        logger.debug(f"Raw LLM response:\n{llm_response.content}")
 
         # Step 4: Parse and validate
         answer = parse_llm_response(llm_response.content)
         answer = validate_answer(answer, valid_source_ids)
 
-        logger.info(
+        logger.debug(
             f"Final answer: {answer.answer!r} | explanation={answer.explanation!r} | "
             f"citations={answer.citations} | calculation={answer.calculation!r} | "
             f"insufficient_context={answer.insufficient_context}"

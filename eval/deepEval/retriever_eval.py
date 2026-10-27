@@ -168,16 +168,26 @@ def breakdown(
 def run_evaluation(args: argparse.Namespace) -> Path:
     """Run retriever evaluation with DeepEval metrics."""
     from generation.config import GenerationConfig
-    from retriever.hybrid_retriever import HybridRetrieverWithReranker
 
     cases = select_cases(load_cases(args.golden_path), args)
     config = GenerationConfig()  # Use default retrieval config
-    retriever = HybridRetrieverWithReranker(
-        run_directory=config.resolve_run_directory(ROOT),
-        alpha=config.alpha,
-        retrieve_k=config.retrieve_k,
-        reranker_model=config.reranker_model,
-    )
+    if settings.VECTOR_STORE == "qdrant":
+        from retriever.qdrant_retriever import QdrantRetrieverWithReranker
+
+        retriever = QdrantRetrieverWithReranker(
+            alpha=config.alpha,
+            retrieve_k=config.retrieve_k,
+            reranker_model=config.reranker_model,
+        )
+    else:
+        from retriever.hybrid_retriever import HybridRetrieverWithReranker
+
+        retriever = HybridRetrieverWithReranker(
+            run_directory=config.resolve_run_directory(ROOT),
+            alpha=config.alpha,
+            retrieve_k=config.retrieve_k,
+            reranker_model=config.reranker_model,
+        )
     metrics = build_metrics(args)
     timestamp = datetime.now().strftime("%Y-%m-%d_%H-%M-%S")
     run_dir = args.output_dir / timestamp
@@ -261,6 +271,8 @@ def run_evaluation(args: argparse.Namespace) -> Path:
             "limit": args.limit,
         },
         "retrieval_config": {
+            "vector_store": settings.VECTOR_STORE,
+            "qdrant_collection": settings.QDRANT_COLLECTION if settings.VECTOR_STORE == "qdrant" else None,
             "run_directory": config.run_directory,
             "alpha": config.alpha,
             "retrieve_k": config.retrieve_k,
@@ -293,6 +305,7 @@ def run_evaluation(args: argparse.Namespace) -> Path:
     print(f"  Embedding: {manifest['execution_modes']['embedding']}")
     print(f"  Reranker: {manifest['execution_modes']['reranker']}")
     print("\nRetrieval config:")
+    print(f"  Vector store: {manifest['retrieval_config']['vector_store']}")
     print(f"  Run directory: {manifest['retrieval_config']['run_directory']}")
     print(f"  Alpha: {manifest['retrieval_config']['alpha']}")
     print(f"  Retrieve-k: {manifest['retrieval_config']['retrieve_k']}")
@@ -338,6 +351,8 @@ def dry_run(args: argparse.Namespace) -> None:
         "embedding_mode": settings.effective_embedding_mode,
         "reranker_mode": settings.effective_reranker_mode,
         "retrieval_config": {
+            "vector_store": settings.VECTOR_STORE,
+            "qdrant_collection": settings.QDRANT_COLLECTION if settings.VECTOR_STORE == "qdrant" else None,
             "run_directory": config.run_directory,
             "alpha": config.alpha,
             "retrieve_k": config.retrieve_k,
@@ -360,6 +375,8 @@ def comparison_signature(manifest: dict[str, Any]) -> dict[str, Any]:
         "threshold": manifest.get("threshold"),
         "strict": manifest.get("strict"),
         "context_k": config.get("context_k"),
+        "vector_store": config.get("vector_store"),
+        "qdrant_collection": config.get("qdrant_collection"),
         "run_directory": config.get("run_directory"),
         "alpha": config.get("alpha"),
         "retrieve_k": config.get("retrieve_k"),
@@ -517,7 +534,14 @@ def main():
         action="store_true",
         help="Compare all retriever evaluation runs in the results directory"
     )
+    parser.add_argument(
+        "--vector-store",
+        choices=["numpy", "qdrant"],
+        help="Retrieval index backend (default: VECTOR_STORE from .env)"
+    )
     args = parser.parse_args()
+    if args.vector_store:
+        settings.VECTOR_STORE = args.vector_store
 
     if args.compare:
         compare_runs(args.output_dir)

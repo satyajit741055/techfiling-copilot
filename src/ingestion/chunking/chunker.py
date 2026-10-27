@@ -187,15 +187,15 @@ def chunk_document(
         buf_orders.clear()
 
     for i, e in enumerate(els):
-        if (pseudo_headings and sum(map(len, buf)) >= min_chars
-                and looks_like_heading(e, els[i + 1] if i + 1 < len(els) else None)):
-            flush(e)  # sub-heading after real content = new topic; heading text stays in the body
         key = (e["part"], e["section"])
         if key != state["key"]:  # new Item -> hard boundary
             if state["first"]:
                 flush(state["first"])
             headings.clear()
             state["key"] = key
+        if (pseudo_headings and sum(map(len, buf)) >= min_chars
+                and looks_like_heading(e, els[i + 1] if i + 1 < len(els) else None)):
+            flush(e)  # sub-heading after real content = new topic; heading text stays in the body
         state["first"] = e
         ref = e
 

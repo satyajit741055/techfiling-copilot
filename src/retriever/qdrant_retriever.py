@@ -18,7 +18,13 @@ logger = get_logger(__name__)
 
 
 class QdrantRetriever:
-    """Dense, sparse or RRF-hybrid retrieval over a Qdrant collection."""
+    """Dense, sparse or RRF-hybrid retrieval over a Qdrant collection.
+
+    The RRF fusion weights default to ``(alpha, 1 - alpha)`` so that ``RETRIEVAL_ALPHA``
+    keeps its meaning (dense weight) across vector stores. Explicit ``dense_weight`` /
+    ``sparse_weight`` override it. This is rank-based fusion, so results are close to, but
+    not identical with, the numpy retriever's min-max score fusion.
+    """
 
     def __init__(
         self,
@@ -28,12 +34,21 @@ class QdrantRetriever:
         dense_k: int = 50,
         sparse_k: int = 50,
         rrf_k: int = 60,
-        dense_weight: float = 1.0,
-        sparse_weight: float = 1.0,
+        alpha: float | None = None,
+        dense_weight: float | None = None,
+        sparse_weight: float | None = None,
         embedder: Embedder | None = None,
         device: str | None = None,
         model_cache_directory: Any = None,
     ) -> None:
+        if alpha is None:
+            from config.settings import settings
+
+            alpha = settings.RETRIEVAL_ALPHA
+        if not 0.0 <= alpha <= 1.0:
+            raise ValueError(f"alpha must be between 0 and 1, got {alpha}")
+        dense_weight = alpha if dense_weight is None else dense_weight
+        sparse_weight = 1.0 - alpha if sparse_weight is None else sparse_weight
         self.store = store or QdrantChunkStore.from_settings()
         if not self.store.exists() or self.store.count() == 0:
             raise FileNotFoundError(
