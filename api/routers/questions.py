@@ -32,16 +32,16 @@ router = APIRouter()
         503: {"description": "Generation failed"},
     },
     dependencies=[
-        Depends(rate_limit_dependency(
-            limit=api_settings.RATE_LIMIT_GLOBAL_PER_MINUTE,
-            period=60,
-            scope="global"
-        )),
-        Depends(rate_limit_dependency(
-            limit=api_settings.RATE_LIMIT_QUESTIONS_PER_MINUTE,
-            period=60,
-            scope="ip"
-        ))
+        Depends(
+            rate_limit_dependency(
+                limit=api_settings.RATE_LIMIT_GLOBAL_PER_MINUTE, period=60, scope="global"
+            )
+        ),
+        Depends(
+            rate_limit_dependency(
+                limit=api_settings.RATE_LIMIT_QUESTIONS_PER_MINUTE, period=60, scope="ip"
+            )
+        ),
     ],
 )
 def ask_question(
@@ -65,7 +65,7 @@ def ask_question(
     if request.doc_id not in valid_doc_ids:
         raise HTTPException(
             status_code=404,
-            detail=f"Filing not found: {request.doc_id}. Available filings: {sorted(valid_doc_ids)}"
+            detail=f"Filing not found: {request.doc_id}. Available filings: {sorted(valid_doc_ids)}",
         )
 
     try:

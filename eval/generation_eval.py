@@ -32,9 +32,30 @@ NUMBER_RE = re.compile(
     re.IGNORECASE,
 )
 STOPWORDS = {
-    "a", "an", "and", "are", "as", "at", "be", "by", "for", "from",
-    "in", "is", "it", "of", "on", "or", "that", "the", "to", "was",
-    "were", "with", "year", "fiscal",
+    "a",
+    "an",
+    "and",
+    "are",
+    "as",
+    "at",
+    "be",
+    "by",
+    "for",
+    "from",
+    "in",
+    "is",
+    "it",
+    "of",
+    "on",
+    "or",
+    "that",
+    "the",
+    "to",
+    "was",
+    "were",
+    "with",
+    "year",
+    "fiscal",
 }
 
 
@@ -65,12 +86,14 @@ def extract_numbers(text: str | None) -> list[dict[str, Any]]:
         value = float(match.group("value").replace(",", ""))
         if match.group("negative"):
             value = -value
-        values.append({
-            "value": value,
-            "unit": normalize_unit(match.group("unit")),
-            "currency": "USD" if match.group("currency") else None,
-            "raw": match.group(0).strip(),
-        })
+        values.append(
+            {
+                "value": value,
+                "unit": normalize_unit(match.group("unit")),
+                "currency": "USD" if match.group("currency") else None,
+                "raw": match.group(0).strip(),
+            }
+        )
     return values
 
 
@@ -100,7 +123,9 @@ def lexical_fact_coverage(facts: list[str], generated: str) -> float | None:
     generated_tokens = set(TOKEN_RE.findall(generated.lower())) - STOPWORDS
     for fact in facts:
         fact_tokens = set(TOKEN_RE.findall(fact.lower())) - STOPWORDS
-        scores.append(len(fact_tokens & generated_tokens) / len(fact_tokens) if fact_tokens else 1.0)
+        scores.append(
+            len(fact_tokens & generated_tokens) / len(fact_tokens) if fact_tokens else 1.0
+        )
     return mean(scores)
 
 
@@ -115,16 +140,19 @@ def citation_metrics(case: dict[str, Any], result: Any) -> dict[str, Any]:
     invalid = [citation for citation in citations if citation not in source_by_id]
     gold_ids = set(case["gold_chunk_ids"])
     supporting = [
-        citation for citation in valid
-        if source_by_id[citation].get("chunk_id") in gold_ids
+        citation for citation in valid if source_by_id[citation].get("chunk_id") in gold_ids
     ]
     precision = len(supporting) / len(valid) if valid else None
-    recall = len({source_by_id[c]["chunk_id"] for c in supporting}) / len(gold_ids) if gold_ids else None
+    recall = (
+        len({source_by_id[c]["chunk_id"] for c in supporting}) / len(gold_ids) if gold_ids else None
+    )
     return {
         "citation_count": len(citations),
         "valid_citation_count": len(valid),
         "invalid_citations": invalid,
-        "citation_validity": len(valid) / len(citations) if citations else (1.0 if result.answer.insufficient_context else 0.0),
+        "citation_validity": len(valid) / len(citations)
+        if citations
+        else (1.0 if result.answer.insufficient_context else 0.0),
         "citation_precision": precision,
         "citation_recall": recall,
         "supporting_citations": supporting,
@@ -133,21 +161,31 @@ def citation_metrics(case: dict[str, Any], result: Any) -> dict[str, Any]:
 
 def numeric_faithfulness(result: Any) -> dict[str, Any]:
     source_by_id = {source["source_id"]: source for source in result.sources}
-    cited_ids = [citation for citation in cited_source_ids(result.answer.citations) if citation in source_by_id]
+    cited_ids = [
+        citation
+        for citation in cited_source_ids(result.answer.citations)
+        if citation in source_by_id
+    ]
     cited_chunk_ids = {source_by_id[citation]["chunk_id"] for citation in cited_ids}
     cited_text = "\n".join(
-        block for source, block in zip(result.sources, result.context.split("\n\n<source "))
+        block
+        for source, block in zip(result.sources, result.context.split("\n\n<source "))
         if source.get("chunk_id") in cited_chunk_ids
     )
     claims = " ".join(filter(None, [result.answer.answer, result.answer.calculation]))
     claim_numbers = extract_numbers(claims)
     evidence_numbers = extract_numbers(cited_text)
-    grounded = [any(values_match(claim, evidence) for evidence in evidence_numbers) for claim in claim_numbers]
+    grounded = [
+        any(values_match(claim, evidence) for evidence in evidence_numbers)
+        for claim in claim_numbers
+    ]
     return {
         "numeric_claim_count": len(claim_numbers),
         "grounded_numeric_claim_count": sum(grounded),
         "numeric_faithfulness": sum(grounded) / len(grounded) if grounded else None,
-        "ungrounded_numeric_claims": [claim["raw"] for claim, is_grounded in zip(claim_numbers, grounded) if not is_grounded],
+        "ungrounded_numeric_claims": [
+            claim["raw"] for claim, is_grounded in zip(claim_numbers, grounded) if not is_grounded
+        ],
     }
 
 
@@ -179,26 +217,43 @@ def score_case(case: dict[str, Any], result: Any, fact_threshold: float) -> dict
 
 
 def metric_mean(records: list[dict[str, Any]], key: str) -> float | None:
-    values = [record["metrics"][key] for record in records if record["metrics"].get(key) is not None]
+    values = [
+        record["metrics"][key] for record in records if record["metrics"].get(key) is not None
+    ]
     return mean(values) if values else None
 
 
 def aggregate(records: list[dict[str, Any]]) -> dict[str, Any]:
     keys = [
-        "answer_correct", "expected_value_coverage", "lexical_required_fact_coverage",
-        "abstention_correct", "hallucinated_answer", "false_abstention",
-        "citation_validity", "citation_precision", "citation_recall", "numeric_faithfulness",
+        "answer_correct",
+        "expected_value_coverage",
+        "lexical_required_fact_coverage",
+        "abstention_correct",
+        "hallucinated_answer",
+        "false_abstention",
+        "citation_validity",
+        "citation_precision",
+        "citation_recall",
+        "numeric_faithfulness",
     ]
     successful = [record for record in records if record["status"] == "success"]
     summary = {key: metric_mean(successful, key) for key in keys}
-    summary.update({
-        "cases": len(records),
-        "successful_cases": len(successful),
-        "error_cases": len(records) - len(successful),
-        "prompt_tokens": sum(record["generation"].get("prompt_tokens", 0) for record in successful),
-        "completion_tokens": sum(record["generation"].get("completion_tokens", 0) for record in successful),
-        "total_latency_seconds": sum(record["generation"].get("latency_seconds", 0.0) for record in successful),
-    })
+    summary.update(
+        {
+            "cases": len(records),
+            "successful_cases": len(successful),
+            "error_cases": len(records) - len(successful),
+            "prompt_tokens": sum(
+                record["generation"].get("prompt_tokens", 0) for record in successful
+            ),
+            "completion_tokens": sum(
+                record["generation"].get("completion_tokens", 0) for record in successful
+            ),
+            "total_latency_seconds": sum(
+                record["generation"].get("latency_seconds", 0.0) for record in successful
+            ),
+        }
+    )
     summary["average_latency_seconds"] = (
         summary["total_latency_seconds"] / len(successful) if successful else None
     )
@@ -225,7 +280,7 @@ def run_evaluation(args: argparse.Namespace) -> Path:
         selected_ids = set(args.case_ids)
         cases = [case for case in cases if case["id"] in selected_ids]
     if args.limit is not None:
-        cases = cases[:args.limit]
+        cases = cases[: args.limit]
     if not cases:
         raise ValueError("No golden cases matched the requested filters")
 
@@ -239,7 +294,9 @@ def run_evaluation(args: argparse.Namespace) -> Path:
     )
     generator = AnswerGenerator(config=config, system_prompt=system_prompt)
     timestamp = datetime.now().strftime("%Y-%m-%d_%H-%M-%S")
-    run_dir = args.output_dir / re.sub(r"[^\w.-]+", "_", f"{timestamp}_{args.provider}_{args.model}")
+    run_dir = args.output_dir / re.sub(
+        r"[^\w.-]+", "_", f"{timestamp}_{args.provider}_{args.model}"
+    )
     run_dir.mkdir(parents=True, exist_ok=False)
     cases_path = run_dir / "cases.jsonl"
     records = []
@@ -251,7 +308,9 @@ def run_evaluation(args: argparse.Namespace) -> Path:
             user_prompt = build_user_prompt(case["query"], context)
             print(f"[{index}/{len(cases)}] {case['id']}")
             try:
-                result = generator.generate(case["query"], chunks, doc_id=case["doc_id"], verbose=args.verbose)
+                result = generator.generate(
+                    case["query"], chunks, doc_id=case["doc_id"], verbose=args.verbose
+                )
                 record = {
                     "status": "success",
                     "case": {key: value for key, value in case.items() if key != "context"},
@@ -310,8 +369,12 @@ def run_evaluation(args: argparse.Namespace) -> Path:
         "by_category": breakdown(records, "category"),
         "by_difficulty": breakdown(records, "difficulty"),
     }
-    (run_dir / "manifest.json").write_text(json.dumps(manifest, indent=2, ensure_ascii=False), encoding="utf-8")
-    (run_dir / "summary.json").write_text(json.dumps(summary, indent=2, ensure_ascii=False), encoding="utf-8")
+    (run_dir / "manifest.json").write_text(
+        json.dumps(manifest, indent=2, ensure_ascii=False), encoding="utf-8"
+    )
+    (run_dir / "summary.json").write_text(
+        json.dumps(summary, indent=2, ensure_ascii=False), encoding="utf-8"
+    )
     print(json.dumps(summary["overall"], indent=2))
     print(f"Results saved to: {run_dir}")
     return run_dir
@@ -344,53 +407,72 @@ def compare_runs(results_dir: Path) -> Path | None:
         summary = json.loads((run_dir / "summary.json").read_text(encoding="utf-8"))
         config = manifest.get("generation_config", {})
         overall = summary.get("overall", {})
-        rows.append({
-            "run_id": manifest.get("run_id", run_dir.name),
-            "provider": config.get("provider"),
-            "model": config.get("model"),
-            "prompt_version": config.get("prompt_version"),
-            "temperature": config.get("temperature"),
-            "cases": overall.get("cases"),
-            "answer_correct": overall.get("answer_correct"),
-            "numeric_faithfulness": overall.get("numeric_faithfulness"),
-            "abstention_correct": overall.get("abstention_correct"),
-            "hallucinated_answer": overall.get("hallucinated_answer"),
-            "false_abstention": overall.get("false_abstention"),
-            "citation_precision": overall.get("citation_precision"),
-            "citation_validity": overall.get("citation_validity"),
-            "average_latency_seconds": overall.get("average_latency_seconds"),
-            "prompt_tokens": overall.get("prompt_tokens"),
-            "completion_tokens": overall.get("completion_tokens"),
-            "error_cases": overall.get("error_cases"),
-            "comparison_signature": comparison_signature(manifest),
-        })
+        rows.append(
+            {
+                "run_id": manifest.get("run_id", run_dir.name),
+                "provider": config.get("provider"),
+                "model": config.get("model"),
+                "prompt_version": config.get("prompt_version"),
+                "temperature": config.get("temperature"),
+                "cases": overall.get("cases"),
+                "answer_correct": overall.get("answer_correct"),
+                "numeric_faithfulness": overall.get("numeric_faithfulness"),
+                "abstention_correct": overall.get("abstention_correct"),
+                "hallucinated_answer": overall.get("hallucinated_answer"),
+                "false_abstention": overall.get("false_abstention"),
+                "citation_precision": overall.get("citation_precision"),
+                "citation_validity": overall.get("citation_validity"),
+                "average_latency_seconds": overall.get("average_latency_seconds"),
+                "prompt_tokens": overall.get("prompt_tokens"),
+                "completion_tokens": overall.get("completion_tokens"),
+                "error_cases": overall.get("error_cases"),
+                "comparison_signature": comparison_signature(manifest),
+            }
+        )
     if not rows:
         print(f"No generator evaluation runs found in: {results_dir}")
         return None
 
     signatures = {json.dumps(row["comparison_signature"], sort_keys=True) for row in rows}
     comparable = len(signatures) == 1
-    headers = ["Run", "Model", "Cases", "Correct", "Faithful", "Abstain", "Halluc.", "Cite prec.", "Latency"]
+    headers = [
+        "Run",
+        "Model",
+        "Cases",
+        "Correct",
+        "Faithful",
+        "Abstain",
+        "Halluc.",
+        "Cite prec.",
+        "Latency",
+    ]
     display_rows = []
     for row in rows:
-        display_rows.append([
-            row["run_id"],
-            f"{row['provider']}/{row['model']}",
-            str(row["cases"]),
-            format_metric(row["answer_correct"]),
-            format_metric(row["numeric_faithfulness"]),
-            format_metric(row["abstention_correct"]),
-            format_metric(row["hallucinated_answer"]),
-            format_metric(row["citation_precision"]),
-            format_metric(row["average_latency_seconds"], percent=False),
-        ])
-    widths = [max(len(headers[index]), *(len(row[index]) for row in display_rows)) for index in range(len(headers))]
+        display_rows.append(
+            [
+                row["run_id"],
+                f"{row['provider']}/{row['model']}",
+                str(row["cases"]),
+                format_metric(row["answer_correct"]),
+                format_metric(row["numeric_faithfulness"]),
+                format_metric(row["abstention_correct"]),
+                format_metric(row["hallucinated_answer"]),
+                format_metric(row["citation_precision"]),
+                format_metric(row["average_latency_seconds"], percent=False),
+            ]
+        )
+    widths = [
+        max(len(headers[index]), *(len(row[index]) for row in display_rows))
+        for index in range(len(headers))
+    ]
     print("  ".join(header.ljust(widths[index]) for index, header in enumerate(headers)))
     print("  ".join("-" * width for width in widths))
     for row in display_rows:
         print("  ".join(value.ljust(widths[index]) for index, value in enumerate(row)))
     if not comparable:
-        print("\nWARNING: Runs are not directly comparable. Dataset filters, prompt hash, or metric threshold differ.")
+        print(
+            "\nWARNING: Runs are not directly comparable. Dataset filters, prompt hash, or metric threshold differ."
+        )
 
     timestamp = datetime.now().strftime("%Y-%m-%d_%H-%M-%S")
     output_path = results_dir / f"comparison_{timestamp}.json"
@@ -398,7 +480,11 @@ def compare_runs(results_dir: Path) -> Path | None:
         "timestamp": timestamp,
         "directly_comparable": comparable,
         "compatibility_fields": [
-            "golden_path", "selected_case_count", "filters", "system_prompt_sha256", "fact_threshold",
+            "golden_path",
+            "selected_case_count",
+            "filters",
+            "system_prompt_sha256",
+            "fact_threshold",
         ],
         "runs": rows,
     }
@@ -412,7 +498,8 @@ def parse_args() -> argparse.Namespace:
     parser.add_argument("--golden-path", type=Path, default=DEFAULT_GOLDEN_PATH)
     parser.add_argument("--output-dir", type=Path, default=DEFAULT_RESULTS_DIR)
     parser.add_argument(
-        "--provider", choices=["ollama", "huggingface", "openai", "anthropic", "google"],
+        "--provider",
+        choices=["ollama", "huggingface", "openai", "anthropic", "google"],
         help="Generator provider (default: from .env execution mode / LLM_PROVIDER)",
     )
     parser.add_argument("--model", help="Generator model (default: provider default from .env)")
@@ -427,7 +514,9 @@ def parse_args() -> argparse.Namespace:
     parser.add_argument("--limit", type=int)
     parser.add_argument("--verbose", action="store_true")
     parser.add_argument("--fail-fast", action="store_true")
-    parser.add_argument("--compare", action="store_true", help="Compare saved generator evaluation runs")
+    parser.add_argument(
+        "--compare", action="store_true", help="Compare saved generator evaluation runs"
+    )
     args = parser.parse_args()
     args.provider = args.provider or settings.effective_llm_provider
     args.model = args.model or settings.model_for_provider(args.provider)

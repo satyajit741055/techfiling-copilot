@@ -60,7 +60,9 @@ class QdrantRetriever:
         self.dense_weight, self.sparse_weight = dense_weight, sparse_weight
         self.embedder = embedder or create_embedder(device=device, cache_dir=model_cache_directory)
         self.model_name = self.embedder.model_name
-        check_index_compatibility(self.store.index_metadata(), self.embedder, self.store.dimension())
+        check_index_compatibility(
+            self.store.index_metadata(), self.embedder, self.store.dimension()
+        )
         logger.info(
             f"Qdrant retriever ready: {self.store.collection} ({self.store.count():,} chunks, mode={mode})"
         )
@@ -123,7 +125,9 @@ class QdrantRetrieverWithReranker:
         self.retriever = QdrantRetriever(
             store, device=device, model_cache_directory=model_cache_directory, **retriever_kwargs
         )
-        self.reranker = Reranker(reranker_model, device=device, model_cache_directory=model_cache_directory)
+        self.reranker = Reranker(
+            reranker_model, device=device, model_cache_directory=model_cache_directory
+        )
 
     @property
     def reranker_model_name(self) -> str:
@@ -146,6 +150,11 @@ class QdrantRetrieverWithReranker:
     ) -> list[SearchResult]:
         k = k if k is not None else self.rerank_k
         candidates = self.retriever.search(
-            query, k=max(k, self.retrieve_k), doc_id=doc_id, section=section, type_=type_, filters=filters
+            query,
+            k=max(k, self.retrieve_k),
+            doc_id=doc_id,
+            section=section,
+            type_=type_,
+            filters=filters,
         )
         return self.reranker.rerank(query, candidates, k=k)

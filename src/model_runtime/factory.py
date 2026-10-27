@@ -24,6 +24,7 @@ def _settings(settings: "Settings | None") -> "Settings":
     if settings is not None:
         return settings
     from config.settings import settings as global_settings
+
     return global_settings
 
 
@@ -51,7 +52,9 @@ def create_embedder(
     model_name = model_name or settings.EMBEDDING_MODEL
     cache_dir = cache_dir or settings.MODEL_CACHE_DIR
     if mode == "local":
-        return LocalEmbedder(model_name, device=_local_device(device, settings), cache_dir=cache_dir)
+        return LocalEmbedder(
+            model_name, device=_local_device(device, settings), cache_dir=cache_dir
+        )
     if mode == "huggingface_api":
         return HuggingFaceApiEmbedder(
             model_name,

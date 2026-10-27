@@ -202,11 +202,11 @@ class EvalResults:
             "metrics_by_difficulty": self.metrics_by_difficulty,
             "metrics_by_doc": self.metrics_by_doc,
             "query_results": {
-                k: [asdict(qr) for qr in results]
-                for k, results in self.query_results.items()
+                k: [asdict(qr) for qr in results] for k, results in self.query_results.items()
             },
         }
         return result
+
 
 # =============================================================================
 # Metric Computation Functions
@@ -298,9 +298,7 @@ def compute_hit(relevance_scores: list[int], min_relevance: int = 1) -> bool:
     return any(rel >= min_relevance for rel in relevance_scores)
 
 
-def compute_recall(
-    retrieved_relevant: int, total_relevant: int
-) -> float:
+def compute_recall(retrieved_relevant: int, total_relevant: int) -> float:
     """
     Compute Recall.
 
@@ -318,9 +316,7 @@ def compute_recall(
     return retrieved_relevant / total_relevant
 
 
-def compute_precision(
-    retrieved_relevant: int, retrieved_count: int
-) -> float:
+def compute_precision(retrieved_relevant: int, retrieved_count: int) -> float:
     """
     Compute Precision.
 
@@ -336,6 +332,7 @@ def compute_precision(
     if retrieved_count == 0:
         return 0.0
     return retrieved_relevant / retrieved_count
+
 
 # =============================================================================
 # Golden Dataset Loader
@@ -396,7 +393,9 @@ class GoldenQuery:
 
         return max_grade
 
-    def score_ranking(self, ranked: list[tuple[list[int], str | None]]) -> tuple[list[int], set[int]]:
+    def score_ranking(
+        self, ranked: list[tuple[list[int], str | None]]
+    ) -> tuple[list[int], set[int]]:
         """Grade a ranked list of (element_orders, doc_id), crediting each relevant item at most once.
 
         An item may list equivalent elements (the same fact in an MD&A table and a note); a second copy
@@ -407,7 +406,8 @@ class GoldenQuery:
         for chunk_orders, doc_id in ranked:
             orders = set(chunk_orders or [])
             new = [
-                i for i, item in enumerate(self.relevant)
+                i
+                for i, item in enumerate(self.relevant)
                 if i not in found
                 and item["match_by"] == "element_orders"
                 and (item.get("doc_id") is None or doc_id is None or item["doc_id"] == doc_id)
@@ -429,21 +429,24 @@ def load_golden_dataset(path: Path) -> list[GoldenQuery]:
         for line in f:
             if line.strip():
                 data = json.loads(line)
-                queries.append(GoldenQuery(
-                    id=data["id"],
-                    query=data["query"],
-                    doc_id=data.get("doc_id"),
-                    category=data["category"],
-                    difficulty=data["difficulty"],
-                    expected_answer=data["expected_answer"],
-                    relevant=data.get("relevant", []),
-                ))
+                queries.append(
+                    GoldenQuery(
+                        id=data["id"],
+                        query=data["query"],
+                        doc_id=data.get("doc_id"),
+                        category=data["category"],
+                        difficulty=data["difficulty"],
+                        expected_answer=data["expected_answer"],
+                        relevant=data.get("relevant", []),
+                    )
+                )
     return queries
 
 
 # =============================================================================
 # Evaluator Class
 # =============================================================================
+
 
 class RetrieverEvaluator:
     """
@@ -482,10 +485,7 @@ class RetrieverEvaluator:
         print(f"Loading retriever from: {run_directory or 'latest run'}")
         self.retriever = DenseRetriever(run_directory, device=device)
         print(f"  Loaded {len(self.retriever.chunks)} chunks")
-        print(
-            f"  Model: {self.retriever.model_name} "
-            f"({self.retriever.embedder.backend})"
-        )
+        print(f"  Model: {self.retriever.model_name} ({self.retriever.embedder.backend})")
         print(f"Loaded {len(self.golden_queries)} golden queries")
 
     def evaluate_query(
@@ -530,19 +530,18 @@ class RetrieverEvaluator:
                     if item["match_by"] == "element_orders":
                         item_doc = item.get("doc_id")
                         if item_doc is None or chunk_doc_id is None or item_doc == chunk_doc_id:
-                            matched.extend(
-                                o for o in item["value"]
-                                if o in chunk_orders
-                            )
+                            matched.extend(o for o in item["value"] if o in chunk_orders)
 
-                matches.append(RelevanceMatch(
-                    chunk_id=chunk.get("chunk_id", "unknown"),
-                    element_orders=chunk_orders,
-                    matched_orders=list(set(matched)),
-                    relevance_grade=grade,
-                    rank=rank,
-                    score=score,
-                ))
+                matches.append(
+                    RelevanceMatch(
+                        chunk_id=chunk.get("chunk_id", "unknown"),
+                        element_orders=chunk_orders,
+                        matched_orders=list(set(matched)),
+                        relevance_grade=grade,
+                        rank=rank,
+                        score=score,
+                    )
+                )
 
         # Compute metrics
         total_relevant = len(golden.relevant)
@@ -633,19 +632,13 @@ class RetrieverEvaluator:
             metrics_by_k[k] = self._aggregate_metrics(results)
 
         # Breakdowns by category
-        metrics_by_category = self._compute_breakdown(
-            query_results, k_values, "category"
-        )
+        metrics_by_category = self._compute_breakdown(query_results, k_values, "category")
 
         # Breakdowns by difficulty
-        metrics_by_difficulty = self._compute_breakdown(
-            query_results, k_values, "difficulty"
-        )
+        metrics_by_difficulty = self._compute_breakdown(query_results, k_values, "difficulty")
 
         # Breakdowns by document
-        metrics_by_doc = self._compute_breakdown(
-            query_results, k_values, "doc_id"
-        )
+        metrics_by_doc = self._compute_breakdown(query_results, k_values, "doc_id")
 
         # Determine primary k (prefer 5, else use largest available)
         primary_k = 5 if 5 in k_values else max(k_values)
@@ -698,22 +691,26 @@ class RetrieverEvaluator:
         }
 
         if positive_results:
-            metrics.update({
-                "hit_rate": np.mean([r.hit for r in positive_results]),
-                "mrr": np.mean([r.reciprocal_rank for r in positive_results]),
-                "recall": np.mean([r.recall for r in positive_results]),
-                "precision": np.mean([r.precision for r in positive_results]),
-                "ndcg": np.mean([r.ndcg for r in positive_results]),
-            })
+            metrics.update(
+                {
+                    "hit_rate": np.mean([r.hit for r in positive_results]),
+                    "mrr": np.mean([r.reciprocal_rank for r in positive_results]),
+                    "recall": np.mean([r.recall for r in positive_results]),
+                    "precision": np.mean([r.precision for r in positive_results]),
+                    "ndcg": np.mean([r.ndcg for r in positive_results]),
+                }
+            )
 
             # Standard deviations
-            metrics.update({
-                "hit_rate_std": float(np.std([r.hit for r in positive_results])),
-                "mrr_std": float(np.std([r.reciprocal_rank for r in positive_results])),
-                "recall_std": float(np.std([r.recall for r in positive_results])),
-                "precision_std": float(np.std([r.precision for r in positive_results])),
-                "ndcg_std": float(np.std([r.ndcg for r in positive_results])),
-            })
+            metrics.update(
+                {
+                    "hit_rate_std": float(np.std([r.hit for r in positive_results])),
+                    "mrr_std": float(np.std([r.reciprocal_rank for r in positive_results])),
+                    "recall_std": float(np.std([r.recall for r in positive_results])),
+                    "precision_std": float(np.std([r.precision for r in positive_results])),
+                    "ndcg_std": float(np.std([r.ndcg for r in positive_results])),
+                }
+            )
 
         # For negative queries, check if retriever correctly returns low-confidence results
         if negative_results:
@@ -795,11 +792,15 @@ class RetrieverEvaluator:
         print("\nConfiguration:")
         print(f"  Run directory: {results.run_directory}")
         print(f"  Total chunks: {results.total_chunks}")
-        print(f"  Total queries: {results.total_queries} "
-              f"({results.overall.get('positive_queries', 0)} positive, "
-              f"{results.overall.get('negative_queries', 0)} negative)")
-        print(f"  Chunking: MAX_CHARS={results.chunking_config.get('max_chars')}, "
-              f"TABLE_MAX_CHARS={results.chunking_config.get('table_max_chars')}")
+        print(
+            f"  Total queries: {results.total_queries} "
+            f"({results.overall.get('positive_queries', 0)} positive, "
+            f"{results.overall.get('negative_queries', 0)} negative)"
+        )
+        print(
+            f"  Chunking: MAX_CHARS={results.chunking_config.get('max_chars')}, "
+            f"TABLE_MAX_CHARS={results.chunking_config.get('table_max_chars')}"
+        )
         print(f"  Model: {results.embedding_model.get('name')}")
 
         # Overall metrics - the headline numbers
@@ -807,16 +808,23 @@ class RetrieverEvaluator:
         print(f"OVERALL METRICS (k={results.primary_k})")
         print("-" * 80)
         o = results.overall
-        print(f"  Hit Rate:   {o.get('hit_rate', 0):.3f}  "
-              f"({o.get('hit_rate', 0)*100:.1f}% of queries found relevant results)")
-        print(f"  MRR:        {o.get('mrr', 0):.3f}  "
-              f"(first relevant result at ~rank {1/o.get('mrr', 0.001):.1f} on average)")
-        print(f"  Recall:     {o.get('recall', 0):.3f}  "
-              f"({o.get('recall', 0)*100:.1f}% of all relevant chunks retrieved)")
-        print(f"  Precision:  {o.get('precision', 0):.3f}  "
-              f"({o.get('precision', 0)*100:.1f}% of retrieved chunks are relevant)")
-        print(f"  nDCG:       {o.get('ndcg', 0):.3f}  "
-              f"(ranking quality score)")
+        print(
+            f"  Hit Rate:   {o.get('hit_rate', 0):.3f}  "
+            f"({o.get('hit_rate', 0) * 100:.1f}% of queries found relevant results)"
+        )
+        print(
+            f"  MRR:        {o.get('mrr', 0):.3f}  "
+            f"(first relevant result at ~rank {1 / o.get('mrr', 0.001):.1f} on average)"
+        )
+        print(
+            f"  Recall:     {o.get('recall', 0):.3f}  "
+            f"({o.get('recall', 0) * 100:.1f}% of all relevant chunks retrieved)"
+        )
+        print(
+            f"  Precision:  {o.get('precision', 0):.3f}  "
+            f"({o.get('precision', 0) * 100:.1f}% of retrieved chunks are relevant)"
+        )
+        print(f"  nDCG:       {o.get('ndcg', 0):.3f}  (ranking quality score)")
 
         # Detailed metrics by k
         print("\nMetrics by k:")
@@ -838,11 +846,13 @@ class RetrieverEvaluator:
         for category, metrics in sorted(results.metrics_by_category.items()):
             if k in metrics:
                 m = metrics[k]
-                print(f"  {category:<25} | "
-                      f"Hit={m.get('hit_rate', 0):.2f} "
-                      f"MRR={m.get('mrr', 0):.2f} "
-                      f"Recall={m.get('recall', 0):.2f} "
-                      f"(n={m.get('positive_queries', 0)})")
+                print(
+                    f"  {category:<25} | "
+                    f"Hit={m.get('hit_rate', 0):.2f} "
+                    f"MRR={m.get('mrr', 0):.2f} "
+                    f"Recall={m.get('recall', 0):.2f} "
+                    f"(n={m.get('positive_queries', 0)})"
+                )
 
         # Difficulty breakdown
         print("\nBreakdown by Difficulty (k=5):")
@@ -852,11 +862,13 @@ class RetrieverEvaluator:
                 metrics = results.metrics_by_difficulty[diff]
                 if k in metrics:
                     m = metrics[k]
-                    print(f"  {diff:<25} | "
-                          f"Hit={m.get('hit_rate', 0):.2f} "
-                          f"MRR={m.get('mrr', 0):.2f} "
-                          f"Recall={m.get('recall', 0):.2f} "
-                          f"(n={m.get('positive_queries', 0)})")
+                    print(
+                        f"  {diff:<25} | "
+                        f"Hit={m.get('hit_rate', 0):.2f} "
+                        f"MRR={m.get('mrr', 0):.2f} "
+                        f"Recall={m.get('recall', 0):.2f} "
+                        f"(n={m.get('positive_queries', 0)})"
+                    )
 
         print("\n" + "=" * 80)
 
@@ -896,8 +908,10 @@ def compare_runs(results_dir: Path | None = None) -> None:
     print("=" * 100)
 
     # Header
-    print(f"\n{'Timestamp':<20} | {'MAX_CHARS':>9} | {'TBL_CHARS':>9} | "
-          f"{'Hit@5':>6} | {'MRR@5':>6} | {'Recall@5':>8} | {'Prec@5':>6} | {'nDCG@5':>7} | {'Chunks':>7}")
+    print(
+        f"\n{'Timestamp':<20} | {'MAX_CHARS':>9} | {'TBL_CHARS':>9} | "
+        f"{'Hit@5':>6} | {'MRR@5':>6} | {'Recall@5':>8} | {'Prec@5':>6} | {'nDCG@5':>7} | {'Chunks':>7}"
+    )
     print("-" * 100)
 
     for path in result_files:
@@ -931,8 +945,10 @@ def compare_runs(results_dir: Path | None = None) -> None:
                 else:
                     hit = mrr = recall = precision = ndcg = 0
 
-            print(f"{ts:<20} | {max_chars:>9} | {tbl_chars:>9} | "
-                  f"{hit:>6.3f} | {mrr:>6.3f} | {recall:>8.3f} | {precision:>6.3f} | {ndcg:>7.3f} | {chunks:>7}")
+            print(
+                f"{ts:<20} | {max_chars:>9} | {tbl_chars:>9} | "
+                f"{hit:>6.3f} | {mrr:>6.3f} | {recall:>8.3f} | {precision:>6.3f} | {ndcg:>7.3f} | {chunks:>7}"
+            )
 
         except Exception as e:
             print(f"Error loading {path.name}: {e}")
@@ -973,9 +989,7 @@ def analyze_failures(
             continue
 
         # Check if we found a highly relevant result
-        found_high_relevance = any(
-            m.relevance_grade >= min_relevance for m in qr.matches
-        )
+        found_high_relevance = any(m.relevance_grade >= min_relevance for m in qr.matches)
 
         if not found_high_relevance:
             failures.append(qr)
@@ -1001,8 +1015,10 @@ def analyze_failures(
         print(f"  Category: {qr.category}, Difficulty: {qr.difficulty}")
         print(f"  Expected {qr.total_relevant} relevant, found {qr.relevant_retrieved}")
         if qr.top_chunks:
-            print(f"  Top result: score={qr.top_chunks[0]['score']:.3f}, "
-                  f"orders={qr.top_chunks[0]['element_orders'][:3]}...")
+            print(
+                f"  Top result: score={qr.top_chunks[0]['score']:.3f}, "
+                f"orders={qr.top_chunks[0]['element_orders'][:3]}..."
+            )
 
 
 # =============================================================================

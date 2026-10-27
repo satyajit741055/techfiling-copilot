@@ -169,20 +169,20 @@ def extract_numeric_value(text: str) -> tuple[float | None, str | None]:
     text = str(text).lower().strip()
 
     # Check for percentage
-    pct_match = re.search(r'([\d,]+\.?\d*)\s*%', text)
+    pct_match = re.search(r"([\d,]+\.?\d*)\s*%", text)
     if pct_match:
         value = float(pct_match.group(1).replace(",", ""))
         return value, "percent"
 
     # Check for currency values
-    money_match = re.search(r'\$?\s*([\d,]+\.?\d*)\s*(billion|million|thousand)?', text)
+    money_match = re.search(r"\$?\s*([\d,]+\.?\d*)\s*(billion|million|thousand)?", text)
     if money_match:
         value = float(money_match.group(1).replace(",", ""))
         unit = money_match.group(2) or "units"
         return value, unit
 
     # Try to extract any number
-    num_match = re.search(r'([\d,]+\.?\d*)', text)
+    num_match = re.search(r"([\d,]+\.?\d*)", text)
     if num_match:
         value = float(num_match.group(1).replace(",", ""))
         return value, "units"

@@ -64,6 +64,7 @@ DEFAULT_RESULTS_DIR = ROOT / "eval" / "retriver_results"
 @dataclass
 class RelevanceMatch:
     """Represents a relevance match between a retrieved chunk and golden answer."""
+
     chunk_id: str
     element_orders: list[int]
     matched_orders: list[int]
@@ -75,6 +76,7 @@ class RelevanceMatch:
 @dataclass
 class QueryResult:
     """Evaluation result for a single query."""
+
     query_id: str
     query: str
     category: str
@@ -95,6 +97,7 @@ class QueryResult:
 @dataclass
 class EvalResults:
     """Complete evaluation results."""
+
     timestamp: str
     run_directory: str
     golden_path: str
@@ -131,8 +134,7 @@ class EvalResults:
             "metrics_by_difficulty": self.metrics_by_difficulty,
             "metrics_by_doc": self.metrics_by_doc,
             "query_results": {
-                k: [asdict(qr) for qr in results]
-                for k, results in self.query_results.items()
+                k: [asdict(qr) for qr in results] for k, results in self.query_results.items()
             },
         }
         return result
@@ -219,7 +221,9 @@ class GoldenQuery:
                     max_grade = max(max_grade, item["relevance"])
         return max_grade
 
-    def score_ranking(self, ranked: list[tuple[list[int], str | None]]) -> tuple[list[int], set[int]]:
+    def score_ranking(
+        self, ranked: list[tuple[list[int], str | None]]
+    ) -> tuple[list[int], set[int]]:
         """Grade a ranked list of (element_orders, doc_id), crediting each relevant item at most once.
 
         An item may list equivalent elements (the same fact in an MD&A table and a note); a second copy
@@ -230,7 +234,8 @@ class GoldenQuery:
         for chunk_orders, doc_id in ranked:
             orders = set(chunk_orders or [])
             new = [
-                i for i, item in enumerate(self.relevant)
+                i
+                for i, item in enumerate(self.relevant)
                 if i not in found
                 and item["match_by"] == "element_orders"
                 and (item.get("doc_id") is None or doc_id is None or item["doc_id"] == doc_id)
@@ -252,15 +257,17 @@ def load_golden_dataset(path: Path) -> list[GoldenQuery]:
         for line in f:
             if line.strip():
                 data = json.loads(line)
-                queries.append(GoldenQuery(
-                    id=data["id"],
-                    query=data["query"],
-                    doc_id=data.get("doc_id"),
-                    category=data["category"],
-                    difficulty=data["difficulty"],
-                    expected_answer=data["expected_answer"],
-                    relevant=data.get("relevant", []),
-                ))
+                queries.append(
+                    GoldenQuery(
+                        id=data["id"],
+                        query=data["query"],
+                        doc_id=data.get("doc_id"),
+                        category=data["category"],
+                        difficulty=data["difficulty"],
+                        expected_answer=data["expected_answer"],
+                        relevant=data.get("relevant", []),
+                    )
+                )
     return queries
 
 
@@ -337,9 +344,7 @@ class HybridEvaluator:
         elif mode == "bm25":
             self.retriever = BM25Retriever(run_directory)
         elif mode == "hybrid":
-            self.retriever = HybridRetriever(
-                run_directory, alpha=self.alpha, device=device
-            )
+            self.retriever = HybridRetriever(run_directory, alpha=self.alpha, device=device)
         elif mode == "rerank":
             self.retriever = HybridRetrieverWithReranker(
                 run_directory,
@@ -375,7 +380,9 @@ class HybridEvaluator:
                 )
             elif mode in ("qdrant", "qdrant_dense", "qdrant_sparse"):
                 self.retriever = QdrantRetriever(
-                    mode={"qdrant": "hybrid", "qdrant_dense": "dense", "qdrant_sparse": "sparse"}[mode],
+                    mode={"qdrant": "hybrid", "qdrant_dense": "dense", "qdrant_sparse": "sparse"}[
+                        mode
+                    ],
                     device=device,
                     **qdrant_kwargs,
                 )
@@ -425,14 +432,16 @@ class HybridEvaluator:
                         if item_doc is None or chunk_doc_id is None or item_doc == chunk_doc_id:
                             matched.extend(o for o in item["value"] if o in chunk_orders)
 
-                matches.append(RelevanceMatch(
-                    chunk_id=chunk.get("chunk_id", "unknown"),
-                    element_orders=chunk_orders,
-                    matched_orders=list(set(matched)),
-                    relevance_grade=grade,
-                    rank=rank,
-                    score=score,
-                ))
+                matches.append(
+                    RelevanceMatch(
+                        chunk_id=chunk.get("chunk_id", "unknown"),
+                        element_orders=chunk_orders,
+                        matched_orders=list(set(matched)),
+                        relevance_grade=grade,
+                        rank=rank,
+                        score=score,
+                    )
+                )
 
         total_relevant = len(golden.relevant)
         ideal_scores = golden.get_all_relevance_grades()
@@ -482,18 +491,27 @@ class HybridEvaluator:
             "embedding_backend": getattr(
                 getattr(self.retriever, "embedder", None)
                 or getattr(getattr(self.retriever, "retriever", None), "embedder", None),
-                "backend", None,
+                "backend",
+                None,
             ),
             "reranker_backend": getattr(
                 getattr(getattr(self.retriever, "reranker", None), "backend", None),
-                "backend", None,
-            ) or getattr(getattr(self.retriever, "reranker", None), "backend", None),
+                "backend",
+                None,
+            )
+            or getattr(getattr(self.retriever, "reranker", None), "backend", None),
             "alpha": self.alpha if self.mode in ("hybrid", "rerank") else None,
-            "retrieve_k": self.retrieve_k if self.mode in ("rerank", "rrf_rerank", "qdrant_rerank") else None,
+            "retrieve_k": self.retrieve_k
+            if self.mode in ("rerank", "rrf_rerank", "qdrant_rerank")
+            else None,
             "reranker_model": (
-                self.reranker_model if self.mode in ("rerank", "rrf_rerank", "qdrant_rerank") else None
+                self.reranker_model
+                if self.mode in ("rerank", "rrf_rerank", "qdrant_rerank")
+                else None
             ),
-            "rrf": self.rrf_config if self.mode in ("rrf", "rrf_rerank", "qdrant", "qdrant_rerank") else None,
+            "rrf": self.rrf_config
+            if self.mode in ("rrf", "rrf_rerank", "qdrant", "qdrant_rerank")
+            else None,
         }
 
         query_results: dict[int, list[QueryResult]] = {k: [] for k in k_values}
@@ -618,24 +636,28 @@ class HybridEvaluator:
         print("\nConfiguration:")
         print(f"  Run directory: {results.run_directory}")
         print(f"  Total chunks: {results.total_chunks}")
-        print(f"  Total queries: {results.total_queries} "
-              f"({results.overall['positive_queries']} positive, "
-              f"{results.overall['negative_queries']} negative)")
+        print(
+            f"  Total queries: {results.total_queries} "
+            f"({results.overall['positive_queries']} positive, "
+            f"{results.overall['negative_queries']} negative)"
+        )
 
         config = results.chunking_config
-        print(f"  Chunking: MAX_CHARS={config.get('max_chars')}, "
-              f"TABLE_MAX_CHARS={config.get('table_max_chars')}")
+        print(
+            f"  Chunking: MAX_CHARS={config.get('max_chars')}, "
+            f"TABLE_MAX_CHARS={config.get('table_max_chars')}"
+        )
 
         model = results.embedding_model
         print(f"  Model: {model.get('name')}")
 
         ret_config = results.retrieval_config
         print(f"  Retrieval mode: {ret_config.get('mode')}")
-        if ret_config.get('alpha') is not None:
+        if ret_config.get("alpha") is not None:
             print(f"  Alpha: {ret_config.get('alpha')}")
-        if ret_config.get('retrieve_k') is not None:
+        if ret_config.get("retrieve_k") is not None:
             print(f"  Retrieve-k: {ret_config.get('retrieve_k')}")
-        if ret_config.get('reranker_model'):
+        if ret_config.get("reranker_model"):
             print(f"  Reranker: {ret_config.get('reranker_model')}")
 
         # Overall metrics
@@ -643,16 +665,23 @@ class HybridEvaluator:
         print(f"OVERALL METRICS (k={results.primary_k})")
         print("-" * 80)
         overall = results.overall
-        print(f"  Hit Rate:   {overall['hit_rate']:.3f}  "
-              f"({overall['hit_rate']*100:.1f}% of queries found relevant results)")
-        mrr = overall['mrr']
-        avg_rank = 1/mrr if mrr > 0 else float('inf')
-        print(f"  MRR:        {mrr:.3f}  "
-              f"(first relevant result at ~rank {avg_rank:.1f} on average)")
-        print(f"  Recall:     {overall['recall']:.3f}  "
-              f"({overall['recall']*100:.1f}% of all relevant chunks retrieved)")
-        print(f"  Precision:  {overall['precision']:.3f}  "
-              f"({overall['precision']*100:.1f}% of retrieved chunks are relevant)")
+        print(
+            f"  Hit Rate:   {overall['hit_rate']:.3f}  "
+            f"({overall['hit_rate'] * 100:.1f}% of queries found relevant results)"
+        )
+        mrr = overall["mrr"]
+        avg_rank = 1 / mrr if mrr > 0 else float("inf")
+        print(
+            f"  MRR:        {mrr:.3f}  (first relevant result at ~rank {avg_rank:.1f} on average)"
+        )
+        print(
+            f"  Recall:     {overall['recall']:.3f}  "
+            f"({overall['recall'] * 100:.1f}% of all relevant chunks retrieved)"
+        )
+        print(
+            f"  Precision:  {overall['precision']:.3f}  "
+            f"({overall['precision'] * 100:.1f}% of retrieved chunks are relevant)"
+        )
         print(f"  nDCG:       {overall['ndcg']:.3f}  (ranking quality score)")
 
         # Metrics by k
@@ -676,10 +705,12 @@ class HybridEvaluator:
         for cat, metrics in sorted(results.metrics_by_category.items()):
             m = metrics.get(results.primary_k) or metrics.get(str(results.primary_k), {})
             if m:
-                print(f"  {cat:<25} | Hit={m.get('hit_rate', 0):.2f} "
-                      f"MRR={m.get('mrr', 0):.2f} "
-                      f"Recall={m.get('recall', 0):.2f} "
-                      f"(n={m.get('positive_queries', 0)})")
+                print(
+                    f"  {cat:<25} | Hit={m.get('hit_rate', 0):.2f} "
+                    f"MRR={m.get('mrr', 0):.2f} "
+                    f"Recall={m.get('recall', 0):.2f} "
+                    f"(n={m.get('positive_queries', 0)})"
+                )
 
         # Difficulty breakdown
         print(f"\nBreakdown by Difficulty (k={results.primary_k}):")
@@ -689,10 +720,12 @@ class HybridEvaluator:
                 by_k = results.metrics_by_difficulty[diff]
                 m = by_k.get(results.primary_k) or by_k.get(str(results.primary_k), {})
                 if m:
-                    print(f"  {diff:<25} | Hit={m.get('hit_rate', 0):.2f} "
-                          f"MRR={m.get('mrr', 0):.2f} "
-                          f"Recall={m.get('recall', 0):.2f} "
-                          f"(n={m.get('positive_queries', 0)})")
+                    print(
+                        f"  {diff:<25} | Hit={m.get('hit_rate', 0):.2f} "
+                        f"MRR={m.get('mrr', 0):.2f} "
+                        f"Recall={m.get('recall', 0):.2f} "
+                        f"(n={m.get('positive_queries', 0)})"
+                    )
 
         print("\n" + "=" * 80)
 
@@ -711,13 +744,9 @@ class HybridEvaluator:
         reranker_str = f"_{reranker.split('/')[-1]}" if reranker else ""
 
         rrf = results.retrieval_config.get("rrf")
-        rrf_str = (
-            f"_w{rrf['dense_weight']:g}-{rrf['bm25_weight']:g}_k{rrf['rrf_k']}" if rrf else ""
-        )
+        rrf_str = f"_w{rrf['dense_weight']:g}-{rrf['bm25_weight']:g}_k{rrf['rrf_k']}" if rrf else ""
 
-        filename = (
-            f"{results.timestamp}_{mode}{alpha_str}{rrf_str}{reranker_str}_eval_results.json"
-        )
+        filename = f"{results.timestamp}_{mode}{alpha_str}{rrf_str}{reranker_str}_eval_results.json"
         output_path = output_dir / filename
 
         with output_path.open("w", encoding="utf-8") as f:
@@ -755,7 +784,7 @@ def tune_alpha(
         Dictionary mapping alpha -> metrics
     """
     if alpha_values is None:
-        alpha_values = [0.0, 0.1, 0.2, 0.3, 0.4, 0.5, 0.6, 0.7, 0.8,0.85, 0.9, 1.0]
+        alpha_values = [0.0, 0.1, 0.2, 0.3, 0.4, 0.5, 0.6, 0.7, 0.8, 0.85, 0.9, 1.0]
 
     print("\n" + "=" * 80)
     print("ALPHA TUNING")
@@ -773,9 +802,7 @@ def tune_alpha(
     from retriever.hybrid_retriever import HybridRetriever
 
     # Create a base retriever to reuse
-    base_retriever = HybridRetriever(
-        run_directory, alpha=0.5, device=device
-    )
+    base_retriever = HybridRetriever(run_directory, alpha=0.5, device=device)
 
     for alpha in alpha_values:
         print(f"\n--- Alpha = {alpha:.1f} ---")
@@ -797,7 +824,10 @@ def tune_alpha(
 
             # Compute metrics
             relevance_scores, found_items = golden.score_ranking(
-                [(chunk.get("element_orders", []), chunk.get("doc_id")) for _, chunk in search_results]
+                [
+                    (chunk.get("element_orders", []), chunk.get("doc_id"))
+                    for _, chunk in search_results
+                ]
             )
 
             hit_rates.append(1 if any(r > 0 for r in relevance_scores) else 0)
@@ -817,22 +847,26 @@ def tune_alpha(
         }
         results[alpha] = metrics
 
-        print(f"  Hit@{k}={metrics['hit_rate']:.3f}  "
-              f"MRR={metrics['mrr']:.3f}  "
-              f"Recall={metrics['recall']:.3f}  "
-              f"Precision={metrics['precision']:.3f}")
+        print(
+            f"  Hit@{k}={metrics['hit_rate']:.3f}  "
+            f"MRR={metrics['mrr']:.3f}  "
+            f"Recall={metrics['recall']:.3f}  "
+            f"Precision={metrics['precision']:.3f}"
+        )
 
     # Find best alpha
     print("\n" + "=" * 80)
     print("ALPHA TUNING RESULTS")
     print("=" * 80)
 
-    print(f"\n{'Alpha':<8} | {'Hit@'+str(k):<8} | {'MRR':<8} | {'Recall':<8} | {'Precision':<8}")
+    print(f"\n{'Alpha':<8} | {'Hit@' + str(k):<8} | {'MRR':<8} | {'Recall':<8} | {'Precision':<8}")
     print("-" * 60)
     for alpha in alpha_values:
         m = results[alpha]
-        print(f"{alpha:<8.1f} | {m['hit_rate']:<8.3f} | {m['mrr']:<8.3f} | "
-              f"{m['recall']:<8.3f} | {m['precision']:<8.3f}")
+        print(
+            f"{alpha:<8.1f} | {m['hit_rate']:<8.3f} | {m['mrr']:<8.3f} | "
+            f"{m['recall']:<8.3f} | {m['precision']:<8.3f}"
+        )
 
     # Best by each metric
     print("\nBest alpha by metric:")
@@ -883,10 +917,12 @@ def compare_runs(results_dir: Path | None = None) -> None:
     print("EVALUATION RUN COMPARISON")
     print("=" * width)
 
-    header = (f"\n{'Timestamp':<20} | {'Mode':<10} | {'Alpha':<6} | "
-              f"{'Ret-k':<6} | {'Reranker':<22} | {'MaxCh':>5} | {'TblCh':>5} | {'PHdg':<4} | "
-              f"{'Hit@5':>6} | {'MRR@5':>6} | {'Recall@5':>8} | {'Prec@5':>6} | "
-              f"{'nDCG@5':>7} | {'Chunks':>7} | Golden")
+    header = (
+        f"\n{'Timestamp':<20} | {'Mode':<10} | {'Alpha':<6} | "
+        f"{'Ret-k':<6} | {'Reranker':<22} | {'MaxCh':>5} | {'TblCh':>5} | {'PHdg':<4} | "
+        f"{'Hit@5':>6} | {'MRR@5':>6} | {'Recall@5':>8} | {'Prec@5':>6} | "
+        f"{'nDCG@5':>7} | {'Chunks':>7} | Golden"
+    )
     print(header)
     print("-" * width)
 
@@ -910,7 +946,9 @@ def compare_runs(results_dir: Path | None = None) -> None:
             max_chars = chunking.get("max_chars", "-")
             table_max_chars = chunking.get("table_max_chars", "-")
             pseudo = "yes" if chunking.get("pseudo_headings") else "-"
-            golden = Path(data.get("golden_path") or "?").stem.split("dataset")[-1].lstrip("_") or "v1"
+            golden = (
+                Path(data.get("golden_path") or "?").stem.split("dataset")[-1].lstrip("_") or "v1"
+            )
 
             overall = data.get("overall", {})
             if overall:
@@ -932,10 +970,12 @@ def compare_runs(results_dir: Path | None = None) -> None:
                 else:
                     hit = mrr = recall = precision = ndcg = 0
 
-            print(f"{ts:<20} | {mode:<10} | {alpha_str:<6} | "
-                  f"{retrieve_k_str:<6} | {reranker_str:<22} | {max_chars:>5} | {table_max_chars:>5} | {pseudo:<4} | "
-                  f"{hit:>6.3f} | {mrr:>6.3f} | {recall:>8.3f} | {precision:>6.3f} | "
-                  f"{ndcg:>7.3f} | {chunks:>7} | {golden}")
+            print(
+                f"{ts:<20} | {mode:<10} | {alpha_str:<6} | "
+                f"{retrieve_k_str:<6} | {reranker_str:<22} | {max_chars:>5} | {table_max_chars:>5} | {pseudo:<4} | "
+                f"{hit:>6.3f} | {mrr:>6.3f} | {recall:>8.3f} | {precision:>6.3f} | "
+                f"{ndcg:>7.3f} | {chunks:>7} | {golden}"
+            )
 
         except Exception as e:
             print(f"Error loading {path.name}: {e}")
@@ -956,8 +996,16 @@ def main():
     parser.add_argument(
         "--mode",
         choices=[
-            "dense", "bm25", "hybrid", "rerank", "rrf", "rrf_rerank",
-            "qdrant", "qdrant_dense", "qdrant_sparse", "qdrant_rerank",
+            "dense",
+            "bm25",
+            "hybrid",
+            "rerank",
+            "rrf",
+            "rrf_rerank",
+            "qdrant",
+            "qdrant_dense",
+            "qdrant_sparse",
+            "qdrant_rerank",
         ],
         default="hybrid",
         help="Retrieval mode",
@@ -1060,7 +1108,9 @@ def main():
             print(f"  Expected {f.total_relevant} relevant, found {f.relevant_retrieved}")
             if f.top_chunks:
                 top = f.top_chunks[0]
-                print(f"  Top result: score={top['score']:.3f}, orders={top['element_orders'][:5]}...")
+                print(
+                    f"  Top result: score={top['score']:.3f}, orders={top['element_orders'][:5]}..."
+                )
 
 
 if __name__ == "__main__":

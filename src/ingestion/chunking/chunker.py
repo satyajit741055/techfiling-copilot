@@ -1,9 +1,9 @@
 """Structure-aware chunking of parsed 10-K elements.
 
-  1. never cross an Item boundary
-  2. pack paragraphs under the same heading up to a size budget
-  3. tables are atomic (split by rows only when large, repeating title + header)
-  4. every chunk carries a breadcrumb so it is self-contained
+1. never cross an Item boundary
+2. pack paragraphs under the same heading up to a size budget
+3. tables are atomic (split by rows only when large, repeating title + header)
+4. every chunk carries a breadcrumb so it is self-contained
 """
 
 from __future__ import annotations
@@ -39,11 +39,13 @@ def looks_like_heading(e: dict, nxt: dict | None) -> bool:
     """Return whether a paragraph is a short sub-heading directly followed by body content."""
     text = (e.get("text") or "").strip()
     return (
-        e["type"] == "paragraph" and nxt is not None
+        e["type"] == "paragraph"
+        and nxt is not None
         and nxt["type"] in ("paragraph", "table")
         and (nxt["part"], nxt["section"]) == (e["part"], e["section"])
         and 0 < len(text) <= PSEUDO_HEADING_MAX_CHARS
-        and not PSEUDO_HEADING_END.search(text) and not PSEUDO_HEADING_START.match(text)
+        and not PSEUDO_HEADING_END.search(text)
+        and not PSEUDO_HEADING_START.match(text)
     )
 
 
@@ -63,7 +65,9 @@ def load_elements(doc_id: str, parsed_dir: Path = PARSED_DIR) -> list[dict]:
 
 def list_doc_ids(parsed_dir: Path = PARSED_DIR) -> list[str]:
     """Return sorted document IDs discovered in the parsed-data directory."""
-    return sorted(p.name.removesuffix(".elements.jsonl") for p in parsed_dir.glob("*.elements.jsonl"))
+    return sorted(
+        p.name.removesuffix(".elements.jsonl") for p in parsed_dir.glob("*.elements.jsonl")
+    )
 
 
 def split_long(text: str, max_chars: int) -> list[str]:
@@ -81,6 +85,7 @@ def split_long(text: str, max_chars: int) -> list[str]:
     if cur:
         parts.append(cur)
     return parts
+
 
 def concise_table_intro(intro: str | None, max_chars: int = 300) -> str:
     """Extract the latest complete sentences from a table introduction.
@@ -108,6 +113,7 @@ def concise_table_intro(intro: str | None, max_chars: int = 300) -> str:
         total += additional
     return " ".join(reversed(selected))
 
+
 def split_table_markdown(md: str, max_chars: int) -> list[str]:
     """Split a Markdown table by rows while repeating its header in each piece.
 
@@ -126,7 +132,7 @@ def split_table_markdown(md: str, max_chars: int) -> list[str]:
         return [md]
     lines = md.split("\n")
     sep = next(i for i, line in enumerate(lines) if re.fullmatch(r"\|[-| ]+\|", line))
-    head, rows = lines[: sep + 1], lines[sep + 1:]
+    head, rows = lines[: sep + 1], lines[sep + 1 :]
     pieces, cur = [], []
     for r in rows:
         if cur and len("\n".join(head + cur + [r])) > max_chars:
@@ -137,6 +143,7 @@ def split_table_markdown(md: str, max_chars: int) -> list[str]:
         pieces.append("\n".join(head + cur))
     return pieces
 
+
 def breadcrumb(e: dict, headings: list[str]) -> str:
     """Build a searchable document breadcrumb using the two latest headings."""
     parts = [e["doc_id"].replace("_", " "), e.get("part"), e.get("section"), e.get("section_title")]
@@ -144,7 +151,9 @@ def breadcrumb(e: dict, headings: list[str]) -> str:
 
 
 def chunk_document(
-    els: list[dict], max_chars: int = MAX_CHARS, table_max_chars: int = TABLE_MAX_CHARS,
+    els: list[dict],
+    max_chars: int = MAX_CHARS,
+    table_max_chars: int = TABLE_MAX_CHARS,
     pseudo_headings: bool = True,
     min_chars: int = MIN_CHARS,
 ) -> list[dict]:
@@ -170,10 +179,15 @@ def chunk_document(
         """Create a chunk from buffered content and append it to the result."""
         c = {
             "chunk_id": f"{ref['doc_id']}_c{len(chunks):04d}",
-            "doc_id": ref["doc_id"], "part": ref.get("part"), "section": ref.get("section"),
-            "section_title": ref.get("section_title"), "type": type_,
-            "headings": list(headings[-2:]), "element_orders": orders,
-            "text": text, "breadcrumb": breadcrumb(ref, headings),
+            "doc_id": ref["doc_id"],
+            "part": ref.get("part"),
+            "section": ref.get("section"),
+            "section_title": ref.get("section_title"),
+            "type": type_,
+            "headings": list(headings[-2:]),
+            "element_orders": orders,
+            "text": text,
+            "breadcrumb": breadcrumb(ref, headings),
         }
         c["embed_text"] = f"{c['breadcrumb']}\n\n{text}"
         c.update(extra or {})
@@ -193,8 +207,11 @@ def chunk_document(
                 flush(state["first"])
             headings.clear()
             state["key"] = key
-        if (pseudo_headings and sum(map(len, buf)) >= min_chars
-                and looks_like_heading(e, els[i + 1] if i + 1 < len(els) else None)):
+        if (
+            pseudo_headings
+            and sum(map(len, buf)) >= min_chars
+            and looks_like_heading(e, els[i + 1] if i + 1 < len(els) else None)
+        ):
             flush(e)  # sub-heading after real content = new topic; heading text stays in the body
         state["first"] = e
         ref = e
@@ -212,15 +229,25 @@ def chunk_document(
             table_context = concise_table_intro(full_intro)
             for piece in split_table_markdown(t["markdown"], table_max_chars):
                 text = f"{table_context}\n\n{piece}" if table_context else piece
-                emit("table", text, [e["order"]], ref,
-                     {"table_id": t["table_id"], "table_title": t.get("title"), "units": t.get("units"),
-                      "intro": full_intro, "table_context": table_context})
+                emit(
+                    "table",
+                    text,
+                    [e["order"]],
+                    ref,
+                    {
+                        "table_id": t["table_id"],
+                        "table_title": t.get("title"),
+                        "units": t.get("units"),
+                        "intro": full_intro,
+                        "table_context": table_context,
+                    },
+                )
             continue
 
         text = (e["text"] or "").strip()
         if not text:
             continue
-        for piece in (split_long(text, max_chars) if len(text) > max_chars else [text]):
+        for piece in split_long(text, max_chars) if len(text) > max_chars else [text]:
             if buf and sum(map(len, buf)) + len(piece) > max_chars:
                 flush(ref)
             buf.append(piece)
@@ -230,7 +257,9 @@ def chunk_document(
     return chunks
 
 
-def merge_tiny(chunks: list[dict], min_chars: int = MIN_CHARS, max_chars: int = MAX_CHARS) -> list[dict]:
+def merge_tiny(
+    chunks: list[dict], min_chars: int = MIN_CHARS, max_chars: int = MAX_CHARS
+) -> list[dict]:
     """Merge undersized text chunks forward within the same document section.
 
     Args:
@@ -245,9 +274,15 @@ def merge_tiny(chunks: list[dict], min_chars: int = MIN_CHARS, max_chars: int = 
     out = []
     for c in chunks:
         p = out[-1] if out else None
-        if (p and p["type"] == "text" and c["type"] == "text" and c["section"] == p["section"]
-                and c["doc_id"] == p["doc_id"]
-                and len(p["text"]) < min_chars and len(p["text"]) + len(c["text"]) <= max_chars):
+        if (
+            p
+            and p["type"] == "text"
+            and c["type"] == "text"
+            and c["section"] == p["section"]
+            and c["doc_id"] == p["doc_id"]
+            and len(p["text"]) < min_chars
+            and len(p["text"]) + len(c["text"]) <= max_chars
+        ):
             p["text"] += "\n\n" + c["text"]
             p["element_orders"] += c["element_orders"]
             p["embed_text"] = f"{p['breadcrumb']}\n\n{p['text']}"
@@ -279,7 +314,9 @@ def chunk_doc_id(
     Returns:
         Final chunk dictionaries ready to be written or embedded.
     """
-    chunks = chunk_document(load_elements(doc_id, parsed_dir), max_chars, table_max_chars, pseudo_headings, min_chars)
+    chunks = chunk_document(
+        load_elements(doc_id, parsed_dir), max_chars, table_max_chars, pseudo_headings, min_chars
+    )
     return merge_tiny(chunks, min_chars, max_chars)
 
 
@@ -302,8 +339,12 @@ def main() -> None:
     parser.add_argument("--max-chars", type=int, default=MAX_CHARS)
     parser.add_argument("--min-chars", type=int, default=MIN_CHARS)
     parser.add_argument("--table-max-chars", type=int, default=TABLE_MAX_CHARS)
-    parser.add_argument("--pseudo-headings", action=argparse.BooleanOptionalAction, default=True,
-                        help="start new chunks at short heading-like paragraphs (default: on)")
+    parser.add_argument(
+        "--pseudo-headings",
+        action=argparse.BooleanOptionalAction,
+        default=True,
+        help="start new chunks at short heading-like paragraphs (default: on)",
+    )
     args = parser.parse_args()
 
     if args.out_dir is None:
@@ -312,8 +353,14 @@ def main() -> None:
     args.out_dir.mkdir(parents=True, exist_ok=True)
     total = 0
     for doc_id in list_doc_ids(args.parsed_dir):
-        chunks = chunk_doc_id(doc_id, args.parsed_dir, args.max_chars, args.min_chars, args.table_max_chars,
-                              args.pseudo_headings)
+        chunks = chunk_doc_id(
+            doc_id,
+            args.parsed_dir,
+            args.max_chars,
+            args.min_chars,
+            args.table_max_chars,
+            args.pseudo_headings,
+        )
         write_chunks(chunks, args.out_dir / f"{doc_id}.chunks.jsonl")
         total += len(chunks)
         logger.info(f"{doc_id}: {len(chunks)} chunks")

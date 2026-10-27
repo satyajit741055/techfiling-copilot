@@ -18,6 +18,7 @@ Usage:
     uv run python scripts/check_coverage.py              # report + exit code 1 on FAIL
     uv run python scripts/check_coverage.py --strict     # exit code 1 on WARN too (for CI)
 """
+
 from __future__ import annotations
 
 import argparse
@@ -47,7 +48,9 @@ REPEAT_MIN, REPEAT_MAX_LEN = 5, 80  # page header/footer lines: short and repeat
 
 
 def clean(s: str | None) -> str:
-    return WS_RE.sub(" ", (s or "").replace("\xa0", " ").replace("’", "'").replace("‘", "'")).strip()
+    return WS_RE.sub(
+        " ", (s or "").replace("\xa0", " ").replace("’", "'").replace("‘", "'")
+    ).strip()
 
 
 def tokens(s: str | None) -> list[str]:
@@ -64,7 +67,11 @@ def top_level_tables(soup):
 
 def leaf_blocks(soup):
     for el in soup.body.find_all(BLOCK_TAGS):
-        if el.find_parent("table") is None and el.find(BLOCK_TAGS + ["table"]) is None and clean(el.get_text("")):
+        if (
+            el.find_parent("table") is None
+            and el.find(BLOCK_TAGS + ["table"]) is None
+            and clean(el.get_text(""))
+        ):
             yield el
 
 
@@ -72,23 +79,31 @@ def leaf_blocks(soup):
 def load_html(path: Path):
     """Return (soup with by-design exclusions removed, Counter of excluded tokens, exclusion stats, all-visible tokens)."""
     soup = BeautifulSoup(path.read_bytes(), "lxml")
-    for t in soup.find_all(style=re.compile(r"display\s*:\s*none", re.I)):  # hidden XBRL header: never content
+    for t in soup.find_all(
+        style=re.compile(r"display\s*:\s*none", re.I)
+    ):  # hidden XBRL header: never content
         t.decompose()
     for br in soup.find_all("br"):
         br.replace_with(" ")
-    for tag in soup.body.find_all(BLOCK_TAGS + ["td", "th"]):  # word boundaries at blocks/cells only, not inside
-        tag.append(" ")                                           # inline spans ("jurisd<span>ictions</span>")
+    for tag in soup.body.find_all(
+        BLOCK_TAGS + ["td", "th"]
+    ):  # word boundaries at blocks/cells only, not inside
+        tag.append(" ")  # inline spans ("jurisd<span>ictions</span>")
     all_visible = Counter(tokens(soup.body.get_text("")))
 
     excluded, stats = Counter(), Counter()
-    for t in soup.find_all(style=re.compile(r"position\s*:\s*absolute", re.I)):  # page header/footer containers
+    for t in soup.find_all(
+        style=re.compile(r"position\s*:\s*absolute", re.I)
+    ):  # page header/footer containers
         if t.parent is not None:
             excluded.update(tokens(t.get_text("")))
             stats["page_furniture_blocks"] += 1
             t.decompose()
     for tb in top_level_tables(soup):  # table of contents: mostly internal "#" links
         cells = [td for td in tb.find_all("td") if clean(td.get_text(""))]
-        if cells and sum(td.find("a", href=re.compile(r"^#")) is not None for td in cells) >= 0.5 * len(cells):
+        if cells and sum(
+            td.find("a", href=re.compile(r"^#")) is not None for td in cells
+        ) >= 0.5 * len(cells):
             excluded.update(tokens(tb.get_text("")))
             stats["toc_tables"] += 1
             tb.decompose()
@@ -96,7 +111,9 @@ def load_html(path: Path):
     texts = [clean(b.get_text("")) for b in blocks]
     repeats = Counter(re.sub(r"\d+", "#", t.lower()) for t in texts if len(t) <= REPEAT_MAX_LEN)
     for b, t in zip(blocks, texts):
-        repeated = len(t) <= REPEAT_MAX_LEN and repeats[re.sub(r"\d+", "#", t.lower())] >= REPEAT_MIN
+        repeated = (
+            len(t) <= REPEAT_MAX_LEN and repeats[re.sub(r"\d+", "#", t.lower())] >= REPEAT_MIN
+        )
         if PAGE_NUM_RE.match(t) or (repeated and not UNITS_RE.search(t)):
             excluded.update(tokens(t))
             stats["repeated_or_page_number_lines"] += 1
@@ -106,7 +123,9 @@ def load_html(path: Path):
 
 # ---------------------------------------------------------------- parsed side
 def load_parsed(parsed_dir: Path, doc_id: str):
-    elements = [json.loads(line) for line in open(parsed_dir / f"{doc_id}.elements.jsonl", encoding="utf-8")]
+    elements = [
+        json.loads(line) for line in open(parsed_dir / f"{doc_id}.elements.jsonl", encoding="utf-8")
+    ]
     strings, para_norms, label_norms, cell_facts, scores, tables = [], [], [], {}, [], []
     for e in elements:
         if e["text"]:
@@ -115,8 +134,16 @@ def load_parsed(parsed_dir: Path, doc_id: str):
         if t := e["table"]:
             tables.append(t)
             if t.get("quality", {}).get("score") is not None:
-                scores.append((t["table_id"], t["quality"]["score"], t["quality"].get("low_confidence", False)))
-            strings += [c["name"] for c in t["columns"]] + [t.get("units") or ""]  # units may come from a header cell
+                scores.append(
+                    (
+                        t["table_id"],
+                        t["quality"]["score"],
+                        t["quality"].get("low_confidence", False),
+                    )
+                )
+            strings += [c["name"] for c in t["columns"]] + [
+                t.get("units") or ""
+            ]  # units may come from a header cell
             for r in t["rows"]:
                 strings.append(r["label"])
                 label_norms.append(norm(r["label"]))
@@ -138,14 +165,20 @@ def load_parsed(parsed_dir: Path, doc_id: str):
 def check_words(html_tokens: Counter, parsed_tokens: Counter, top_n: int):
     total = sum(html_tokens.values())
     covered = sum(min(n, parsed_tokens[w]) for w, n in html_tokens.items())
-    missing = Counter({w: n - parsed_tokens[w] for w, n in html_tokens.items() if n > parsed_tokens[w]})
+    missing = Counter(
+        {w: n - parsed_tokens[w] for w, n in html_tokens.items() if n > parsed_tokens[w]}
+    )
     return covered / total if total else 1.0, total, covered, missing.most_common(top_n)
 
 
 def check_blocks(soup, parsed, top_n: int):
     blocks = [clean(b.get_text("")) for b in leaf_blocks(soup)]
     missing = [t for t in blocks if norm(t) and norm(t) not in parsed["para_blob"]]
-    return 1 - len(missing) / len(blocks) if blocks else 1.0, len(blocks), [m[:160] for m in missing[:top_n]]
+    return (
+        1 - len(missing) / len(blocks) if blocks else 1.0,
+        len(blocks),
+        [m[:160] for m in missing[:top_n]],
+    )
 
 
 def check_facts(soup, parsed, top_n: int):
@@ -159,12 +192,20 @@ def check_facts(soup, parsed, top_n: int):
             continue
         container = f.find_parent("td") or f.find_parent(BLOCK_TAGS)
         if container is not None and norm(container.get_text("")) in parsed["text_blob"]:
-            status["in_text_only"] += 1  # present (e.g. inside a row label) but not linked to a cell
+            status["in_text_only"] += (
+                1  # present (e.g. inside a row label) but not linked to a cell
+            )
             continue
         status["missing"] += 1
         if len(lost) < top_n:
-            lost.append({"id": fid, "concept": f.get("name"), "shown": shown,
-                         "context": clean(container.get_text(" ") if container else "")[:160]})
+            lost.append(
+                {
+                    "id": fid,
+                    "concept": f.get("name"),
+                    "shown": shown,
+                    "context": clean(container.get_text(" ") if container else "")[:160],
+                }
+            )
     total = sum(status.values())
     found = total - status["missing"] - status["linked_value_mismatch"]
     return found / total if total else 1.0, total, dict(status), lost
@@ -178,7 +219,10 @@ def html_grid(table) -> list[list[tuple[int, list[str]]]]:
     but share a colspan=2 cell in the next, so starts differ (4 vs 3) while the right edge is (nearly) stable.
     Column check: a physical position must be claimed by ONE parsed column. A shifted value shows up as the
     same position claimed by two parsed columns; harmless edge drift (5 vs 6 within one column) does not."""
-    rows, carried = [], defaultdict(dict)  # rowspan cells are filled down: the spanned rows show that text too
+    rows, carried = (
+        [],
+        defaultdict(dict),
+    )  # rowspan cells are filled down: the spanned rows show that text too
     for r, tr in enumerate(tr for tr in table.find_all("tr") if tr.find_parent("table") is table):
         col, cells = 0, []
         for td in tr.find_all(["td", "th"], recursive=False):
@@ -214,7 +258,9 @@ def check_rows_and_columns(grid, table: dict) -> dict:
         k = next((k for k in range(pos, len(hseq)) if hseq[k] == ptoks), None)
         if k is None:  # also look backwards once, in case of reordering
             k = next((k for k in range(len(hseq)) if k not in used and hseq[k] == ptoks), None)
-        if k is None and r["label"] and r["label"] == prev_label:  # label inherited from the row above
+        if (
+            k is None and r["label"] and r["label"] == prev_label
+        ):  # label inherited from the row above
             k = next((k for k in range(pos, len(hseq)) if hseq[k] == ptoks[n_label:]), None)
             inherited, n_label = inherited + (k is not None), 0
         prev_label = r["label"]
@@ -234,16 +280,33 @@ def check_rows_and_columns(grid, table: dict) -> dict:
             for (phys, _), (j, _) in zip(hcells, pcells):
                 col_obs[phys][j] += 1  # which parsed columns claim this physical position?
         else:
-            unaligned += 1  # one parsed cell = several HTML cells (or vice versa): can't attribute columns
-    header_vocab = set(tokens(" ".join([c["name"] for c in table["columns"]] +
-                                       [table.get("title") or "", table.get("units") or "", table.get("intro") or ""])))
-    lost = [" ".join(hseq[k])[:120] for k in range(len(hseq))
-            if hseq[k] and k not in used and not set(hseq[k]) <= header_vocab]
+            unaligned += (
+                1  # one parsed cell = several HTML cells (or vice versa): can't attribute columns
+            )
+    header_vocab = set(
+        tokens(
+            " ".join(
+                [c["name"] for c in table["columns"]]
+                + [table.get("title") or "", table.get("units") or "", table.get("intro") or ""]
+            )
+        )
+    )
+    lost = [
+        " ".join(hseq[k])[:120]
+        for k in range(len(hseq))
+        if hseq[k] and k not in used and not set(hseq[k]) <= header_vocab
+    ]
     obs = sum(sum(c.values()) for c in col_obs.values())
     return {
-        "parsed_rows": len(prows), "matched_rows": matched, "unmatched_rows": unmatched, "inherited_label_rows": inherited,
-        "html_rows": sum(1 for s in hseq if s), "lost_html_rows": lost,
-        "column_obs": obs, "column_pure": sum(c.most_common(1)[0][1] for c in col_obs.values()), "unaligned_rows": unaligned,
+        "parsed_rows": len(prows),
+        "matched_rows": matched,
+        "unmatched_rows": unmatched,
+        "inherited_label_rows": inherited,
+        "html_rows": sum(1 for s in hseq if s),
+        "lost_html_rows": lost,
+        "column_obs": obs,
+        "column_pure": sum(c.most_common(1)[0][1] for c in col_obs.values()),
+        "unaligned_rows": unaligned,
     }
 
 
@@ -322,19 +385,26 @@ def check_totals(table: dict):
             continue
         texts = [c["text"] for c in r["cells"]]
         vals = [parse_value(t) for t in texts]
-        label = re.sub(r"\((?:\d{1,2}|[a-z])\)", "", r["label"], flags=re.I)  # footnote markers: "Total (2)(3)", "(a)"
+        label = re.sub(
+            r"\((?:\d{1,2}|[a-z])\)", "", r["label"], flags=re.I
+        )  # footnote markers: "Total (2)(3)", "(a)"
         if re.match(r"(sub)?total\b", label, re.I) and any(isinstance(v, float) for v in vals):
             res = match_suffix([resolve(e) for e in entries[parent]], vals, texts)
             if res is not None:
                 k, hits, n = res
                 passed, checked = passed + hits, checked + n
                 if hits < n:
-                    failed.append(f"{table['table_id']}: {' > '.join(r['path'])} ({hits}/{n} columns add up)")
+                    failed.append(
+                        f"{table['table_id']}: {' > '.join(r['path'])} ({hits}/{n} columns add up)"
+                    )
                 if k:
                     del entries[parent][-k:]
             entries[parent].append(("row", vals))
             rest = re.sub(r"^(sub)?total\s*", "", norm(label))
-            if parent and rest in ("", norm(re.sub(r"\((?:\d{1,2}|[a-z])\)", "", parent[-1], flags=re.I))):  # closing total stands for the whole group one level up
+            if parent and rest in (
+                "",
+                norm(re.sub(r"\((?:\d{1,2}|[a-z])\)", "", parent[-1], flags=re.I)),
+            ):  # closing total stands for the whole group one level up
                 closed[parent] = vals
         else:
             entries[parent].append(("row", vals))
@@ -344,19 +414,30 @@ def check_totals(table: dict):
 def check_structure(soup, parsed, top_n: int):
     html_tables = [(t, html_grid(t)) for t in top_level_tables(soup)]
     html_tables = [(t, g) for t, g in html_tables if any(g)]
+
     def sig(labels):
         return {x for x in labels if x}
+
     html_sigs = [sig(" ".join(cells[0][1]) for cells in g if cells) for _, g in html_tables]
-    html_rows = [{" ".join(t for _, toks in cells for t in toks) for cells in g if cells} for _, g in html_tables]
+    html_rows = [
+        {" ".join(t for _, toks in cells for t in toks) for cells in g if cells}
+        for _, g in html_tables
+    ]
     agg, problems, totals_pass, totals_checked, totals_fail = Counter(), [], 0, 0, []
     used = set()
     for t in parsed["tables"]:
         prow = [s for s in (" ".join(row_tokens(r)) for r in t["rows"]) if s]
         psig = sig(norm(r["label"]) for r in t["rows"])
         # exact row text is the main signal (labels repeat across similar tables); label overlap breaks ties
-        cands = [(sum(s in html_rows[i] for s in prow),
-                  len(psig & html_sigs[i]) / len(psig | html_sigs[i]) if psig | html_sigs[i] else 0, -i)
-                 for i in range(len(html_tables)) if i not in used]
+        cands = [
+            (
+                sum(s in html_rows[i] for s in prow),
+                len(psig & html_sigs[i]) / len(psig | html_sigs[i]) if psig | html_sigs[i] else 0,
+                -i,
+            )
+            for i in range(len(html_tables))
+            if i not in used
+        ]
         hits, jac, neg_i = max(cands, default=(0, 0, None))
         i = -neg_i if neg_i is not None else None
         if hits < 0.5 * len(prow) and jac < TABLE_MATCH_MIN:
@@ -365,32 +446,59 @@ def check_structure(soup, parsed, top_n: int):
             continue
         used.add(i)
         res = check_rows_and_columns(html_tables[i][1], t)
-        for key in ("parsed_rows", "matched_rows", "html_rows", "column_obs", "column_pure", "unaligned_rows",
-                    "inherited_label_rows"):
+        for key in (
+            "parsed_rows",
+            "matched_rows",
+            "html_rows",
+            "column_obs",
+            "column_pure",
+            "unaligned_rows",
+            "inherited_label_rows",
+        ):
             agg[key] += res[key]
         agg["lost_html_rows"] += len(res["lost_html_rows"])
         p, n, f = check_totals(t)
         totals_pass, totals_checked = totals_pass + p, totals_checked + n
         totals_fail += f
         if res["unmatched_rows"] or res["lost_html_rows"] or res["column_pure"] < res["column_obs"]:
-            problems.append({"table_id": t["table_id"], "title": t.get("title"),
-                             "unmatched_rows": res["unmatched_rows"][:3], "lost_html_rows": res["lost_html_rows"][:3],
-                             "column_purity": round(res["column_pure"] / res["column_obs"], 3) if res["column_obs"] else None})
-    unpaired_html = [g for i, (_, g) in enumerate(html_tables) if i not in used
-                     and norm(" ".join(" ".join(t for _, toks in cells for t in toks) for cells in g)) not in parsed["para_blob"]]
+            problems.append(
+                {
+                    "table_id": t["table_id"],
+                    "title": t.get("title"),
+                    "unmatched_rows": res["unmatched_rows"][:3],
+                    "lost_html_rows": res["lost_html_rows"][:3],
+                    "column_purity": round(res["column_pure"] / res["column_obs"], 3)
+                    if res["column_obs"]
+                    else None,
+                }
+            )
+    unpaired_html = [
+        g
+        for i, (_, g) in enumerate(html_tables)
+        if i not in used
+        and norm(" ".join(" ".join(t for _, toks in cells for t in toks) for cells in g))
+        not in parsed["para_blob"]
+    ]
     n_checked = totals_checked
     parts = {
         "rows": agg["matched_rows"] / agg["parsed_rows"] if agg["parsed_rows"] else 1.0,
         "lost": 1 - agg["lost_html_rows"] / agg["html_rows"] if agg["html_rows"] else 1.0,
         "columns": agg["column_pure"] / agg["column_obs"] if agg["column_obs"] else 1.0,
         "totals": totals_pass / n_checked if n_checked else 1.0,
-        "tables_paired": 1 - (len(unpaired_html) + agg["parsed_tables_unpaired"]) / max(1, len(html_tables)),
+        "tables_paired": 1
+        - (len(unpaired_html) + agg["parsed_tables_unpaired"]) / max(1, len(html_tables)),
     }
     score = sum(parts.values()) / len(parts)
-    detail = {**{k: round(v, 4) for k, v in parts.items()}, **dict(agg),
-              "html_tables": len(html_tables), "html_tables_unpaired": len(unpaired_html),
-              "totals_checked": n_checked, "totals_passed": totals_pass, "totals_failed": totals_fail[:top_n],
-              "problem_tables": problems[:top_n]}
+    detail = {
+        **{k: round(v, 4) for k, v in parts.items()},
+        **dict(agg),
+        "html_tables": len(html_tables),
+        "html_tables_unpaired": len(unpaired_html),
+        "totals_checked": n_checked,
+        "totals_passed": totals_pass,
+        "totals_failed": totals_fail[:top_n],
+        "problem_tables": problems[:top_n],
+    }
     return score, detail
 
 
@@ -407,11 +515,19 @@ def check_document(html_path: Path, parsed_dir: Path, doc_id: str, top_n: int) -
     scores = parsed["table_scores"]
     tables = sum(s for _, s, _ in scores) / len(scores) if scores else 1.0
 
-    parts = {"words": words, "blocks": blocks, "facts": facts, "structure": structure, "tables": tables}
+    parts = {
+        "words": words,
+        "blocks": blocks,
+        "facts": facts,
+        "structure": structure,
+        "tables": tables,
+    }
     confidence = sum(WEIGHTS[k] * v for k, v in parts.items())
     if confidence < FAIL["confidence"] or facts < FAIL["facts"]:
         verdict = "FAIL"
-    elif confidence >= PASS["confidence"] and all(parts[k] >= PASS[k] for k in ("words", "facts", "structure")):
+    elif confidence >= PASS["confidence"] and all(
+        parts[k] >= PASS[k] for k in ("words", "facts", "structure")
+    ):
         verdict = "PASS"
     else:
         verdict = "WARN"
@@ -421,34 +537,62 @@ def check_document(html_path: Path, parsed_dir: Path, doc_id: str, top_n: int) -
         "verdict": verdict,
         "confidence": round(confidence, 4),
         "scores": {k: round(v, 4) for k, v in parts.items()},
-        "words": {"coverage_all_visible": round(raw_words, 4), "coverage_adjusted": round(words, 4),
-                  "html_tokens_adjusted": w_total, "covered": w_covered, "excluded_by_design_tokens": sum(excluded.values()),
-                  "excluded_by_design": dict(excl_stats), "top_missing": w_missing},
+        "words": {
+            "coverage_all_visible": round(raw_words, 4),
+            "coverage_adjusted": round(words, 4),
+            "html_tokens_adjusted": w_total,
+            "covered": w_covered,
+            "excluded_by_design_tokens": sum(excluded.values()),
+            "excluded_by_design": dict(excl_stats),
+            "top_missing": w_missing,
+        },
         "blocks": {"total": b_total, "missing_examples": b_missing},
         "facts": {"visible": f_total, **f_status, "missing_examples": f_lost},
         "structure": s_detail,
-        "tables": {"parsed": len(scores), "mean_score": round(tables, 4),
-                   "low_confidence": [tid for tid, _, low in scores if low]},
+        "tables": {
+            "parsed": len(scores),
+            "mean_score": round(tables, 4),
+            "low_confidence": [tid for tid, _, low in scores if low],
+        },
     }
 
 
 # ---------------------------------------------------------------- CLI
 def main() -> int:
-    ap = argparse.ArgumentParser(description=__doc__, formatter_class=argparse.RawDescriptionHelpFormatter)
+    ap = argparse.ArgumentParser(
+        description=__doc__, formatter_class=argparse.RawDescriptionHelpFormatter
+    )
     ap.add_argument("--raw-dir", type=Path, default=ROOT / "data" / "raw_html")
     ap.add_argument("--parsed-dir", type=Path, default=ROOT / "data" / "parsed")
-    ap.add_argument("--out", type=Path, default=None, help="JSON report path (default: <parsed-dir>/coverage_report.json)")
-    ap.add_argument("--top", type=int, default=10, help="how many missing examples to report per check")
+    ap.add_argument(
+        "--out",
+        type=Path,
+        default=None,
+        help="JSON report path (default: <parsed-dir>/coverage_report.json)",
+    )
+    ap.add_argument(
+        "--top", type=int, default=10, help="how many missing examples to report per check"
+    )
     ap.add_argument("--strict", action="store_true", help="exit 1 on WARN as well as FAIL")
     args = ap.parse_args()
 
-    docs = {json.loads(p.read_text(encoding="utf-8"))["source_file"]: json.loads(p.read_text(encoding="utf-8"))["doc_id"]
-            for p in args.parsed_dir.glob("*.document.json")}
+    docs = {
+        json.loads(p.read_text(encoding="utf-8"))["source_file"]: json.loads(
+            p.read_text(encoding="utf-8")
+        )["doc_id"]
+        for p in args.parsed_dir.glob("*.document.json")
+    }
     reports = []
     for html_path in sorted(args.raw_dir.glob("*.htm*")):
         if html_path.name not in docs:
-            reports.append({"source_file": html_path.name, "verdict": "FAIL", "confidence": 0.0,
-                            "error": "no parsed output found for this file"})
+            reports.append(
+                {
+                    "source_file": html_path.name,
+                    "verdict": "FAIL",
+                    "confidence": 0.0,
+                    "error": "no parsed output found for this file",
+                }
+            )
             continue
         reports.append(check_document(html_path, args.parsed_dir, docs[html_path.name], args.top))
 
@@ -456,33 +600,45 @@ def main() -> int:
     out.write_text(json.dumps(reports, indent=2, ensure_ascii=False), encoding="utf-8")
 
     cols = ["words", "blocks", "facts", "structure", "tables"]
-    print(f"{'document':<18} {'verdict':<7} {'confidence':>10} " + " ".join(f"{c:>9}" for c in cols))
+    print(
+        f"{'document':<18} {'verdict':<7} {'confidence':>10} " + " ".join(f"{c:>9}" for c in cols)
+    )
     for r in reports:
         if "error" in r:
             print(f"{r['source_file']:<18} FAIL    {r['error']}")
             continue
-        print(f"{r['doc_id']:<18} {r['verdict']:<7} {r['confidence']:>10.1%} "
-              + " ".join(f"{r['scores'][c]:>9.1%}" for c in cols))
+        print(
+            f"{r['doc_id']:<18} {r['verdict']:<7} {r['confidence']:>10.1%} "
+            + " ".join(f"{r['scores'][c]:>9.1%}" for c in cols)
+        )
     for r in reports:
         if "error" in r:
             continue
         print(f"\n--- {r['doc_id']}")
         w, f = r["words"], r["facts"]
-        print(f"  words : {w['coverage_adjusted']:.2%} of content ({w['coverage_all_visible']:.2%} of all visible text); "
-              f"{w['excluded_by_design_tokens']} tokens excluded by design {w['excluded_by_design']}")
-        print(f"  facts : {f['visible']} visible | linked ok {f.get('linked_value_ok', 0)} | in text only {f.get('in_text_only', 0)} "
-              f"| value mismatch {f.get('linked_value_mismatch', 0)} | missing {f.get('missing', 0)}")
+        print(
+            f"  words : {w['coverage_adjusted']:.2%} of content ({w['coverage_all_visible']:.2%} of all visible text); "
+            f"{w['excluded_by_design_tokens']} tokens excluded by design {w['excluded_by_design']}"
+        )
+        print(
+            f"  facts : {f['visible']} visible | linked ok {f.get('linked_value_ok', 0)} | in text only {f.get('in_text_only', 0)} "
+            f"| value mismatch {f.get('linked_value_mismatch', 0)} | missing {f.get('missing', 0)}"
+        )
         s = r["structure"]
-        print(f"  struct: rows matched {s.get('matched_rows', 0)}/{s.get('parsed_rows', 0)} | lost HTML rows {s.get('lost_html_rows', 0)} "
-              f"| column purity {s['columns']:.2%} ({s.get('column_obs', 0)} values) | unaligned rows {s.get('unaligned_rows', 0)} "
-              f"| totals {s['totals_passed']}/{s['totals_checked']} | HTML tables {s['html_tables']} "
-              f"(unpaired {s['html_tables_unpaired']}, parsed unpaired {s.get('parsed_tables_unpaired', 0)})")
+        print(
+            f"  struct: rows matched {s.get('matched_rows', 0)}/{s.get('parsed_rows', 0)} | lost HTML rows {s.get('lost_html_rows', 0)} "
+            f"| column purity {s['columns']:.2%} ({s.get('column_obs', 0)} values) | unaligned rows {s.get('unaligned_rows', 0)} "
+            f"| totals {s['totals_passed']}/{s['totals_checked']} | HTML tables {s['html_tables']} "
+            f"(unpaired {s['html_tables_unpaired']}, parsed unpaired {s.get('parsed_tables_unpaired', 0)})"
+        )
         for t in s["totals_failed"]:
             print(f"  total does not add up: {t}")
         for p in s["problem_tables"]:
             print(f"  table issue : {p}")
-        print(f"  tables: {r['tables']['parsed']} parsed, mean score {r['tables']['mean_score']:.3f}, "
-              f"low confidence: {r['tables']['low_confidence'] or 'none'}")
+        print(
+            f"  tables: {r['tables']['parsed']} parsed, mean score {r['tables']['mean_score']:.3f}, "
+            f"low confidence: {r['tables']['low_confidence'] or 'none'}"
+        )
         if w["top_missing"]:
             print("  top missing words:", ", ".join(f"{t}×{n}" for t, n in w["top_missing"]))
         for m in r["blocks"]["missing_examples"]:

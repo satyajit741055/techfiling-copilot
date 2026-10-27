@@ -22,12 +22,30 @@ def _unit(seed: int) -> np.ndarray:
 
 
 CHUNKS = [
-    {"chunk_id": "A_0", "doc_id": "AAPL", "section": "Item 7", "type": "text",
-     "text": "Total net sales were 416161 million", "embed_text": "Total net sales were 416161 million"},
-    {"chunk_id": "A_1", "doc_id": "AAPL", "section": "Item 1A", "type": "text",
-     "text": "Supply chain risk factors", "embed_text": "Supply chain risk factors"},
-    {"chunk_id": "T_0", "doc_id": "TSLA", "section": "Item 7", "type": "table",
-     "text": "Automotive revenue grew", "embed_text": "Automotive revenue grew"},
+    {
+        "chunk_id": "A_0",
+        "doc_id": "AAPL",
+        "section": "Item 7",
+        "type": "text",
+        "text": "Total net sales were 416161 million",
+        "embed_text": "Total net sales were 416161 million",
+    },
+    {
+        "chunk_id": "A_1",
+        "doc_id": "AAPL",
+        "section": "Item 1A",
+        "type": "text",
+        "text": "Supply chain risk factors",
+        "embed_text": "Supply chain risk factors",
+    },
+    {
+        "chunk_id": "T_0",
+        "doc_id": "TSLA",
+        "section": "Item 7",
+        "type": "table",
+        "text": "Automotive revenue grew",
+        "embed_text": "Automotive revenue grew",
+    },
 ]
 VECTORS = np.stack([_unit(i) for i in range(len(CHUNKS))])
 
@@ -60,7 +78,9 @@ def test_hybrid_search_uses_lexical_match(store):
 def test_filters(store):
     hits = store.search("revenue", VECTORS[0], k=5, filters={"doc_id": "TSLA"}, mode="hybrid")
     assert [h[1]["chunk_id"] for h in hits] == ["T_0"]
-    assert store.search("revenue", VECTORS[0], k=5, filters={"type": "table", "doc_id": "AAPL"}) == []
+    assert (
+        store.search("revenue", VECTORS[0], k=5, filters={"type": "table", "doc_id": "AAPL"}) == []
+    )
 
 
 def test_reindex_replaces_document_and_delete(store):
@@ -102,7 +122,9 @@ def test_load_filing_metadata(tmp_path):
     from vector_store import load_filing_metadata
 
     for doc_id in ("AAPL", "MSFT"):
-        (tmp_path / f"{doc_id}.document.json").write_text(json.dumps({"doc_id": doc_id, "company": doc_id}))
+        (tmp_path / f"{doc_id}.document.json").write_text(
+            json.dumps({"doc_id": doc_id, "company": doc_id})
+        )
     assert set(load_filing_metadata(tmp_path)) == {"AAPL", "MSFT"}
     assert set(load_filing_metadata(tmp_path, ["MSFT", "TSLA"])) == {"MSFT"}
 

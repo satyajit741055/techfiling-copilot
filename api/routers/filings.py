@@ -24,16 +24,16 @@ router = APIRouter()
         429: {"description": "Rate limit exceeded"},
     },
     dependencies=[
-        Depends(rate_limit_dependency(
-            limit=api_settings.RATE_LIMIT_GLOBAL_PER_MINUTE,
-            period=60,
-            scope="global"
-        )),
-        Depends(rate_limit_dependency(
-            limit=api_settings.RATE_LIMIT_FILINGS_PER_MINUTE,
-            period=60,
-            scope="ip"
-        ))
+        Depends(
+            rate_limit_dependency(
+                limit=api_settings.RATE_LIMIT_GLOBAL_PER_MINUTE, period=60, scope="global"
+            )
+        ),
+        Depends(
+            rate_limit_dependency(
+                limit=api_settings.RATE_LIMIT_FILINGS_PER_MINUTE, period=60, scope="ip"
+            )
+        ),
     ],
 )
 def list_filings(

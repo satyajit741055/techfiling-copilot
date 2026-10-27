@@ -34,6 +34,7 @@ logger = logging.getLogger(__name__)
 def _get_settings():
     """Lazy import to avoid circular imports."""
     from config.settings import settings
+
     return settings
 
 
@@ -105,6 +106,7 @@ class LLMClient:
         """Initialize OpenAI client."""
         try:
             from openai import OpenAI
+
             # Use API key from settings if available, otherwise fall back to env var
             api_key = self._settings.OPENAI_API_KEY
             self._client = OpenAI(api_key=api_key) if api_key else OpenAI()
@@ -116,6 +118,7 @@ class LLMClient:
         """Initialize Anthropic client."""
         try:
             from anthropic import Anthropic
+
             api_key = self._settings.ANTHROPIC_API_KEY
             self._client = Anthropic(api_key=api_key) if api_key else Anthropic()
             logger.info(f"Anthropic client initialized (model: {self.model})")
@@ -126,6 +129,7 @@ class LLMClient:
         """Initialize Google AI client."""
         try:
             import google.generativeai as genai
+
             api_key = self._settings.GOOGLE_API_KEY
             if api_key:
                 genai.configure(api_key=api_key)
@@ -140,6 +144,7 @@ class LLMClient:
         """Initialize Ollama client for local LLM with CUDA."""
         try:
             import ollama
+
             ollama_host = self._settings.OLLAMA_HOST
             self._client = ollama.Client(host=ollama_host) if ollama_host else ollama
             logger.info(f"Ollama client initialized (model: {self.model}, host: {ollama_host})")
@@ -149,6 +154,7 @@ class LLMClient:
     def _init_huggingface(self) -> None:
         """Initialize Hugging Face Inference Providers chat client."""
         from huggingface_hub import InferenceClient
+
         self._client = InferenceClient(
             provider=self._settings.HUGGINGFACE_PROVIDER,
             api_key=self._settings.HUGGINGFACE_API_KEY,
@@ -254,8 +260,8 @@ class LLMClient:
         )
 
         # Token counts may not be available for all models
-        prompt_tokens = getattr(response.usage_metadata, 'prompt_token_count', 0)
-        completion_tokens = getattr(response.usage_metadata, 'candidates_token_count', 0)
+        prompt_tokens = getattr(response.usage_metadata, "prompt_token_count", 0)
+        completion_tokens = getattr(response.usage_metadata, "candidates_token_count", 0)
 
         return LLMResponse(
             content=response.text,
@@ -286,10 +292,10 @@ class LLMClient:
         )
 
         return LLMResponse(
-            content=response['message']['content'],
+            content=response["message"]["content"],
             model=self.model,
-            prompt_tokens=response.get('prompt_eval_count', 0),
-            completion_tokens=response.get('eval_count', 0),
+            prompt_tokens=response.get("prompt_eval_count", 0),
+            completion_tokens=response.get("eval_count", 0),
             latency_seconds=time.time() - start_time,
             raw_response=response,
         )

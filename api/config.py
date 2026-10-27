@@ -34,70 +34,61 @@ class APISettings(BaseSettings):
 
     ENVIRONMENT: Literal["dev", "prod"] = Field(
         default="dev",
-        description="Running environment: 'dev' or 'prod' (same variable as the pipeline settings)"
+        description="Running environment: 'dev' or 'prod' (same variable as the pipeline settings)",
     )
 
     # Server settings
-    API_HOST: str = Field(
-        default="0.0.0.0",
-        description="Host to bind the API server"
-    )
-    API_PORT: int = Field(
-        default=8000,
-        description="Port to bind the API server"
-    )
+    API_HOST: str = Field(default="0.0.0.0", description="Host to bind the API server")
+    API_PORT: int = Field(default=8000, description="Port to bind the API server")
 
     # CORS settings: comma-separated list or JSON array
     CORS_ORIGINS: Annotated[list[str], NoDecode] = Field(
         default_factory=lambda: list(DEV_CORS_ORIGINS),
-        description="Allowed CORS origins. Must be set explicitly in prod; '*' is rejected in prod."
+        description="Allowed CORS origins. Must be set explicitly in prod; '*' is rejected in prod.",
     )
 
     # Authentication
     API_ACCESS_KEY: str | None = Field(
         default=None,
         description="Shared secret required in the X-API-Key header on /questions and /filings. "
-                    "Required when ENVIRONMENT=prod; auth is disabled in dev when unset."
+        "Required when ENVIRONMENT=prod; auth is disabled in dev when unset.",
     )
     SUPABASE_JWT_SECRET: str | None = Field(
         default=None,
         description="Legacy HS256 JWT secret. Only needed if your Supabase project still signs tokens with "
-                    "the shared secret; projects using asymmetric keys (ES256/RS256) only need SUPABASE_URL."
+        "the shared secret; projects using asymmetric keys (ES256/RS256) only need SUPABASE_URL.",
     )
     SUPABASE_URL: str | None = Field(
         default=None,
         validation_alias=AliasChoices("SUPABASE_URL", "NEXT_PUBLIC_SUPABASE_URL"),
         description="Supabase project URL. Used to fetch the public signing keys (JWKS) that verify "
-                    "ES256/RS256 tokens. Falls back to NEXT_PUBLIC_SUPABASE_URL."
+        "ES256/RS256 tokens. Falls back to NEXT_PUBLIC_SUPABASE_URL.",
     )
 
     # Rate limiting
     RATE_LIMIT_REDIS_URL: str | None = Field(
         default=None,
         description="Redis URL for distributed rate limiting (e.g., redis://localhost:6379/0). "
-                    "If not set, uses in-memory storage (development only)."
+        "If not set, uses in-memory storage (development only).",
     )
     RATE_LIMIT_DEFAULT_PER_MINUTE: int = Field(
-        default=60,
-        description="Default rate limit per IP per minute for all endpoints"
+        default=60, description="Default rate limit per IP per minute for all endpoints"
     )
     RATE_LIMIT_QUESTIONS_PER_MINUTE: int = Field(
         default=2,
-        description="Rate limit per IP per minute for /questions endpoint (expensive LLM calls)"
+        description="Rate limit per IP per minute for /questions endpoint (expensive LLM calls)",
     )
     RATE_LIMIT_FILINGS_PER_MINUTE: int = Field(
-        default=30,
-        description="Rate limit per IP per minute for /filings endpoint"
+        default=30, description="Rate limit per IP per minute for /filings endpoint"
     )
     RATE_LIMIT_GLOBAL_PER_MINUTE: int = Field(
-        default=100,
-        description="Global rate limit across all IPs per minute (system protection)"
+        default=100, description="Global rate limit across all IPs per minute (system protection)"
     )
 
     # Paths
     PARSED_DATA_DIR: Path = Field(
         default=ROOT / "data" / "parsed",
-        description="Directory containing parsed document metadata"
+        description="Directory containing parsed document metadata",
     )
 
     @field_validator("ENVIRONMENT", mode="before")
@@ -121,7 +112,13 @@ class APISettings(BaseSettings):
             return [str(item).strip().rstrip("/") for item in value if str(item).strip()]
         return value
 
-    @field_validator("API_ACCESS_KEY", "SUPABASE_JWT_SECRET", "SUPABASE_URL", "RATE_LIMIT_REDIS_URL", mode="before")
+    @field_validator(
+        "API_ACCESS_KEY",
+        "SUPABASE_JWT_SECRET",
+        "SUPABASE_URL",
+        "RATE_LIMIT_REDIS_URL",
+        mode="before",
+    )
     @classmethod
     def _empty_key_is_unset(cls, value: object) -> object:
         """Treat empty API_ACCESS_KEY / SUPABASE_JWT_SECRET / RATE_LIMIT_REDIS_URL as not set."""
@@ -137,8 +134,14 @@ class APISettings(BaseSettings):
         if not self.API_ACCESS_KEY:
             problems.append("API_ACCESS_KEY is required when ENVIRONMENT=prod")
         elif len(self.API_ACCESS_KEY) < MIN_API_KEY_LENGTH:
-            problems.append(f"API_ACCESS_KEY must be at least {MIN_API_KEY_LENGTH} characters in prod")
-        if not self.CORS_ORIGINS or "*" in self.CORS_ORIGINS or self.CORS_ORIGINS == DEV_CORS_ORIGINS:
+            problems.append(
+                f"API_ACCESS_KEY must be at least {MIN_API_KEY_LENGTH} characters in prod"
+            )
+        if (
+            not self.CORS_ORIGINS
+            or "*" in self.CORS_ORIGINS
+            or self.CORS_ORIGINS == DEV_CORS_ORIGINS
+        ):
             problems.append(
                 "CORS_ORIGINS must be set explicitly to your frontend origin(s) in prod "
                 "(no '*', no localhost defaults)"

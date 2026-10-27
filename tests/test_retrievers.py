@@ -57,7 +57,14 @@ class FakeRerankBackend:
 @pytest.fixture
 def run_dir(tmp_path):
     chunks = [
-        {"chunk_id": f"c{i}", "doc_id": doc, "type": type_, "section": section, "text": text, "embed_text": text}
+        {
+            "chunk_id": f"c{i}",
+            "doc_id": doc,
+            "type": type_,
+            "section": section,
+            "text": text,
+            "embed_text": text,
+        }
         for i, (doc, type_, section, text) in enumerate(TEXTS)
     ]
     for doc in ("A_10-K_2025", "B_10-K_2026"):
@@ -65,7 +72,8 @@ def run_dir(tmp_path):
         (tmp_path / f"{doc}.chunks.jsonl").write_text("\n".join(lines) + "\n", encoding="utf-8")
     np.save(tmp_path / "embeddings_gpu_base.npy", VECTORS)
     (tmp_path / "run_manifest.json").write_text(
-        json.dumps({"embedding_model": {"name": "fake-embedder", "backend": "local"}}), encoding="utf-8"
+        json.dumps({"embedding_model": {"name": "fake-embedder", "backend": "local"}}),
+        encoding="utf-8",
     )
     return tmp_path
 
@@ -94,7 +102,11 @@ class TestBM25:
 
 class TestNormalizeScores:
     def test_min_max(self):
-        assert HybridRetriever._normalize_scores(np.asarray([1.0, 2.0, 3.0])).tolist() == [0.0, 0.5, 1.0]
+        assert HybridRetriever._normalize_scores(np.asarray([1.0, 2.0, 3.0])).tolist() == [
+            0.0,
+            0.5,
+            1.0,
+        ]
 
     def test_edge_cases(self):
         assert HybridRetriever._normalize_scores(np.asarray([])).size == 0
@@ -107,7 +119,13 @@ class TestHybridRetriever:
         return HybridRetriever(run_dir, alpha=alpha, embedder=FakeEmbedder(vector))
 
     def test_loads_chunks_in_filename_order(self, run_dir):
-        assert [c["chunk_id"] for c in self._retriever(run_dir).chunks] == ["c0", "c1", "c2", "c3", "c4"]
+        assert [c["chunk_id"] for c in self._retriever(run_dir).chunks] == [
+            "c0",
+            "c1",
+            "c2",
+            "c3",
+            "c4",
+        ]
 
     def test_dense_only_follows_embedding_similarity(self, run_dir):
         results = self._retriever(run_dir, alpha=1.0).search("anything", k=2)
@@ -131,7 +149,9 @@ class TestHybridRetriever:
 
     def test_type_section_and_extra_filters(self, run_dir):
         retriever = self._retriever(run_dir)
-        assert {r.chunk["type"] for r in retriever.search("assets", k=10, type_="table")} == {"table"}
+        assert {r.chunk["type"] for r in retriever.search("assets", k=10, type_="table")} == {
+            "table"
+        }
         assert _ids(retriever.search("risk", k=10, section="Item 1A")) == ["c2"]
         assert _ids(retriever.search("x", k=10, filters={"chunk_id": "c4"})) == ["c4"]
 
@@ -178,7 +198,9 @@ class TestHybridRetriever:
 
 class TestReciprocalRankFusion:
     def test_weighted_scores(self):
-        fused = reciprocal_rank_fusion([(np.asarray([5, 7]), 1.0), (np.asarray([7, 9]), 2.0)], rrf_k=60)
+        fused = reciprocal_rank_fusion(
+            [(np.asarray([5, 7]), 1.0), (np.asarray([7, 9]), 2.0)], rrf_k=60
+        )
         assert fused[5] == pytest.approx(1 / 61)
         assert fused[7] == pytest.approx(1 / 62 + 2 / 61)
         assert fused[9] == pytest.approx(2 / 62)
@@ -204,7 +226,9 @@ class TestBM25SRRFRetriever:
         assert _ids(dense_heavy.search("cloud revenue", k=1)) == ["c0"]
 
     def test_filters(self, run_dir):
-        results = self._retriever(run_dir).search("assets", k=10, doc_id="A_10-K_2025", type_="table")
+        results = self._retriever(run_dir).search(
+            "assets", k=10, doc_id="A_10-K_2025", type_="table"
+        )
         assert _ids(results) == ["c1"]
 
     def test_empty_when_nothing_matches(self, run_dir):
@@ -215,8 +239,13 @@ class TestBM25SRRFRetriever:
 
     @pytest.mark.parametrize(
         "kwargs",
-        [{"dense_k": 0}, {"bm25_k": 0}, {"rrf_k": -1}, {"dense_weight": -1.0},
-         {"dense_weight": 0.0, "bm25_weight": 0.0}],
+        [
+            {"dense_k": 0},
+            {"bm25_k": 0},
+            {"rrf_k": -1},
+            {"dense_weight": -1.0},
+            {"dense_weight": 0.0, "bm25_weight": 0.0},
+        ],
     )
     def test_invalid_parameters(self, run_dir, kwargs):
         with pytest.raises(ValueError):
@@ -225,17 +254,26 @@ class TestBM25SRRFRetriever:
 
 class TestReranker:
     def _reranker(self, monkeypatch):
-        monkeypatch.setattr("retriever.hybrid_retriever.create_reranker", lambda *a, **k: FakeRerankBackend())
+        monkeypatch.setattr(
+            "retriever.hybrid_retriever.create_reranker", lambda *a, **k: FakeRerankBackend()
+        )
         return Reranker("fake-reranker")
 
     def test_reorders_by_cross_encoder_score(self, monkeypatch):
-        results = [SearchResult(0.9, {"text": "short"}), SearchResult(0.1, {"text": "a much longer text"})]
+        results = [
+            SearchResult(0.9, {"text": "short"}),
+            SearchResult(0.1, {"text": "a much longer text"}),
+        ]
         ranked = self._reranker(monkeypatch).rerank("q", results)
         assert [r.chunk["text"] for r in ranked] == ["a much longer text", "short"]
         assert ranked[0].score == float(len("a much longer text"))
 
     def test_k_truncates_and_embed_text_is_preferred(self, monkeypatch):
-        chunks = [{"text": "t", "embed_text": "e" * 5}, {"text": "t", "embed_text": "e" * 9}, {"text": "t"}]
+        chunks = [
+            {"text": "t", "embed_text": "e" * 5},
+            {"text": "t", "embed_text": "e" * 9},
+            {"text": "t"},
+        ]
         ranked = self._reranker(monkeypatch).rerank("q", chunks, k=2)
         assert [r.score for r in ranked] == [9.0, 5.0]
 
@@ -245,8 +283,12 @@ class TestReranker:
 
 class TestHybridRetrieverWithReranker:
     def _pipeline(self, run_dir, monkeypatch, **kwargs):
-        monkeypatch.setattr("retriever.hybrid_retriever.create_embedder", lambda **k: FakeEmbedder())
-        monkeypatch.setattr("retriever.hybrid_retriever.create_reranker", lambda *a, **k: FakeRerankBackend())
+        monkeypatch.setattr(
+            "retriever.hybrid_retriever.create_embedder", lambda **k: FakeEmbedder()
+        )
+        monkeypatch.setattr(
+            "retriever.hybrid_retriever.create_reranker", lambda *a, **k: FakeRerankBackend()
+        )
         return HybridRetrieverWithReranker(run_dir, **kwargs)
 
     def test_returns_reranked_top_k_with_filter(self, run_dir, monkeypatch):

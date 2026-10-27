@@ -40,7 +40,9 @@ class TestParseLlmResponse:
         assert parsed.answer == "a" and parsed.citations == ["S2"]
 
     def test_prose_around_json(self):
-        parsed = parse_llm_response('Here you go: {"answer": "a", "citations": []} Hope that helps!')
+        parsed = parse_llm_response(
+            'Here you go: {"answer": "a", "citations": []} Hope that helps!'
+        )
         assert parsed.answer == "a"
 
     def test_missing_fields_use_defaults(self):
@@ -53,7 +55,9 @@ class TestParseLlmResponse:
     def test_unparseable_is_error_state(self, raw):
         parsed = parse_llm_response(raw)
         assert parsed.answer is None and parsed.is_valid is False
-        assert parsed.validation_errors and parsed.validation_errors[0].startswith("JSON parse error")
+        assert parsed.validation_errors and parsed.validation_errors[0].startswith(
+            "JSON parse error"
+        )
 
     def test_parse_error_survives_validation(self):
         validated = validate_answer(parse_llm_response("garbage"), VALID)
@@ -62,7 +66,15 @@ class TestParseLlmResponse:
 
     @pytest.mark.parametrize(
         ("value", "expected"),
-        [("true", True), ("True", True), ("yes", True), ("1", True), ("false", False), ("no", False), ("", False)],
+        [
+            ("true", True),
+            ("True", True),
+            ("yes", True),
+            ("1", True),
+            ("false", False),
+            ("no", False),
+            ("", False),
+        ],
     )
     def test_string_booleans_are_coerced(self, value, expected):
         parsed = parse_llm_response(f'{{"insufficient_context": "{value}"}}')
@@ -97,21 +109,28 @@ class TestValidateAnswer:
 
     def test_factual_answer_needs_citations(self):
         result = validate_answer(_answer(citations=[]), VALID)
-        assert not result.is_valid and "Factual answer without citations" in result.validation_errors
+        assert (
+            not result.is_valid and "Factual answer without citations" in result.validation_errors
+        )
 
     def test_abstention_without_answer_is_valid(self):
-        result = validate_answer(_answer(answer=None, citations=[], insufficient_context=True), VALID)
+        result = validate_answer(
+            _answer(answer=None, citations=[], insufficient_context=True), VALID
+        )
         assert result.is_valid
 
     def test_abstention_text_without_numbers_is_valid(self):
         result = validate_answer(
-            _answer(answer="Not stated in the filing", citations=[], insufficient_context=True), VALID
+            _answer(answer="Not stated in the filing", citations=[], insufficient_context=True),
+            VALID,
         )
         assert result.is_valid
 
     @pytest.mark.parametrize("text", ["$5 billion", "about 12", "2025"])
     def test_abstention_with_numeric_answer_is_flagged(self, text):
-        result = validate_answer(_answer(answer=text, citations=[], insufficient_context=True), VALID)
+        result = validate_answer(
+            _answer(answer=text, citations=[], insufficient_context=True), VALID
+        )
         assert not result.is_valid
         assert "Abstention with specific numerical answer" in result.validation_errors
 
@@ -146,7 +165,13 @@ class TestExtractNumericValue:
 class TestNormalizeToMillions:
     @pytest.mark.parametrize(
         ("value", "unit", "expected"),
-        [(2, "billion", 2000), (5000, "thousand", 5), (7, "million", 7), (3.5, "percent", 3.5), (9, "units", 9)],
+        [
+            (2, "billion", 2000),
+            (5000, "thousand", 5),
+            (7, "million", 7),
+            (3.5, "percent", 3.5),
+            (9, "units", 9),
+        ],
     )
     def test_units(self, value, unit, expected):
         assert normalize_to_millions(value, unit) == expected

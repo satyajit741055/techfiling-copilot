@@ -15,7 +15,11 @@ from api.main import app
 from api.routers import health
 
 VALID_KEY = "k" * 32
-PROD = {"ENVIRONMENT": "prod", "API_ACCESS_KEY": VALID_KEY, "CORS_ORIGINS": "https://app.example.com"}
+PROD = {
+    "ENVIRONMENT": "prod",
+    "API_ACCESS_KEY": VALID_KEY,
+    "CORS_ORIGINS": "https://app.example.com",
+}
 
 
 def make_settings(**overrides) -> APISettings:
@@ -40,6 +44,7 @@ def clean_env(monkeypatch):
 # =============================================================================
 # CONFIG VALIDATION
 # =============================================================================
+
 
 class TestConfig:
     def test_dev_defaults(self):
@@ -89,6 +94,7 @@ class TestConfig:
 # AUTH + CORS (real app wiring, pipeline dependencies overridden)
 # =============================================================================
 
+
 class _FakeRag:
     model_name = "fake-model"
 
@@ -96,8 +102,14 @@ class _FakeRag:
 @pytest.fixture
 def client():
     app.dependency_overrides[get_filings] = lambda: [
-        {"doc_id": "AAPL_10-K_2025", "company": "Apple Inc.", "ticker": "AAPL",
-         "form": "10-K", "fiscal_year": 2025, "period_end": "September 27, 2025"}
+        {
+            "doc_id": "AAPL_10-K_2025",
+            "company": "Apple Inc.",
+            "ticker": "AAPL",
+            "form": "10-K",
+            "fiscal_year": 2025,
+            "period_end": "September 27, 2025",
+        }
     ]
     app.dependency_overrides[get_valid_doc_ids] = lambda: {"AAPL_10-K_2025"}
     app.dependency_overrides[get_rag_service] = lambda: _FakeRag()
@@ -107,6 +119,7 @@ def client():
         app.dependency_overrides.clear()
         # Clear rate limiter state between tests
         from api.rate_limit import in_memory_limiter
+
         in_memory_limiter.requests.clear()
 
 
@@ -132,7 +145,9 @@ class TestAuth:
     def test_questions_protected_before_validation(self, client, monkeypatch):
         monkeypatch.setattr(api_settings, "API_ACCESS_KEY", VALID_KEY)
         assert client.post("/questions", json={}).status_code == 401
-        assert client.post("/questions", json={}, headers={"X-API-Key": VALID_KEY}).status_code == 422
+        assert (
+            client.post("/questions", json={}, headers={"X-API-Key": VALID_KEY}).status_code == 422
+        )
 
     def test_health_stays_open(self, client, monkeypatch):
         monkeypatch.setattr(api_settings, "API_ACCESS_KEY", VALID_KEY)
@@ -166,17 +181,21 @@ class TestCors:
 # READINESS
 # =============================================================================
 
+
 def _fake_get(status=200, exc=None):
     def fake(url, **kwargs):
         if exc:
             raise exc
         return httpx.Response(status, request=httpx.Request("GET", url))
+
     return fake
 
 
 class TestReadiness:
     def test_ready_returns_200(self, client, monkeypatch):
-        monkeypatch.setattr(health, "run_readiness_checks", lambda: {"filings": health._ok("3 filings loaded")})
+        monkeypatch.setattr(
+            health, "run_readiness_checks", lambda: {"filings": health._ok("3 filings loaded")}
+        )
         response = client.get("/health/ready")
         assert response.status_code == 200
         assert response.json()["status"] == "ready"
@@ -207,7 +226,12 @@ class TestReadiness:
 
     @pytest.mark.parametrize(
         ("status", "exc", "expected"),
-        [(200, None, "ok"), (401, None, "fail"), (500, None, "fail"), (None, httpx.ConnectError("boom"), "fail")],
+        [
+            (200, None, "ok"),
+            (401, None, "fail"),
+            (500, None, "fail"),
+            (None, httpx.ConnectError("boom"), "fail"),
+        ],
     )
     def test_huggingface_outcomes(self, monkeypatch, status, exc, expected):
         monkeypatch.setattr(health.settings, "HUGGINGFACE_API_KEY", "hf_secret_value")
@@ -234,7 +258,9 @@ class TestReadiness:
         assert "ollama" in local and "huggingface_api" not in local
 
         monkeypatch.setattr(cls, "effective_llm_provider", property(lambda self: "huggingface"))
-        monkeypatch.setattr(cls, "effective_embedding_mode", property(lambda self: "huggingface_api"))
+        monkeypatch.setattr(
+            cls, "effective_embedding_mode", property(lambda self: "huggingface_api")
+        )
         remote = health.run_readiness_checks()
         assert "huggingface_api" in remote and "ollama" not in remote
 
@@ -242,6 +268,7 @@ class TestReadiness:
 # =============================================================================
 # RATE LIMITING
 # =============================================================================
+
 
 class TestRateLimiting:
     def test_rate_limit_config_defaults(self):
@@ -260,7 +287,7 @@ class TestRateLimiting:
             RATE_LIMIT_QUESTIONS_PER_MINUTE=20,
             RATE_LIMIT_FILINGS_PER_MINUTE=50,
             RATE_LIMIT_GLOBAL_PER_MINUTE=200,
-            RATE_LIMIT_REDIS_URL="redis://localhost:6379/0"
+            RATE_LIMIT_REDIS_URL="redis://localhost:6379/0",
         )
         assert s.RATE_LIMIT_DEFAULT_PER_MINUTE == 100
         assert s.RATE_LIMIT_QUESTIONS_PER_MINUTE == 20
@@ -304,7 +331,9 @@ class TestRateLimiting:
         from api import rate_limit
 
         monkeypatch.setattr(rate_limit, "redis_url", "redis://test")
-        monkeypatch.setattr(rate_limit, "moving_window", MovingWindowRateLimiter(storage_from_string("memory://")))
+        monkeypatch.setattr(
+            rate_limit, "moving_window", MovingWindowRateLimiter(storage_from_string("memory://"))
+        )
 
         class Req:
             state = type("S", (), {})()
@@ -346,6 +375,7 @@ class TestRateLimiting:
 # SUPABASE AUTHENTICATION
 # =============================================================================
 
+
 class TestErrorSanitization:
     def test_generation_error_does_not_leak_details(self, client, monkeypatch):
         monkeypatch.setattr(api_settings, "API_ACCESS_KEY", None)
@@ -355,7 +385,9 @@ class TestErrorSanitization:
                 raise RuntimeError("provider-secret-detail Request ID: Root=1-abc")
 
         app.dependency_overrides[get_rag_service] = lambda: _Boom()
-        response = client.post("/questions", json={"question": "What was net income?", "doc_id": "AAPL_10-K_2025"})
+        response = client.post(
+            "/questions", json={"question": "What was net income?", "doc_id": "AAPL_10-K_2025"}
+        )
         assert response.status_code == 503
         detail = response.json()["detail"]
         assert "provider-secret-detail" not in detail and "Request ID" not in detail
@@ -385,7 +417,7 @@ class TestSupabaseAuth:
             "sub": "user_123",
             "email": "test@example.com",
             "role": "authenticated",
-            "aud": "authenticated"
+            "aud": "authenticated",
         }
         token = jwt.encode(payload, secret, algorithm="HS256")
 
@@ -450,7 +482,9 @@ class TestSupabaseAuth:
 
         token = jwt.encode(
             {"sub": "user_es", "email": "es@example.com", "aud": "authenticated"},
-            es256, algorithm="ES256", headers={"kid": "key-1"},
+            es256,
+            algorithm="ES256",
+            headers={"kid": "key-1"},
         )
         user = verify_supabase_token(token)
         assert user.user_id == "user_es" and user.email == "es@example.com"
@@ -461,7 +495,10 @@ class TestSupabaseAuth:
         from api.auth import verify_supabase_token
 
         token = jwt.encode(
-            {"sub": "x", "aud": "authenticated"}, es256, algorithm="ES256", headers={"kid": "other"},
+            {"sub": "x", "aud": "authenticated"},
+            es256,
+            algorithm="ES256",
+            headers={"kid": "other"},
         )
         with pytest.raises(HTTPException) as exc:
             verify_supabase_token(token)
@@ -478,7 +515,6 @@ class TestSupabaseAuth:
         with pytest.raises(HTTPException) as exc:
             verify_supabase_token(token)
         assert exc.value.status_code == 401
-
 
 
 # =============================================================================
@@ -510,8 +546,12 @@ class TestLoginRequired:
         assert client.post("/questions", json={}, headers=_token("u1")).status_code == 422
 
     def test_invalid_and_wrong_secret_tokens_rejected(self, client, auth_on):
-        assert client.get("/filings", headers={"Authorization": "Bearer garbage"}).status_code == 401
-        assert client.get("/filings", headers=_token("u1", secret="other-secret")).status_code == 401
+        assert (
+            client.get("/filings", headers={"Authorization": "Bearer garbage"}).status_code == 401
+        )
+        assert (
+            client.get("/filings", headers=_token("u1", secret="other-secret")).status_code == 401
+        )
 
     def test_valid_token_accepted(self, client, auth_on):
         assert client.get("/filings", headers=_token("u1")).status_code == 200

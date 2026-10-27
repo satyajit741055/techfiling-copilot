@@ -138,7 +138,9 @@ def compare_all():
         metrics = comparison["full_pipeline"]["summary"].get("overall", {}).get("metrics", {})
         for name, data in metrics.items():
             print(f"  {name}: {data.get('mean_score', 'N/A'):.3f}")
-        print(f"  Triad Mean: {comparison['full_pipeline']['summary'].get('overall', {}).get('triad_mean_score', 'N/A'):.3f}")
+        print(
+            f"  Triad Mean: {comparison['full_pipeline']['summary'].get('overall', {}).get('triad_mean_score', 'N/A'):.3f}"
+        )
 
     # Save comparison
     output_dir = ROOT / "eval" / "deepEval" / "consolidated_results"
@@ -146,10 +148,14 @@ def compare_all():
     timestamp = datetime.now().strftime("%Y-%m-%d_%H-%M-%S")
     output_path = output_dir / f"comparison_{timestamp}.json"
     with output_path.open("w", encoding="utf-8") as f:
-        json.dump({
-            "timestamp": timestamp,
-            "comparison": comparison,
-        }, f, indent=2)
+        json.dump(
+            {
+                "timestamp": timestamp,
+                "comparison": comparison,
+            },
+            f,
+            indent=2,
+        )
 
     print(f"\nComparison saved to: {output_path}")
 
@@ -157,35 +163,18 @@ def compare_all():
 def main():
     parser = argparse.ArgumentParser(description=__doc__)
     parser.add_argument(
-        "--judge-model",
-        default="gpt-4o-mini",
-        help="DeepEval judge model (default: gpt-4o-mini)"
+        "--judge-model", default="gpt-4o-mini", help="DeepEval judge model (default: gpt-4o-mini)"
     )
     parser.add_argument(
-        "--context-k",
-        type=int,
-        default=5,
-        help="Context chunks for full-pipeline (default: 5)"
+        "--context-k", type=int, default=5, help="Context chunks for full-pipeline (default: 5)"
+    )
+    parser.add_argument("--skip-retriever", action="store_true", help="Skip retriever evaluation")
+    parser.add_argument("--skip-generator", action="store_true", help="Skip generator evaluation")
+    parser.add_argument(
+        "--skip-full-pipeline", action="store_true", help="Skip full-pipeline evaluation"
     )
     parser.add_argument(
-        "--skip-retriever",
-        action="store_true",
-        help="Skip retriever evaluation"
-    )
-    parser.add_argument(
-        "--skip-generator",
-        action="store_true",
-        help="Skip generator evaluation"
-    )
-    parser.add_argument(
-        "--skip-full-pipeline",
-        action="store_true",
-        help="Skip full-pipeline evaluation"
-    )
-    parser.add_argument(
-        "--compare",
-        action="store_true",
-        help="Compare latest runs without running new evaluations"
+        "--compare", action="store_true", help="Compare latest runs without running new evaluations"
     )
     args = parser.parse_args()
 
@@ -206,8 +195,12 @@ def main():
         print("1. RETRIEVER EVALUATION")
         print("=" * 80)
         cmd = [
-            "uv", "run", "python", "eval/deepEval/retriever_eval.py",
-            "--judge-model", args.judge_model,
+            "uv",
+            "run",
+            "python",
+            "eval/deepEval/retriever_eval.py",
+            "--judge-model",
+            args.judge_model,
         ]
         result = run_command(cmd, ROOT)
         if result.returncode != 0:
@@ -230,8 +223,12 @@ def main():
         print("2. GENERATOR EVALUATION")
         print("=" * 80)
         cmd = [
-            "uv", "run", "python", "eval/deepEval/generator_eval.py",
-            "--judge-model", args.judge_model,
+            "uv",
+            "run",
+            "python",
+            "eval/deepEval/generator_eval.py",
+            "--judge-model",
+            args.judge_model,
         ]
         result = run_command(cmd, ROOT)
         if result.returncode != 0:
@@ -254,9 +251,14 @@ def main():
         print("3. FULL-PIPELINE EVALUATION")
         print("=" * 80)
         cmd = [
-            "uv", "run", "python", "eval/deepEval/full_pipeline_eval.py",
-            "--judge-model", args.judge_model,
-            "--context-k", str(args.context_k),
+            "uv",
+            "run",
+            "python",
+            "eval/deepEval/full_pipeline_eval.py",
+            "--judge-model",
+            args.judge_model,
+            "--context-k",
+            str(args.context_k),
         ]
         result = run_command(cmd, ROOT)
         if result.returncode != 0:
@@ -283,8 +285,12 @@ def main():
         print(f"Run ID: {results['retriever']['run_id']}")
         overall = results["retriever"]["summary"].get("overall", {})
         metrics = overall.get("metrics", {})
-        print(f"  Contextual Precision: {metrics.get('contextual_precision', {}).get('mean_score', 'N/A'):.3f}")
-        print(f"  Contextual Recall: {metrics.get('contextual_recall', {}).get('mean_score', 'N/A'):.3f}")
+        print(
+            f"  Contextual Precision: {metrics.get('contextual_precision', {}).get('mean_score', 'N/A'):.3f}"
+        )
+        print(
+            f"  Contextual Recall: {metrics.get('contextual_recall', {}).get('mean_score', 'N/A'):.3f}"
+        )
         print(f"  Mean Score: {overall.get('mean_score', 'N/A'):.3f}")
 
     if "generator" in results:
@@ -293,17 +299,25 @@ def main():
         overall = results["generator"]["summary"].get("overall", {})
         metrics = overall.get("metrics", {})
         print(f"  Faithfulness: {metrics.get('faithfulness', {}).get('mean_score', 'N/A'):.3f}")
-        print(f"  Answer Relevancy: {metrics.get('answer_relevancy', {}).get('mean_score', 'N/A'):.3f}")
-        print(f"  Answer Correctness: {metrics.get('answer_correctness', {}).get('mean_score', 'N/A'):.3f}")
+        print(
+            f"  Answer Relevancy: {metrics.get('answer_relevancy', {}).get('mean_score', 'N/A'):.3f}"
+        )
+        print(
+            f"  Answer Correctness: {metrics.get('answer_correctness', {}).get('mean_score', 'N/A'):.3f}"
+        )
 
     if "full_pipeline" in results:
         print("\n### Full-Pipeline Evaluation")
         print(f"Run ID: {results['full_pipeline']['run_id']}")
         overall = results["full_pipeline"]["summary"].get("overall", {})
         metrics = overall.get("metrics", {})
-        print(f"  Contextual Relevancy: {metrics.get('contextual_relevancy', {}).get('mean_score', 'N/A'):.3f}")
+        print(
+            f"  Contextual Relevancy: {metrics.get('contextual_relevancy', {}).get('mean_score', 'N/A'):.3f}"
+        )
         print(f"  Faithfulness: {metrics.get('faithfulness', {}).get('mean_score', 'N/A'):.3f}")
-        print(f"  Answer Relevancy: {metrics.get('answer_relevancy', {}).get('mean_score', 'N/A'):.3f}")
+        print(
+            f"  Answer Relevancy: {metrics.get('answer_relevancy', {}).get('mean_score', 'N/A'):.3f}"
+        )
         print(f"  Triad Mean: {overall.get('triad_mean_score', 'N/A'):.3f}")
 
     # Save consolidated summary
@@ -311,12 +325,16 @@ def main():
     output_dir.mkdir(parents=True, exist_ok=True)
     output_path = output_dir / f"consolidated_{timestamp}.json"
     with output_path.open("w", encoding="utf-8") as f:
-        json.dump({
-            "timestamp": timestamp,
-            "judge_model": args.judge_model,
-            "context_k": args.context_k,
-            "results": results,
-        }, f, indent=2)
+        json.dump(
+            {
+                "timestamp": timestamp,
+                "judge_model": args.judge_model,
+                "context_k": args.context_k,
+                "results": results,
+            },
+            f,
+            indent=2,
+        )
 
     print(f"\nConsolidated summary saved to: {output_path}")
     print("\nAll evaluations completed!")

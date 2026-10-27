@@ -51,12 +51,15 @@ def _get_signing_key(kid: str | None) -> dict:
     An unknown kid triggers one refresh (key rotation), rate-limited to avoid
     letting forged tokens force a fetch on every request.
     """
+
     def find(keys):
         return next((k for k in keys or [] if k.get("kid") == kid), None)
 
     with _jwks_lock:
         now = time.time()
-        fresh = _jwks_cache["keys"] is not None and now - _jwks_cache["fetched_at"] < JWKS_TTL_SECONDS
+        fresh = (
+            _jwks_cache["keys"] is not None and now - _jwks_cache["fetched_at"] < JWKS_TTL_SECONDS
+        )
         key = find(_jwks_cache["keys"]) if fresh else None
         if key:
             return key

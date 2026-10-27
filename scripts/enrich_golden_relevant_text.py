@@ -57,10 +57,16 @@ def enrich(case: dict, chunks: dict[str, list[dict]]) -> dict:
 
 
 def main() -> None:
-    parser = argparse.ArgumentParser(description=__doc__, formatter_class=argparse.RawDescriptionHelpFormatter)
-    parser.add_argument("--golden", type=Path, default=Path("goldens/golden_retriever_dataset_v3.jsonl"))
+    parser = argparse.ArgumentParser(
+        description=__doc__, formatter_class=argparse.RawDescriptionHelpFormatter
+    )
+    parser.add_argument(
+        "--golden", type=Path, default=Path("goldens/golden_retriever_dataset_v3.jsonl")
+    )
     parser.add_argument("--chunks-dir", type=Path, default=Path("data/chunks/2026-10-24_12-46-23"))
-    parser.add_argument("--output", type=Path, default=Path("goldens/golden_retriever_dataset_v3_enriched.jsonl"))
+    parser.add_argument(
+        "--output", type=Path, default=Path("goldens/golden_retriever_dataset_v3_enriched.jsonl")
+    )
     args = parser.parse_args()
 
     chunks = load_chunks(args.chunks_dir)

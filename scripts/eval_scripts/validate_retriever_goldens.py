@@ -41,17 +41,27 @@ PARSED_DIR = ROOT / "data" / "parsed"
 RAW_DIR = ROOT / "data" / "raw_html"
 DEFAULT_GOLDEN = ROOT / "goldens" / "golden_retriever_dataset_v2.jsonl"
 
-CATEGORIES = {"exact_numeric": 10, "trend_explanation": 8, "risk_factor": 8, "accounting_policy": 8,
-              "business_description": 6, "cross_section": 6, "cross_document": 6, "negative": 4,
-              "table_structure": 4}
+CATEGORIES = {
+    "exact_numeric": 10,
+    "trend_explanation": 8,
+    "risk_factor": 8,
+    "accounting_policy": 8,
+    "business_description": 6,
+    "cross_section": 6,
+    "cross_document": 6,
+    "negative": 4,
+    "table_structure": 4,
+}
 DIFFICULTY = {"easy": 20, "medium": 25, "hard": 15}
 REQUIRED_SECTIONS = ["Item 1", "Item 1A", "Item 7", "Item 8"]
 OPTIONAL_SECTIONS = ["Item 1C", "Item 2", "Item 15"]
 
 TOKEN_RE = re.compile(r"[a-z0-9]+(?:[.,'][a-z0-9]+)*")
 NUM_RE = re.compile(r"(?<![\w.])\$?\(?-?\d[\d,]*(?:\.\d+)?%?")
-DATE_RE = re.compile(r"\b(?:January|February|March|April|May|June|July|August|September|October|November|December)"
-                     r"(?:\s+\d{1,2},?)?(?:\s+\d{4})?")
+DATE_RE = re.compile(
+    r"\b(?:January|February|March|April|May|June|July|August|September|October|November|December)"
+    r"(?:\s+\d{1,2},?)?(?:\s+\d{4})?"
+)
 DUP_JACCARD = 0.6
 
 
@@ -146,7 +156,9 @@ def check_sources(docs: dict[str, list[dict]], cited: dict[str, set[int]], rep: 
                 if pos == -1:
                     rep.err(doc_id, f"#{e['order']} ({e['type']}) not found verbatim in raw HTML")
                     continue
-                rep.err(doc_id, f"#{e['order']} appears in HTML before #{last_order} (order mismatch)")
+                rep.err(
+                    doc_id, f"#{e['order']} appears in HTML before #{last_order} (order mismatch)"
+                )
             last_pos, last_order = pos, e["order"]
 
 
@@ -204,39 +216,71 @@ def check_query(g: dict, idx: int, by_doc: dict[str, dict[int, dict]], docs, rep
             if r["relevance"] == 3 and e["type"] == "heading":
                 rep.err(qid, f"{d}#{o} is a heading but has relevance 3")
             if e.get("table") and e["table"]["table_id"] not in r.get("reason", ""):
-                rep.warn(qid, f"{d}#{o} is table {e['table']['table_id']} but reason does not cite it")
+                rep.warn(
+                    qid, f"{d}#{o} is table {e['table']['table_id']} but reason does not cite it"
+                )
     if not any(r["relevance"] == 3 for r in rel):
         rep.err(qid, "no relevance=3 item")
 
-    cited_numbers = set().union(*(numbers_in(element_text(e)) for _, e in cited)) if cited else set()
-    derived = set().union(*(numbers_in(x) for x in g.get("derived_values", []))) if g.get("derived_values") else set()
+    cited_numbers = (
+        set().union(*(numbers_in(element_text(e)) for _, e in cited)) if cited else set()
+    )
+    derived = (
+        set().union(*(numbers_in(x) for x in g.get("derived_values", [])))
+        if g.get("derived_values")
+        else set()
+    )
     for n in sorted(numbers_in(g["expected_answer"]) - derived):
         if n not in cited_numbers:
             rep.err(qid, f"expected_answer number '{n}' not found in any cited element")
 
     if g["category"] == "cross_section" and len(sections) < 2:
         rep.err(qid, f"cross_section cites only {sections}")
-    if g["category"] == "risk_factor" and not any(r["relevance"] == 3 and e["section"] == "Item 1A" for r, e in cited):
+    if g["category"] == "risk_factor" and not any(
+        r["relevance"] == 3 and e["section"] == "Item 1A" for r, e in cited
+    ):
         rep.err(qid, "risk_factor has no relevance=3 element in Item 1A")
 
     # coverage warnings: unlabeled equivalents
     for d in {r.get("doc_id") or g["doc_id"] for r in rel}:
         labeled = {o for (dd, o) in seen if dd == d}
-        sigs = {e["order"]: set(tokens(element_text(e))) for r, e in cited if e["doc_id"] == d and len(tokens(element_text(e))) >= 8}
-        answer_nums = {n for n in numbers_in(g["expected_answer"]) if len(n.replace(".", "")) >= 4 and not n.endswith("%")}
+        sigs = {
+            e["order"]: set(tokens(element_text(e)))
+            for r, e in cited
+            if e["doc_id"] == d and len(tokens(element_text(e))) >= 8
+        }
+        answer_nums = {
+            n
+            for n in numbers_in(g["expected_answer"])
+            if len(n.replace(".", "")) >= 4 and not n.endswith("%")
+        }
         for e in docs[d]:
             if e["order"] in labeled or e["type"] == "heading":
                 continue
             toks = set(tokens(element_text(e)))
             for o, sig in sigs.items():
-                if toks and len(sig & toks) / len(sig | toks) >= DUP_JACCARD and e["type"] == by_doc[d][o]["type"]:
-                    rep.warn(qid, f"{d}#{e['order']} [{e['section']}] near-duplicate of cited #{o} but unlabeled")
+                if (
+                    toks
+                    and len(sig & toks) / len(sig | toks) >= DUP_JACCARD
+                    and e["type"] == by_doc[d][o]["type"]
+                ):
+                    rep.warn(
+                        qid,
+                        f"{d}#{e['order']} [{e['section']}] near-duplicate of cited #{o} but unlabeled",
+                    )
                     break
             else:
-                if e.get("table") and g["category"] in ("exact_numeric", "cross_document", "table_structure"):
+                if e.get("table") and g["category"] in (
+                    "exact_numeric",
+                    "cross_document",
+                    "table_structure",
+                ):
                     hits = answer_nums & numbers_in(element_text(e))
                     if hits:
-                        rep.warn(qid, f"{d}#{e['order']} table {e['table']['table_id']} contains answer value(s) {sorted(hits)} but unlabeled")
+                        rep.warn(
+                            qid,
+                            f"{d}#{e['order']} table {e['table']['table_id']} contains answer value(s) {sorted(hits)} but unlabeled",
+                        )
 
 
 def distribution(gold: list[dict], by_doc, rep: Report) -> list[str]:
@@ -273,18 +317,26 @@ def distribution(gold: list[dict], by_doc, rep: Report) -> list[str]:
         rep.warn("dataset", f"no query cites any of {OPTIONAL_SECTIONS}")
     for t in ("table", "paragraph"):
         if primary[t] < 20:
-            rep.warn("dataset", f"only {primary[t]} queries have a {t} as relevance-3 (target >=20)")
+            rep.warn(
+                "dataset", f"only {primary[t]} queries have a {t} as relevance-3 (target >=20)"
+            )
     if len(gold) != sum(CATEGORIES.values()):
         rep.warn("dataset", f"{len(gold)} queries (target {sum(CATEGORIES.values())})")
     return lines
 
 
 def main() -> int:
-    ap = argparse.ArgumentParser(description=__doc__, formatter_class=argparse.RawDescriptionHelpFormatter)
+    ap = argparse.ArgumentParser(
+        description=__doc__, formatter_class=argparse.RawDescriptionHelpFormatter
+    )
     ap.add_argument("--golden", type=Path, default=DEFAULT_GOLDEN)
     ap.add_argument("--strict", action="store_true", help="exit 1 on warnings too")
     ap.add_argument("--skip-html", action="store_true", help="skip raw HTML checks (faster)")
-    ap.add_argument("--all-elements", action="store_true", help="HTML-check every parsed element, not only cited ones")
+    ap.add_argument(
+        "--all-elements",
+        action="store_true",
+        help="HTML-check every parsed element, not only cited ones",
+    )
     args = ap.parse_args()
 
     docs = load_docs()

@@ -36,6 +36,7 @@ logger = get_logger(__name__)
 def _get_settings():
     """Lazy import to avoid circular imports."""
     from config.settings import settings
+
     return settings
 
 
@@ -70,8 +71,10 @@ def get_device() -> str:
 
 class SearchResult(NamedTuple):
     """A single search result with score and chunk data."""
+
     score: float
     chunk: dict[str, Any]
+
 
 # =============================================================================
 # BM25 Implementation
@@ -174,7 +177,9 @@ class BM25:
             scores = np.zeros(self.corpus_size, dtype=np.float64)
         return scores if doc_indices is None else scores[np.asarray(doc_indices, dtype=np.int64)]
 
-    def search(self, query: str, k: int = 5, doc_indices: list[int] | None = None) -> list[tuple[int, float]]:
+    def search(
+        self, query: str, k: int = 5, doc_indices: list[int] | None = None
+    ) -> list[tuple[int, float]]:
         """
         Search for top-k documents matching the query.
 
@@ -199,6 +204,7 @@ class BM25:
             top_positions = top_positions[np.argsort(-scores[top_positions])]
 
         return [(doc_indices[pos], float(scores[pos])) for pos in top_positions]
+
 
 class BM25Retriever:
     """
@@ -228,8 +234,7 @@ class BM25Retriever:
         self.bm25 = BM25().fit(corpus)
 
         logger.info(
-            f"BM25 index built: {len(self.chunks)} documents, "
-            f"{self.bm25.vocab_size} unique terms"
+            f"BM25 index built: {len(self.chunks)} documents, {self.bm25.vocab_size} unique terms"
         )
 
     @staticmethod
@@ -241,13 +246,10 @@ class BM25Retriever:
             candidates = sorted(
                 path
                 for path in DEFAULT_RUNS_DIRECTORY.glob("*")
-                if path.is_dir()
-                and (path / "run_manifest.json").is_file()
+                if path.is_dir() and (path / "run_manifest.json").is_file()
             )
             if not candidates:
-                raise FileNotFoundError(
-                    f"No retrieval run found in {DEFAULT_RUNS_DIRECTORY}"
-                )
+                raise FileNotFoundError(f"No retrieval run found in {DEFAULT_RUNS_DIRECTORY}")
             resolved = candidates[-1]
         if not resolved.is_dir():
             raise NotADirectoryError(f"Retrieval run does not exist: {resolved}")
@@ -457,9 +459,7 @@ class HybridRetriever:
             ValueError: If embeddings are not two-dimensional or row counts differ.
         """
         if self.embeddings.ndim != 2:
-            raise ValueError(
-                f"Expected a 2D embedding matrix, got shape {self.embeddings.shape}"
-            )
+            raise ValueError(f"Expected a 2D embedding matrix, got shape {self.embeddings.shape}")
         if len(self.chunks) != len(self.embeddings):
             raise ValueError(
                 "Chunk and embedding counts differ: "
@@ -630,14 +630,16 @@ class HybridRetriever:
         results = []
         for pos in ranked_positions[:result_count]:
             idx = match_indices[pos]
-            results.append({
-                "hybrid_score": float(hybrid_scores[pos]),
-                "dense_score": float(dense_scores[pos]),
-                "dense_normalized": float(dense_normalized[pos]),
-                "bm25_score": float(bm25_scores[pos]),
-                "bm25_normalized": float(bm25_normalized[pos]),
-                **self.chunks[idx],
-            })
+            results.append(
+                {
+                    "hybrid_score": float(hybrid_scores[pos]),
+                    "dense_score": float(dense_scores[pos]),
+                    "dense_normalized": float(dense_normalized[pos]),
+                    "bm25_score": float(bm25_scores[pos]),
+                    "bm25_normalized": float(bm25_normalized[pos]),
+                    **self.chunks[idx],
+                }
+            )
 
         return results
 
@@ -649,6 +651,7 @@ class HybridRetriever:
 # =============================================================================
 # Reranker
 # =============================================================================
+
 
 class Reranker:
     """
@@ -683,9 +686,7 @@ class Reranker:
             device: Compute device. If None, uses DEVICE from settings.
             model_cache_directory: Model cache dir. If None, uses settings.
         """
-        self.backend = create_reranker(
-            model_name, device=device, cache_dir=model_cache_directory
-        )
+        self.backend = create_reranker(model_name, device=device, cache_dir=model_cache_directory)
         self._model_name = self.backend.model_name
         logger.info(f"Reranker loaded: {self._model_name} ({self.backend.backend})")
 
@@ -735,10 +736,7 @@ class Reranker:
         if k is not None:
             ranked_indices = ranked_indices[:k]
 
-        return [
-            SearchResult(float(scores[idx]), chunks[idx])
-            for idx in ranked_indices
-        ]
+        return [SearchResult(float(scores[idx]), chunks[idx]) for idx in ranked_indices]
 
 
 # =============================================================================
@@ -964,9 +962,11 @@ def main() -> None:
                 type_=args.type_,
             )
             for r in results:
-                print(f"Hybrid: {r['hybrid_score']:.3f} | "
-                      f"Dense: {r['dense_score']:.3f} ({r['dense_normalized']:.3f}) | "
-                      f"BM25: {r['bm25_score']:.3f} ({r['bm25_normalized']:.3f})")
+                print(
+                    f"Hybrid: {r['hybrid_score']:.3f} | "
+                    f"Dense: {r['dense_score']:.3f} ({r['dense_normalized']:.3f}) | "
+                    f"BM25: {r['bm25_score']:.3f} ({r['bm25_normalized']:.3f})"
+                )
                 print(f"  {r['breadcrumb'][:80]}...")
                 print(f"  {r['text'][:200].replace(chr(10), ' ')}...")
                 print()

@@ -62,12 +62,22 @@ class Report:
     def __init__(self) -> None:
         self.errors: list[str] = []
 
-    def err(self, rule: str, msg: str, *, line: int | None = None, qid: str | None = None,
-            doc_id: str | None = None, order: int | None = None) -> None:
-        loc = [f"line {line}" if line is not None else None,
-               f"qid={qid}" if qid else None,
-               f"doc_id={doc_id}" if doc_id else None,
-               f"order={order}" if order is not None else None]
+    def err(
+        self,
+        rule: str,
+        msg: str,
+        *,
+        line: int | None = None,
+        qid: str | None = None,
+        doc_id: str | None = None,
+        order: int | None = None,
+    ) -> None:
+        loc = [
+            f"line {line}" if line is not None else None,
+            f"qid={qid}" if qid else None,
+            f"doc_id={doc_id}" if doc_id else None,
+            f"order={order}" if order is not None else None,
+        ]
         prefix = ", ".join(x for x in loc if x)
         self.errors.append(f"[{rule}] {prefix + ': ' if prefix else ''}{msg}")
 
@@ -149,8 +159,12 @@ def parse_dataset(path: Path, rep: Report) -> list[tuple[int, dict]]:
             rep.err("invalid_json", str(ex), line=n)
             continue
         if stripped[end:].strip():
-            rep.err("trailing_content", f"extra content after JSON value at column "
-                    f"{len(line) - len(stripped) + end + 1}: {stripped[end:end + 40]!r}", line=n)
+            rep.err(
+                "trailing_content",
+                f"extra content after JSON value at column "
+                f"{len(line) - len(stripped) + end + 1}: {stripped[end : end + 40]!r}",
+                line=n,
+            )
             continue
         if not isinstance(obj, dict):
             rep.err("not_object", f"line is a JSON {type(obj).__name__}, expected object", line=n)
@@ -161,8 +175,10 @@ def parse_dataset(path: Path, rep: Report) -> list[tuple[int, dict]]:
 
 def first_diff(a: str, b: str) -> str:
     i = next((k for k, (x, y) in enumerate(zip(a, b)) if x != y), min(len(a), len(b)))
-    return (f"first difference at char {i}: dataset={a[i:i + 30]!r} source={b[i:i + 30]!r} "
-            f"(len dataset={len(a)}, source={len(b)})")
+    return (
+        f"first difference at char {i}: dataset={a[i : i + 30]!r} source={b[i : i + 30]!r} "
+        f"(len dataset={len(a)}, source={len(b)})"
+    )
 
 
 def validate_record(n: int, rec: dict, index: dict[Key, dict], rep: Report) -> None:
@@ -176,8 +192,11 @@ def validate_record(n: int, rec: dict, index: dict[Key, dict], rep: Report) -> N
             rep.err("missing_field", f"missing required field '{field}'", **ctx)
             type_ok = False
         elif not isinstance(rec[field], typ):
-            rep.err("wrong_type", f"field '{field}' must be {typ.__name__}, "
-                    f"got {type(rec[field]).__name__}", **ctx)
+            rep.err(
+                "wrong_type",
+                f"field '{field}' must be {typ.__name__}, got {type(rec[field]).__name__}",
+                **ctx,
+            )
             type_ok = False
     for field in sorted(set(rec) - set(REQUIRED_FIELDS)):
         rep.err("unexpected_field", f"unexpected field '{field}'", **ctx)
@@ -193,8 +212,11 @@ def validate_record(n: int, rec: dict, index: dict[Key, dict], rep: Report) -> N
     if not orders:
         rep.err("empty_source_element_order", "'source_element_order' is empty", **ctx)
     if len(contexts) != len(orders):
-        rep.err("length_mismatch", f"ideal_context has {len(contexts)} items but "
-                f"source_element_order has {len(orders)}", **ctx)
+        rep.err(
+            "length_mismatch",
+            f"ideal_context has {len(contexts)} items but source_element_order has {len(orders)}",
+            **ctx,
+        )
     if len(contexts) > MAX_CONTEXT_ELEMENTS or len(orders) > MAX_CONTEXT_ELEMENTS:
         rep.err("too_many_elements", f"more than {MAX_CONTEXT_ELEMENTS} context elements", **ctx)
 
@@ -206,7 +228,9 @@ def validate_record(n: int, rec: dict, index: dict[Key, dict], rep: Report) -> N
         if is_int(o):
             int_orders.append(o)
         else:
-            rep.err("non_integer_order", f"source_element_order[{i}]={o!r} is not an integer", **ctx)
+            rep.err(
+                "non_integer_order", f"source_element_order[{i}]={o!r} is not an integer", **ctx
+            )
     if len(int_orders) == len(orders):
         dups = sorted(o for o, k in Counter(orders).items() if k > 1)
         if dups:
@@ -224,52 +248,91 @@ def validate_record(n: int, rec: dict, index: dict[Key, dict], rep: Report) -> N
             continue
         e = index.get((doc_id, o))
         if e is None:
-            other = [d for d in sorted(known_docs) if d != doc_id and isinstance(c, str)
-                     and (index.get((d, o)) or {}) and canonical_context(index[(d, o)]) == c]
+            other = [
+                d
+                for d in sorted(known_docs)
+                if d != doc_id
+                and isinstance(c, str)
+                and (index.get((d, o)) or {})
+                and canonical_context(index[(d, o)]) == c
+            ]
             if other:
-                rep.err("cross_document_context", f"ideal_context[{i}] matches element from "
-                        f"different document {other[0]}", **ctx, order=o)
+                rep.err(
+                    "cross_document_context",
+                    f"ideal_context[{i}] matches element from different document {other[0]}",
+                    **ctx,
+                    order=o,
+                )
             else:
-                rep.err("missing_reference", f"({doc_id}, {o}) not found in parsed sources",
-                        **ctx, order=o)
+                rep.err(
+                    "missing_reference",
+                    f"({doc_id}, {o}) not found in parsed sources",
+                    **ctx,
+                    order=o,
+                )
             continue
         if e.get("doc_id") != doc_id:
-            rep.err("cross_document_context", f"element doc_id {e.get('doc_id')!r} differs "
-                    "from record doc_id", **ctx, order=o)
+            rep.err(
+                "cross_document_context",
+                f"element doc_id {e.get('doc_id')!r} differs from record doc_id",
+                **ctx,
+                order=o,
+            )
         etype = e.get("type")
         if etype not in SUPPORTED_TYPES:
-            rep.err("unsupported_element_type", f"source element type {etype!r} not in "
-                    f"{sorted(SUPPORTED_TYPES)}", **ctx, order=o)
+            rep.err(
+                "unsupported_element_type",
+                f"source element type {etype!r} not in {sorted(SUPPORTED_TYPES)}",
+                **ctx,
+                order=o,
+            )
             continue
         source = canonical_context(e)
         if not isinstance(source, str) or not source.strip():
-            rep.err("empty_source_context", f"canonical context of {etype} element is null/empty",
-                    **ctx, order=o)
+            rep.err(
+                "empty_source_context",
+                f"canonical context of {etype} element is null/empty",
+                **ctx,
+                order=o,
+            )
             continue
         if not isinstance(c, str):
             continue
         if c != source:
-            elsewhere = [k for k, v in index.items() if k[0] != doc_id and canonical_context(v) == c]
+            elsewhere = [
+                k for k, v in index.items() if k[0] != doc_id and canonical_context(v) == c
+            ]
             if elsewhere:
-                rep.err("cross_document_context", f"ideal_context[{i}] matches element "
-                        f"{elsewhere[0][0]} order {elsewhere[0][1]}, not the record's document",
-                        **ctx, order=o)
+                rep.err(
+                    "cross_document_context",
+                    f"ideal_context[{i}] matches element "
+                    f"{elsewhere[0][0]} order {elsewhere[0][1]}, not the record's document",
+                    **ctx,
+                    order=o,
+                )
             else:
-                rep.err("context_mismatch", f"ideal_context[{i}] != canonical {etype} context; "
-                        + first_diff(c, source), **ctx, order=o)
+                rep.err(
+                    "context_mismatch",
+                    f"ideal_context[{i}] != canonical {etype} context; " + first_diff(c, source),
+                    **ctx,
+                    order=o,
+                )
 
 
 def normalize_query(q: str) -> str:
     return " ".join(re.sub(r"[^\w\s]", " ", q.lower()).split())
 
 
-def validate_dataset(records: list[tuple[int, dict]], index: dict[Key, dict], rep: Report,
-                     partial: bool) -> None:
+def validate_dataset(
+    records: list[tuple[int, dict]], index: dict[Key, dict], rep: Report, partial: bool
+) -> None:
     count = len(records)
     if partial:
         if not 1 <= count <= EXPECTED_RECORDS:
-            rep.err("record_count", f"partial mode requires 1-{EXPECTED_RECORDS} valid records, "
-                    f"found {count}")
+            rep.err(
+                "record_count",
+                f"partial mode requires 1-{EXPECTED_RECORDS} valid records, found {count}",
+            )
     elif count != EXPECTED_RECORDS:
         rep.err("record_count", f"exactly {EXPECTED_RECORDS} records required, found {count}")
 
@@ -284,8 +347,12 @@ def validate_dataset(records: list[tuple[int, dict]], index: dict[Key, dict], re
     for pos, (n, q) in enumerate(qids, 1):
         expected = f"q{pos:03d}"
         if q != expected:
-            rep.err("qid_sequence", f"source_qid {q!r} at record {pos}; expected {expected!r}",
-                    line=n, qid=q if isinstance(q, str) else None)
+            rep.err(
+                "qid_sequence",
+                f"source_qid {q!r} at record {pos}; expected {expected!r}",
+                line=n,
+                qid=q if isinstance(q, str) else None,
+            )
 
     seen_q: dict[str, int] = {}
     for n, rec in records:
@@ -293,8 +360,12 @@ def validate_dataset(records: list[tuple[int, dict]], index: dict[Key, dict], re
         if isinstance(q, str) and q.strip():
             nq = normalize_query(q)
             if nq in seen_q:
-                rep.err("duplicate_query", f"normalized query duplicates line {seen_q[nq]}",
-                        line=n, qid=rec.get("source_qid"))
+                rep.err(
+                    "duplicate_query",
+                    f"normalized query duplicates line {seen_q[nq]}",
+                    line=n,
+                    qid=rec.get("source_qid"),
+                )
             else:
                 seen_q[nq] = n
 
@@ -302,20 +373,38 @@ def validate_dataset(records: list[tuple[int, dict]], index: dict[Key, dict], re
     for n, rec in records:
         sig = json.dumps(rec, sort_keys=True, ensure_ascii=False)
         if sig in seen_r:
-            rep.err("duplicate_record", f"exact duplicate of line {seen_r[sig]}",
-                    line=n, qid=rec.get("source_qid"))
+            rep.err(
+                "duplicate_record",
+                f"exact duplicate of line {seen_r[sig]}",
+                line=n,
+                qid=rec.get("source_qid"),
+            )
         else:
             seen_r[sig] = n
 
 
 def main() -> int:
-    ap = argparse.ArgumentParser(description=__doc__, formatter_class=argparse.RawDescriptionHelpFormatter)
-    ap.add_argument("dataset", nargs="?", type=Path, default=DEFAULT_DATASET,
-                    help=f"dataset JSONL path (default: {DEFAULT_DATASET.relative_to(ROOT)})")
-    ap.add_argument("--partial", action="store_true",
-                    help=f"allow 1-{EXPECTED_RECORDS} records (IDs still sequential from q001)")
-    ap.add_argument("--parsed-dir", type=Path, default=PARSED_DIR,
-                    help=f"directory with *.elements.jsonl (default: {PARSED_DIR.relative_to(ROOT)})")
+    ap = argparse.ArgumentParser(
+        description=__doc__, formatter_class=argparse.RawDescriptionHelpFormatter
+    )
+    ap.add_argument(
+        "dataset",
+        nargs="?",
+        type=Path,
+        default=DEFAULT_DATASET,
+        help=f"dataset JSONL path (default: {DEFAULT_DATASET.relative_to(ROOT)})",
+    )
+    ap.add_argument(
+        "--partial",
+        action="store_true",
+        help=f"allow 1-{EXPECTED_RECORDS} records (IDs still sequential from q001)",
+    )
+    ap.add_argument(
+        "--parsed-dir",
+        type=Path,
+        default=PARSED_DIR,
+        help=f"directory with *.elements.jsonl (default: {PARSED_DIR.relative_to(ROOT)})",
+    )
     args = ap.parse_args()
     sys.stdout.reconfigure(errors="backslashreplace")
     dataset = args.dataset.resolve()
@@ -338,8 +427,10 @@ def main() -> int:
     docs = Counter(rec["doc_id"] for _, rec in records)
     n_ctx = sum(len(rec["ideal_context"]) for _, rec in records)
     print(f"VALIDATION PASSED ({mode} mode): {dataset}")
-    print(f"  records: {len(records)}  context elements: {n_ctx}  "
-          f"source elements indexed: {len(index)}")
+    print(
+        f"  records: {len(records)}  context elements: {n_ctx}  "
+        f"source elements indexed: {len(index)}"
+    )
     print(f"  by doc_id: {dict(sorted(docs.items()))}")
     return 0
 

@@ -30,6 +30,7 @@ logger = get_logger(__name__)
 def _get_settings():
     """Lazy import to avoid circular imports."""
     from config.settings import settings
+
     return settings
 
 
@@ -89,6 +90,7 @@ def token_limits(model: Embedder) -> dict:
         "recommended_token_limit": int(effective * TOKEN_UTILIZATION),
     }
 
+
 def count_tokens(model: Embedder, chunks: list[dict]) -> list[int]:
     """Count untruncated tokens in each chunk's embedding text."""
     return [
@@ -112,7 +114,10 @@ def validate_token_budget(chunks: list[dict], token_counts: list[int], limit: in
         {"chunk_id": c["chunk_id"], "tokens": n} for c, n in zip(chunks, token_counts) if n > limit
     ]
     if oversized:
-        raise ValueError(f"{len(oversized)} chunks exceed the {limit}-token model limit: {oversized[:10]}")
+        raise ValueError(
+            f"{len(oversized)} chunks exceed the {limit}-token model limit: {oversized[:10]}"
+        )
+
 
 def embed_chunks(model: Embedder, chunks: list[dict], batch_size: int = 64) -> np.ndarray:
     """Encode chunk text as normalized float32 embedding vectors.
@@ -132,12 +137,20 @@ def token_summary(values: list[int]) -> dict:
     """Calculate descriptive statistics for a sequence of token counts."""
     s = pd.Series(values)
     return {
-        "count": int(s.count()), "mean": round(float(s.mean()), 2), "std": round(float(s.std()), 2),
-        "min": int(s.min()), "p25": float(s.quantile(0.25)), "p50": float(s.quantile(0.5)),
-        "p75": float(s.quantile(0.75)), "max": int(s.max()),
+        "count": int(s.count()),
+        "mean": round(float(s.mean()), 2),
+        "std": round(float(s.std()), 2),
+        "min": int(s.min()),
+        "p25": float(s.quantile(0.25)),
+        "p50": float(s.quantile(0.5)),
+        "p75": float(s.quantile(0.75)),
+        "max": int(s.max()),
     }
 
-def chunk_summary(chunks: list[dict], token_counts: list[int], limits: dict, min_chars: int) -> dict:
+
+def chunk_summary(
+    chunks: list[dict], token_counts: list[int], limits: dict, min_chars: int
+) -> dict:
     """Summarize chunk types, sizes, and token-limit utilization.
 
     Args:
@@ -203,7 +216,8 @@ def build_manifest(
             d: chunk_summary(
                 [c for c in chunks if c["doc_id"] == d],
                 [n for c, n in zip(chunks, token_counts) if c["doc_id"] == d],
-                limits, min_chars,
+                limits,
+                min_chars,
             )
             for d in doc_ids
         },
@@ -239,7 +253,9 @@ def embed_and_save(
         ValueError: If any chunk exceeds the model's effective token limit.
     """
     chunking_config = chunking_config or {
-        "max_chars": MAX_CHARS, "min_chars": MIN_CHARS, "table_max_chars": TABLE_MAX_CHARS,
+        "max_chars": MAX_CHARS,
+        "min_chars": MIN_CHARS,
+        "table_max_chars": TABLE_MAX_CHARS,
     }
     model = model or load_model(model_name, device, model_cache_dir)
     model_name = model.model_name
@@ -256,11 +272,17 @@ def embed_and_save(
     except ValueError:
         output_directory = str(out_dir.resolve())
     manifest = build_manifest(
-        chunks, token_counts, model, model_name,
-        out_dir.name or datetime.now().strftime("%Y-%m-%d_%H-%M-%S"), output_directory, chunking_config,
+        chunks,
+        token_counts,
+        model,
+        model_name,
+        out_dir.name or datetime.now().strftime("%Y-%m-%d_%H-%M-%S"),
+        output_directory,
+        chunking_config,
     )
     (out_dir / MANIFEST_FILENAME).write_text(
-        json.dumps(manifest, indent=2, ensure_ascii=False), encoding="utf-8")
+        json.dumps(manifest, indent=2, ensure_ascii=False), encoding="utf-8"
+    )
     return embeddings, manifest
 
 
@@ -276,7 +298,8 @@ def load_chunks(chunks_dir: Path) -> list[dict]:
 def main() -> None:
     """Run the CLI workflow for embedding an existing chunk directory."""
     parser = argparse.ArgumentParser(
-        description="Embed an existing directory of *.chunks.jsonl and save the .npy + manifest next to it.")
+        description="Embed an existing directory of *.chunks.jsonl and save the .npy + manifest next to it."
+    )
     parser.add_argument("chunks_dir", type=Path, help="e.g. data/chunks/<run_timestamp>")
     parser.add_argument("--model", help="Embedding model (default: EMBEDDING_MODEL from .env)")
     parser.add_argument("--device", help="cuda | cpu (default: cuda if available)")
@@ -288,11 +311,15 @@ def main() -> None:
     if not chunks:
         raise SystemExit(f"No *.chunks.jsonl found in {args.chunks_dir}")
     embeddings, _ = embed_and_save(
-        chunks, args.chunks_dir, args.model, args.device, args.batch_size,
-        model_cache_dir=args.model_cache_dir)
+        chunks,
+        args.chunks_dir,
+        args.model,
+        args.device,
+        args.batch_size,
+        model_cache_dir=args.model_cache_dir,
+    )
     logger.info(f"Embeddings shape: {embeddings.shape} -> {args.chunks_dir / EMBEDDINGS_FILENAME}")
 
 
 if __name__ == "__main__":
     main()
-

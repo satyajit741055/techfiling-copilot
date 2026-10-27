@@ -7,7 +7,9 @@ from pathlib import Path
 from typing import Any
 
 
-def load_filing_metadata(parsed_dir: Path, doc_ids: list[str] | None = None) -> dict[str, dict[str, Any]]:
+def load_filing_metadata(
+    parsed_dir: Path, doc_ids: list[str] | None = None
+) -> dict[str, dict[str, Any]]:
     """Map ``doc_id`` to its parsed document metadata; missing files are skipped."""
     wanted = set(doc_ids) if doc_ids is not None else None
     filings = {}

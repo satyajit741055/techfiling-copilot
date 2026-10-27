@@ -123,7 +123,9 @@ def get_system_prompt(version: str) -> str:
         return SYSTEM_PROMPTS[version]
     except KeyError as error:
         supported = ", ".join(sorted(SYSTEM_PROMPTS))
-        raise ValueError(f"Unknown prompt version '{version}'. Supported versions: {supported}") from error
+        raise ValueError(
+            f"Unknown prompt version '{version}'. Supported versions: {supported}"
+        ) from error
 
 
 def build_user_prompt(question: str, context: str) -> str:

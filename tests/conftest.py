@@ -32,6 +32,7 @@ def client():
     # Clear rate limiter state after all tests in module
     try:
         from api.rate_limit import in_memory_limiter
+
         in_memory_limiter.requests.clear()
     except ImportError:
         pass
@@ -58,6 +59,7 @@ def clear_rate_limiter():
     yield
     try:
         from api.rate_limit import in_memory_limiter
+
         in_memory_limiter.requests.clear()
     except ImportError:
         pass

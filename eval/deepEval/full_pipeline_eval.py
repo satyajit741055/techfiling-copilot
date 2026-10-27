@@ -38,7 +38,9 @@ def load_cases(path: Path) -> list[dict[str, Any]]:
             missing = {"id", "query", "doc_id"} - case.keys()
             if missing:
                 raise ValueError(f"{path}:{line_number}: missing fields {sorted(missing)}")
-            if not all(isinstance(case[field], str) and case[field].strip() for field in ("id", "query")):
+            if not all(
+                isinstance(case[field], str) and case[field].strip() for field in ("id", "query")
+            ):
                 raise ValueError(f"{path}:{line_number}: id and query must be non-empty strings")
             if case["doc_id"] is not None and not (
                 isinstance(case["doc_id"], str) and case["doc_id"].strip()
@@ -64,7 +66,7 @@ def select_cases(cases: list[dict[str, Any]], args: argparse.Namespace) -> list[
         difficulties = set(args.difficulties)
         cases = [case for case in cases if case.get("difficulty") in difficulties]
     if args.limit is not None:
-        cases = cases[:args.limit]
+        cases = cases[: args.limit]
     if not cases:
         raise ValueError("No golden queries matched the requested filters")
     return cases
@@ -142,18 +144,21 @@ def aggregate(records: list[dict[str, Any]], metric_names: list[str]) -> dict[st
             "pass_rate": mean(result["passed"] for result in results) if results else None,
             "scored_cases": len(results),
             "metric_error_cases": sum(
-                name in record.get("metrics", {})
-                and record["metrics"][name].get("score") is None
+                name in record.get("metrics", {}) and record["metrics"][name].get("score") is None
                 for record in pipeline_successes
             ),
         }
-    scores = [metric["mean_score"] for metric in metrics.values() if metric["mean_score"] is not None]
+    scores = [
+        metric["mean_score"] for metric in metrics.values() if metric["mean_score"] is not None
+    ]
     return {
         "cases": len(records),
         "successful_pipeline_cases": len(pipeline_successes),
         "pipeline_error_cases": len(records) - len(pipeline_successes),
         "triad_mean_score": mean(scores) if scores else None,
-        "prompt_tokens": sum(record["generation"].get("prompt_tokens", 0) for record in pipeline_successes),
+        "prompt_tokens": sum(
+            record["generation"].get("prompt_tokens", 0) for record in pipeline_successes
+        ),
         "completion_tokens": sum(
             record["generation"].get("completion_tokens", 0) for record in pipeline_successes
         ),
@@ -192,7 +197,9 @@ def run_evaluation(args: argparse.Namespace) -> Path:
     generator = AnswerGenerator(config=config, system_prompt=system_prompt)
     metrics = build_metrics(args)
     timestamp = datetime.now().strftime("%Y-%m-%d_%H-%M-%S")
-    run_dir = args.output_dir / re.sub(r"[^\w.-]+", "_", f"{timestamp}_{args.provider}_{args.model}")
+    run_dir = args.output_dir / re.sub(
+        r"[^\w.-]+", "_", f"{timestamp}_{args.provider}_{args.model}"
+    )
     run_dir.mkdir(parents=True, exist_ok=False)
     records = []
 
@@ -278,7 +285,9 @@ def run_evaluation(args: argparse.Namespace) -> Path:
         },
         "vector_store": {
             "backend": settings.VECTOR_STORE,
-            "qdrant_collection": settings.QDRANT_COLLECTION if settings.VECTOR_STORE == "qdrant" else None,
+            "qdrant_collection": settings.QDRANT_COLLECTION
+            if settings.VECTOR_STORE == "qdrant"
+            else None,
         },
         "judge_model": args.judge_model,
         "metrics": metric_names,
@@ -355,19 +364,21 @@ def compare_runs(results_dir: Path) -> Path | None:
         config = manifest.get("generation_config", {})
         overall = summary.get("overall", {})
         metrics = overall.get("metrics", {})
-        rows.append({
-            "run_id": manifest.get("run_id", summary_path.parent.name),
-            "provider": config.get("provider"),
-            "model": config.get("model"),
-            "execution_modes": manifest.get("execution_modes"),
-            "cases": overall.get("cases"),
-            "pipeline_errors": overall.get("pipeline_error_cases"),
-            "triad_mean": overall.get("triad_mean_score"),
-            "contextual_relevancy": metrics.get("contextual_relevancy", {}).get("mean_score"),
-            "faithfulness": metrics.get("faithfulness", {}).get("mean_score"),
-            "answer_relevancy": metrics.get("answer_relevancy", {}).get("mean_score"),
-            "signature": comparison_signature(manifest),
-        })
+        rows.append(
+            {
+                "run_id": manifest.get("run_id", summary_path.parent.name),
+                "provider": config.get("provider"),
+                "model": config.get("model"),
+                "execution_modes": manifest.get("execution_modes"),
+                "cases": overall.get("cases"),
+                "pipeline_errors": overall.get("pipeline_error_cases"),
+                "triad_mean": overall.get("triad_mean_score"),
+                "contextual_relevancy": metrics.get("contextual_relevancy", {}).get("mean_score"),
+                "faithfulness": metrics.get("faithfulness", {}).get("mean_score"),
+                "answer_relevancy": metrics.get("answer_relevancy", {}).get("mean_score"),
+                "signature": comparison_signature(manifest),
+            }
+        )
     if not rows:
         print(f"No DeepEval full-pipeline runs found in: {results_dir}")
         return None
@@ -387,7 +398,9 @@ def compare_runs(results_dir: Path) -> Path | None:
         ]
         for row in rows
     ]
-    widths = [max(len(headers[i]), *(len(row[i]) for row in display_rows)) for i in range(len(headers))]
+    widths = [
+        max(len(headers[i]), *(len(row[i]) for row in display_rows)) for i in range(len(headers))
+    ]
     print("  ".join(header.ljust(widths[i]) for i, header in enumerate(headers)))
     print("  ".join("-" * width for width in widths))
     for row in display_rows:
@@ -398,7 +411,9 @@ def compare_runs(results_dir: Path) -> Path | None:
     timestamp = datetime.now().strftime("%Y-%m-%d_%H-%M-%S")
     output_path = results_dir / f"comparison_{timestamp}.json"
     output_path.write_text(
-        json.dumps({"timestamp": timestamp, "directly_comparable": comparable, "runs": rows}, indent=2),
+        json.dumps(
+            {"timestamp": timestamp, "directly_comparable": comparable, "runs": rows}, indent=2
+        ),
         encoding="utf-8",
     )
     print(f"\nComparison saved to: {output_path}")
@@ -409,9 +424,12 @@ def parse_args() -> argparse.Namespace:
     parser = argparse.ArgumentParser(description=__doc__)
     parser.add_argument("--golden-path", type=Path, default=DEFAULT_GOLDEN_PATH)
     parser.add_argument("--output-dir", type=Path, default=DEFAULT_RESULTS_DIR)
-    parser.add_argument("--context-k", type=int, help="Chunks passed to the generator (default: CONTEXT_K)")
     parser.add_argument(
-        "--provider", choices=["ollama", "huggingface", "openai", "anthropic", "google"],
+        "--context-k", type=int, help="Chunks passed to the generator (default: CONTEXT_K)"
+    )
+    parser.add_argument(
+        "--provider",
+        choices=["ollama", "huggingface", "openai", "anthropic", "google"],
         help="Generator provider (default: from .env execution mode / LLM_PROVIDER)",
     )
     parser.add_argument("--model", help="Generator model (default: provider default from .env)")
@@ -421,10 +439,13 @@ def parse_args() -> argparse.Namespace:
         "--prompt-version", choices=sorted(SYSTEM_PROMPTS), default="v2_complete_precise"
     )
     parser.add_argument(
-        "--vector-store", choices=["numpy", "qdrant"],
+        "--vector-store",
+        choices=["numpy", "qdrant"],
         help="Retrieval index backend (default: VECTOR_STORE from .env)",
     )
-    parser.add_argument("--device", help="Device for local embedding/reranker models (default: DEVICE)")
+    parser.add_argument(
+        "--device", help="Device for local embedding/reranker models (default: DEVICE)"
+    )
     parser.add_argument("--judge-model", help="DeepEval judge (default: DEEPEVAL_JUDGE_MODEL)")
     parser.add_argument("--metrics", nargs="+", choices=METRIC_NAMES, default=list(METRIC_NAMES))
     parser.add_argument("--threshold", type=float, default=0.7)

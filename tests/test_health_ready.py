@@ -29,7 +29,14 @@ def client():
 def modes(monkeypatch):
     """Set the execution modes, LLM provider and vector store in one call."""
 
-    def apply(*, embedding=LOCAL, reranker=LOCAL, generation=LOCAL, provider=LLMProvider("ollama"), store="numpy"):
+    def apply(
+        *,
+        embedding=LOCAL,
+        reranker=LOCAL,
+        generation=LOCAL,
+        provider=LLMProvider("ollama"),
+        store="numpy",
+    ):
         s = health.settings
         monkeypatch.setattr(s, "MODEL_EXECUTION_MODE", LOCAL)
         monkeypatch.setattr(s, "EMBEDDING_EXECUTION_MODE", embedding)
@@ -96,7 +103,11 @@ class TestChecksFollowModes:
     def test_cloud_providers_check_their_api_key(self, modes, probes, provider):
         modes(provider=LLMProvider(provider))
         checks = health.run_readiness_checks()
-        assert f"{provider}_api_key" in checks and "ollama" not in checks and "huggingface_api" not in checks
+        assert (
+            f"{provider}_api_key" in checks
+            and "ollama" not in checks
+            and "huggingface_api" not in checks
+        )
 
     def test_unneeded_probes_are_not_called(self, modes, probes):
         modes()
@@ -183,7 +194,9 @@ class TestQdrantIndexCheck:
         import vector_store
 
         def install(store):
-            monkeypatch.setattr(vector_store.QdrantChunkStore, "from_settings", classmethod(lambda cls, *a: store))
+            monkeypatch.setattr(
+                vector_store.QdrantChunkStore, "from_settings", classmethod(lambda cls, *a: store)
+            )
             return store
 
         return install
@@ -219,7 +232,9 @@ class TestHuggingFaceCheck:
     def key(self, monkeypatch):
         monkeypatch.setattr(health.settings, "HUGGINGFACE_API_KEY", SECRET)
 
-    @pytest.mark.parametrize(("status", "expected"), [(200, "ok"), (401, "fail"), (403, "fail"), (500, "fail")])
+    @pytest.mark.parametrize(
+        ("status", "expected"), [(200, "ok"), (401, "fail"), (403, "fail"), (500, "fail")]
+    )
     def test_status_codes(self, monkeypatch, status, expected):
         monkeypatch.setattr(health.httpx, "get", _response(status))
         check = health._check_huggingface()
@@ -245,14 +260,18 @@ class TestHuggingFaceCheck:
         monkeypatch.setattr(health.httpx, "get", fake)
         health._check_huggingface()
         assert seen["headers"] == {"Authorization": f"Bearer {SECRET}"}
-        assert seen["timeout"] == health.CHECK_TIMEOUT_SECONDS and seen["url"] == health.HF_WHOAMI_URL
+        assert (
+            seen["timeout"] == health.CHECK_TIMEOUT_SECONDS and seen["url"] == health.HF_WHOAMI_URL
+        )
 
 
 class TestOllamaCheck:
     def test_probes_configured_host(self, monkeypatch):
         urls = []
         monkeypatch.setattr(health.settings, "OLLAMA_HOST", "http://ollama:11434/")
-        monkeypatch.setattr(health.httpx, "get", lambda url, **kw: (urls.append(url), _response()(url))[1])
+        monkeypatch.setattr(
+            health.httpx, "get", lambda url, **kw: (urls.append(url), _response()(url))[1]
+        )
         assert health._check_ollama().status == "ok"
         assert urls == ["http://ollama:11434/api/tags"]
 
@@ -292,16 +311,23 @@ class TestReadyEndpoint:
 
     def test_failing_dependency_returns_503_with_details(self, client, modes, probes, monkeypatch):
         modes(generation=HF_API)
-        monkeypatch.setattr(health, "_check_huggingface", lambda: health._fail("Hugging Face API key rejected"))
+        monkeypatch.setattr(
+            health, "_check_huggingface", lambda: health._fail("Hugging Face API key rejected")
+        )
         response = client.get("/health/ready")
         body = response.json()
         assert response.status_code == 503 and body["status"] == "not_ready"
-        assert body["checks"]["huggingface_api"] == {"status": "fail", "detail": "Hugging Face API key rejected"}
+        assert body["checks"]["huggingface_api"] == {
+            "status": "fail",
+            "detail": "Hugging Face API key rejected",
+        }
         assert body["checks"]["filings"]["status"] == "ok"
 
     def test_one_failure_among_many_is_enough(self, client, modes, probes, monkeypatch):
         modes()
-        monkeypatch.setattr(health, "_check_index_data", lambda: health._fail("run directory not found"))
+        monkeypatch.setattr(
+            health, "_check_index_data", lambda: health._fail("run directory not found")
+        )
         assert client.get("/health/ready").status_code == 503
 
     def test_response_never_contains_secrets(self, client, modes, monkeypatch):

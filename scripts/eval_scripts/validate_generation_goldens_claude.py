@@ -93,6 +93,7 @@ def load_chunk_text(root: Path, chunk_run: str) -> dict[str, str]:
 
 # --- numeric normalization helpers for checks 9 & 11 ---
 
+
 def _candidate_number_strings(value: float, unit: str | None) -> list[str]:
     """Return plausible textual representations of a numeric value in a filing."""
     out: set[str] = set()
@@ -104,9 +105,9 @@ def _candidate_number_strings(value: float, unit: str | None) -> list[str]:
     # Account for unit scaling (filings disclose in millions; values may be
     # expressed in billions in the expected answer and vice-versa).
     if unit == "billion":
-        variants.append(value * 1000)          # billions -> millions
+        variants.append(value * 1000)  # billions -> millions
     if unit == "million":
-        variants.append(value / 1000)          # millions -> billions
+        variants.append(value / 1000)  # millions -> billions
 
     for v in variants:
         if float(v).is_integer():
@@ -158,8 +159,13 @@ def validate(cases: list[dict], review_rows: list[dict], chunk_text: dict[str, s
 
         # chunk_run sanity
         if c.get("chunk_run") != EXPECTED_CHUNK_RUN:
-            errors.append(Issue(cid, "wrong_chunk_run",
-                                 f"Expected chunk_run={EXPECTED_CHUNK_RUN}, got {c.get('chunk_run')}"))
+            errors.append(
+                Issue(
+                    cid,
+                    "wrong_chunk_run",
+                    f"Expected chunk_run={EXPECTED_CHUNK_RUN}, got {c.get('chunk_run')}",
+                )
+            )
 
         if variant == "trap":
             trap_count += 1
@@ -174,62 +180,115 @@ def validate(cases: list[dict], review_rows: list[dict], chunk_text: dict[str, s
 
             # Check 4: chunk_id consistency
             if e.get("chunk_id") != chunk.get("chunk_id"):
-                errors.append(Issue(cid, "chunk_id_mismatch",
-                                    f"ctx[{i}] chunk_id {e.get('chunk_id')} != chunk {chunk.get('chunk_id')}"))
+                errors.append(
+                    Issue(
+                        cid,
+                        "chunk_id_mismatch",
+                        f"ctx[{i}] chunk_id {e.get('chunk_id')} != chunk {chunk.get('chunk_id')}",
+                    )
+                )
 
             # Check 5: hash matches stored text
             if e.get("text_sha256") != sha256_text(chunk.get("text", "")):
-                errors.append(Issue(cid, "hash_mismatch", f"ctx[{i}] SHA-256 mismatch for {e.get('chunk_id')}"))
+                errors.append(
+                    Issue(
+                        cid, "hash_mismatch", f"ctx[{i}] SHA-256 mismatch for {e.get('chunk_id')}"
+                    )
+                )
 
             # Check 12: doc_id membership (except cross-document / trap)
             case_doc = c.get("doc_id")
             chunk_doc = chunk.get("doc_id")
             if case_doc and chunk_doc and case_doc != chunk_doc:
                 if variant != "trap" and c.get("category") != "cross_document":
-                    errors.append(Issue(cid, "doc_id_mismatch",
-                                        f"ctx[{i}] chunk doc_id {chunk_doc} != case doc_id {case_doc}"))
+                    errors.append(
+                        Issue(
+                            cid,
+                            "doc_id_mismatch",
+                            f"ctx[{i}] chunk doc_id {chunk_doc} != case doc_id {case_doc}",
+                        )
+                    )
 
             if e.get("is_gold"):
                 gold_from_ctx.append(e.get("chunk_id"))
 
         # Check 6: gold_chunk_ids == is_gold entries
         if set(c.get("gold_chunk_ids", []) or []) != set(gold_from_ctx):
-            errors.append(Issue(cid, "gold_ids_mismatch",
-                                f"gold_chunk_ids {c.get('gold_chunk_ids')} != is_gold entries {gold_from_ctx}"))
+            errors.append(
+                Issue(
+                    cid,
+                    "gold_ids_mismatch",
+                    f"gold_chunk_ids {c.get('gold_chunk_ids')} != is_gold entries {gold_from_ctx}",
+                )
+            )
 
         answerable = c.get("answerable")
         if answerable:
             # Check 7: answerable needs expected answer and evidence
             if not c.get("gold_chunk_ids") and variant != "trap":
-                errors.append(Issue(cid, "answerable_no_gold", "answerable=true but no gold chunks"))
-            if not (c.get("expected_answer") or c.get("expected_values") or c.get("required_facts")):
-                errors.append(Issue(cid, "answerable_no_expected",
-                                    "answerable=true but no expected_answer/values/facts"))
+                errors.append(
+                    Issue(cid, "answerable_no_gold", "answerable=true but no gold chunks")
+                )
+            if not (
+                c.get("expected_answer") or c.get("expected_values") or c.get("required_facts")
+            ):
+                errors.append(
+                    Issue(
+                        cid,
+                        "answerable_no_expected",
+                        "answerable=true but no expected_answer/values/facts",
+                    )
+                )
         else:
             # Check 8: unanswerable constraints
             if c.get("gold_chunk_ids"):
-                errors.append(Issue(cid, "unanswerable_has_gold",
-                                    f"answerable=false but has gold chunks {c.get('gold_chunk_ids')}"))
+                errors.append(
+                    Issue(
+                        cid,
+                        "unanswerable_has_gold",
+                        f"answerable=false but has gold chunks {c.get('gold_chunk_ids')}",
+                    )
+                )
             if not c.get("unanswerable_reason"):
-                errors.append(Issue(cid, "unanswerable_no_reason", "answerable=false but no unanswerable_reason"))
+                errors.append(
+                    Issue(
+                        cid, "unanswerable_no_reason", "answerable=false but no unanswerable_reason"
+                    )
+                )
 
         # Check 9: expected values present in an oracle chunk
         if variant == "oracle":
             ctx_text = "\n".join((e.get("chunk", {}) or {}).get("text", "") for e in context)
             for ev in c.get("expected_values", []) or []:
                 v = ev.get("value")
-                if isinstance(v, (int, float)) and not number_present(float(v), ev.get("unit"), ctx_text):
-                    errors.append(Issue(cid, "expected_value_absent",
-                                        f"expected value {v} ({ev.get('unit')}) not found in oracle context"))
+                if isinstance(v, (int, float)) and not number_present(
+                    float(v), ev.get("unit"), ctx_text
+                ):
+                    errors.append(
+                        Issue(
+                            cid,
+                            "expected_value_absent",
+                            f"expected value {v} ({ev.get('unit')}) not found in oracle context",
+                        )
+                    )
 
         # Check 11: no expected numeric value present in no_gold
         if variant == "no_gold":
             ctx_text = "\n".join((e.get("chunk", {}) or {}).get("text", "") for e in context)
             for ev in oracle_values.get(c.get("source_qid"), []):
                 v = ev.get("value")
-                if isinstance(v, (int, float)) and float(v) >= 100 and number_present(float(v), ev.get("unit"), ctx_text):
-                    errors.append(Issue(cid, "no_gold_numeric_leak",
-                                        f"no_gold context contains expected value {v} ({ev.get('unit')})"))
+                if (
+                    isinstance(v, (int, float))
+                    and float(v) >= 100
+                    and number_present(float(v), ev.get("unit"), ctx_text)
+                ):
+                    errors.append(
+                        Issue(
+                            cid,
+                            "no_gold_numeric_leak",
+                            f"no_gold context contains expected value {v} ({ev.get('unit')})",
+                        )
+                    )
 
         # Check 10: evidence_map quotes are verbatim in their claimed chunk
         for fact in c.get("evidence_map", []) or []:
@@ -237,21 +296,41 @@ def validate(cases: list[dict], review_rows: list[dict], chunk_text: dict[str, s
             for quote in fact.get("verbatim_evidence", []) or []:
                 found = any(quote in chunk_text.get(ccid, "") for ccid in claimed)
                 if not found:
-                    errors.append(Issue(cid, "evidence_not_verbatim",
-                                        f"evidence quote not found verbatim in {claimed}: {quote[:60]!r}"))
+                    errors.append(
+                        Issue(
+                            cid,
+                            "evidence_not_verbatim",
+                            f"evidence quote not found verbatim in {claimed}: {quote[:60]!r}",
+                        )
+                    )
 
         # Check 13: review_status
         if variant in STANDARD_VARIANTS and c.get("review_status") != REQUIRED_REVIEW_STATUS:
-            errors.append(Issue(cid, "wrong_review_status",
-                                f"standard case review_status must be '{REQUIRED_REVIEW_STATUS}', got '{c.get('review_status')}'"))
+            errors.append(
+                Issue(
+                    cid,
+                    "wrong_review_status",
+                    f"standard case review_status must be '{REQUIRED_REVIEW_STATUS}', got '{c.get('review_status')}'",
+                )
+            )
         if c.get("review_status") == "human_approved":
-            errors.append(Issue(cid, "falsely_human_approved",
-                                "review_status must never be 'human_approved' in the Claude dataset"))
+            errors.append(
+                Issue(
+                    cid,
+                    "falsely_human_approved",
+                    "review_status must never be 'human_approved' in the Claude dataset",
+                )
+            )
 
         # Check 15: medium/low confidence requires human review
         if c.get("confidence") in ("medium", "low") and not c.get("requires_human_review"):
-            errors.append(Issue(cid, "confidence_not_flagged",
-                                f"confidence={c.get('confidence')} but requires_human_review is not true"))
+            errors.append(
+                Issue(
+                    cid,
+                    "confidence_not_flagged",
+                    f"confidence={c.get('confidence')} but requires_human_review is not true",
+                )
+            )
 
         # gather corrections for check 14
         key = c.get("source_qid") if variant != "trap" else cid
@@ -268,12 +347,23 @@ def validate(cases: list[dict], review_rows: list[dict], chunk_text: dict[str, s
             warnings.append(Issue(qid, "extra_variants", f"unexpected variants {extra}"))
 
     if len(source_variants) != EXPECTED_SOURCE_QUESTIONS:
-        warnings.append(Issue("dataset", "source_count",
-                              f"found {len(source_variants)} source questions, expected {EXPECTED_SOURCE_QUESTIONS}"))
+        warnings.append(
+            Issue(
+                "dataset",
+                "source_count",
+                f"found {len(source_variants)} source questions, expected {EXPECTED_SOURCE_QUESTIONS}",
+            )
+        )
 
     # Check 3: trap count
     if trap_count != EXPECTED_TRAP_CASES:
-        errors.append(Issue("dataset", "trap_count", f"found {trap_count} trap cases, expected {EXPECTED_TRAP_CASES}"))
+        errors.append(
+            Issue(
+                "dataset",
+                "trap_count",
+                f"found {trap_count} trap cases, expected {EXPECTED_TRAP_CASES}",
+            )
+        )
 
     # Check 14: every correction appears in the review log
     review_corrections: dict[str, set[str]] = defaultdict(set)
@@ -286,14 +376,21 @@ def validate(cases: list[dict], review_rows: list[dict], chunk_text: dict[str, s
         logged = review_corrections.get(key, set())
         for corr in set(corrs):
             if corr not in logged:
-                errors.append(Issue(key, "correction_not_logged",
-                                    f"correction not present in review log: {corr[:80]}"))
+                errors.append(
+                    Issue(
+                        key,
+                        "correction_not_logged",
+                        f"correction not present in review log: {corr[:80]}",
+                    )
+                )
 
     return errors, warnings
 
 
 def main():
-    parser = argparse.ArgumentParser(description="Validate the Claude-reviewed generation golden dataset")
+    parser = argparse.ArgumentParser(
+        description="Validate the Claude-reviewed generation golden dataset"
+    )
     parser.add_argument("--strict", action="store_true", help="Exit 1 on warnings too")
     parser.add_argument("--path", type=Path, default=None)
     parser.add_argument("--review-path", type=Path, default=None)
@@ -319,8 +416,10 @@ def main():
     chunk_run = cases[0].get("chunk_run", EXPECTED_CHUNK_RUN) if cases else EXPECTED_CHUNK_RUN
     chunk_text = load_chunk_text(root, chunk_run)
 
-    print(f"Loaded {len(cases)} cases, {len(review_rows)} review records, "
-          f"{len(chunk_text)} chunks from run {chunk_run}")
+    print(
+        f"Loaded {len(cases)} cases, {len(review_rows)} review records, "
+        f"{len(chunk_text)} chunks from run {chunk_run}"
+    )
     print()
 
     errors, warnings = validate(cases, review_rows, chunk_text)

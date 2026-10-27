@@ -40,7 +40,7 @@ class CorrelationIDMiddleware(BaseHTTPMiddleware):
                 "method": request.method,
                 "path": request.url.path,
                 "client_host": request.client.host if request.client else None,
-            }
+            },
         )
 
         # Process request
@@ -64,7 +64,7 @@ class CorrelationIDMiddleware(BaseHTTPMiddleware):
                 "method": request.method,
                 "path": request.url.path,
                 "status_code": response.status_code,
-            }
+            },
         )
 
         return response
@@ -91,7 +91,7 @@ class RequestLoggingMiddleware(BaseHTTPMiddleware):
                 "query_params": str(request.query_params),
                 "client_host": request.client.host if request.client else None,
                 "user_agent": request.headers.get("user-agent"),
-            }
+            },
         )
 
         # Process request
@@ -108,7 +108,7 @@ class RequestLoggingMiddleware(BaseHTTPMiddleware):
                 "path": request.url.path,
                 "status_code": response.status_code,
                 "duration_ms": round(duration_ms, 2),
-            }
+            },
         )
 
         return response
@@ -129,6 +129,7 @@ class AuthMiddleware(BaseHTTPMiddleware):
         if authorization and authorization.startswith("Bearer "):
             try:
                 from api.auth import verify_supabase_token
+
                 token = authorization[7:]  # Remove "Bearer " prefix
                 # Threadpool: the first call may fetch the JWKS over the network
                 user = await run_in_threadpool(verify_supabase_token, token)

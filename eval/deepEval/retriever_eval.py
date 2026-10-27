@@ -39,7 +39,9 @@ def load_cases(path: Path) -> list[dict[str, Any]]:
             missing = {"id", "query", "doc_id"} - case.keys()
             if missing:
                 raise ValueError(f"{path}:{line_number}: missing fields {sorted(missing)}")
-            if not all(isinstance(case[field], str) and case[field].strip() for field in ("id", "query")):
+            if not all(
+                isinstance(case[field], str) and case[field].strip() for field in ("id", "query")
+            ):
                 raise ValueError(f"{path}:{line_number}: id and query must be non-empty strings")
             if case["doc_id"] is not None and not (
                 isinstance(case["doc_id"], str) and case["doc_id"].strip()
@@ -66,7 +68,7 @@ def select_cases(cases: list[dict[str, Any]], args: argparse.Namespace) -> list[
         difficulties = set(args.difficulties)
         cases = [case for case in cases if case.get("difficulty") in difficulties]
     if args.limit is not None:
-        cases = cases[:args.limit]
+        cases = cases[: args.limit]
     if not cases:
         raise ValueError("No golden queries matched the requested filters")
     return cases
@@ -272,7 +274,9 @@ def run_evaluation(args: argparse.Namespace) -> Path:
         },
         "retrieval_config": {
             "vector_store": settings.VECTOR_STORE,
-            "qdrant_collection": settings.QDRANT_COLLECTION if settings.VECTOR_STORE == "qdrant" else None,
+            "qdrant_collection": settings.QDRANT_COLLECTION
+            if settings.VECTOR_STORE == "qdrant"
+            else None,
             "run_directory": config.run_directory,
             "alpha": config.alpha,
             "retrieve_k": config.retrieve_k,
@@ -291,8 +295,12 @@ def run_evaluation(args: argparse.Namespace) -> Path:
         "platform": platform.platform(),
     }
 
-    (run_dir / "summary.json").write_text(json.dumps(summary, indent=2, ensure_ascii=False), encoding="utf-8")
-    (run_dir / "manifest.json").write_text(json.dumps(manifest, indent=2, ensure_ascii=False), encoding="utf-8")
+    (run_dir / "summary.json").write_text(
+        json.dumps(summary, indent=2, ensure_ascii=False), encoding="utf-8"
+    )
+    (run_dir / "manifest.json").write_text(
+        json.dumps(manifest, indent=2, ensure_ascii=False), encoding="utf-8"
+    )
 
     print("\n" + "=" * 80)
     print("RETRIEVER EVALUATION SUMMARY")
@@ -319,8 +327,16 @@ def run_evaluation(args: argparse.Namespace) -> Path:
     print("-" * 80)
     for name, data in summary["overall"]["metrics"].items():
         print(f"  {name}:")
-        print(f"    Mean score: {data['mean_score']:.3f}" if data['mean_score'] else "    Mean score: N/A")
-        print(f"    Pass rate: {data['pass_rate']*100:.1f}%" if data['pass_rate'] else "    Pass rate: N/A")
+        print(
+            f"    Mean score: {data['mean_score']:.3f}"
+            if data["mean_score"]
+            else "    Mean score: N/A"
+        )
+        print(
+            f"    Pass rate: {data['pass_rate'] * 100:.1f}%"
+            if data["pass_rate"]
+            else "    Pass rate: N/A"
+        )
         print(f"    Scored cases: {data['scored_cases']}")
         print(f"    Error cases: {data['metric_error_cases']}")
 
@@ -343,24 +359,31 @@ def dry_run(args: argparse.Namespace) -> None:
     from generation.config import GenerationConfig
 
     config = GenerationConfig()
-    print(json.dumps({
-        "golden_path": str(args.golden_path.resolve()),
-        "selected_queries": len(load_cases(args.golden_path)),
-        "context_k": args.context_k,
-        "metrics": args.metrics,
-        "embedding_mode": settings.effective_embedding_mode,
-        "reranker_mode": settings.effective_reranker_mode,
-        "retrieval_config": {
-            "vector_store": settings.VECTOR_STORE,
-            "qdrant_collection": settings.QDRANT_COLLECTION if settings.VECTOR_STORE == "qdrant" else None,
-            "run_directory": config.run_directory,
-            "alpha": config.alpha,
-            "retrieve_k": config.retrieve_k,
-            "reranker_model": config.reranker_model,
-        },
-        "judge_model": args.judge_model or settings.DEEPEVAL_JUDGE_MODEL,
-        "threshold": args.threshold,
-    }, indent=2))
+    print(
+        json.dumps(
+            {
+                "golden_path": str(args.golden_path.resolve()),
+                "selected_queries": len(load_cases(args.golden_path)),
+                "context_k": args.context_k,
+                "metrics": args.metrics,
+                "embedding_mode": settings.effective_embedding_mode,
+                "reranker_mode": settings.effective_reranker_mode,
+                "retrieval_config": {
+                    "vector_store": settings.VECTOR_STORE,
+                    "qdrant_collection": settings.QDRANT_COLLECTION
+                    if settings.VECTOR_STORE == "qdrant"
+                    else None,
+                    "run_directory": config.run_directory,
+                    "alpha": config.alpha,
+                    "retrieve_k": config.retrieve_k,
+                    "reranker_model": config.reranker_model,
+                },
+                "judge_model": args.judge_model or settings.DEEPEVAL_JUDGE_MODEL,
+                "threshold": args.threshold,
+            },
+            indent=2,
+        )
+    )
 
 
 def comparison_signature(manifest: dict[str, Any]) -> dict[str, Any]:
@@ -401,16 +424,18 @@ def compare_runs(results_dir: Path) -> Path | None:
         manifest.get("retrieval_config", {})
         overall = summary.get("overall", {})
         metrics = overall.get("metrics", {})
-        rows.append({
-            "run_id": manifest.get("run_id", summary_path.parent.name),
-            "execution_modes": manifest.get("execution_modes"),
-            "cases": overall.get("cases"),
-            "errors": overall.get("error_cases"),
-            "mean_score": overall.get("mean_score"),
-            "contextual_precision": metrics.get("contextual_precision", {}).get("mean_score"),
-            "contextual_recall": metrics.get("contextual_recall", {}).get("mean_score"),
-            "signature": comparison_signature(manifest),
-        })
+        rows.append(
+            {
+                "run_id": manifest.get("run_id", summary_path.parent.name),
+                "execution_modes": manifest.get("execution_modes"),
+                "cases": overall.get("cases"),
+                "errors": overall.get("error_cases"),
+                "mean_score": overall.get("mean_score"),
+                "contextual_precision": metrics.get("contextual_precision", {}).get("mean_score"),
+                "contextual_recall": metrics.get("contextual_recall", {}).get("mean_score"),
+                "signature": comparison_signature(manifest),
+            }
+        )
 
     if not rows:
         print(f"No DeepEval retriever runs found in: {results_dir}")
@@ -431,7 +456,9 @@ def compare_runs(results_dir: Path) -> Path | None:
         for row in rows
     ]
 
-    widths = [max(len(headers[i]), *(len(row[i]) for row in display_rows)) for i in range(len(headers))]
+    widths = [
+        max(len(headers[i]), *(len(row[i]) for row in display_rows)) for i in range(len(headers))
+    ]
     print("  ".join(header.ljust(widths[i]) for i, header in enumerate(headers)))
     print("  ".join("-" * width for width in widths))
     for row in display_rows:
@@ -443,7 +470,9 @@ def compare_runs(results_dir: Path) -> Path | None:
     timestamp = datetime.now().strftime("%Y-%m-%d_%H-%M-%S")
     output_path = results_dir / f"comparison_{timestamp}.json"
     output_path.write_text(
-        json.dumps({"timestamp": timestamp, "directly_comparable": comparable, "runs": rows}, indent=2),
+        json.dumps(
+            {"timestamp": timestamp, "directly_comparable": comparable, "runs": rows}, indent=2
+        ),
         encoding="utf-8",
     )
     print(f"\nComparison saved to: {output_path}")
@@ -451,93 +480,46 @@ def compare_runs(results_dir: Path) -> Path | None:
 
 
 def main():
-    parser = argparse.ArgumentParser(
-        description="DeepEval LLM-judge evaluation of the retriever"
+    parser = argparse.ArgumentParser(description="DeepEval LLM-judge evaluation of the retriever")
+    parser.add_argument(
+        "--golden-path", type=Path, default=DEFAULT_GOLDEN_PATH, help="Path to golden dataset"
     )
     parser.add_argument(
-        "--golden-path",
-        type=Path,
-        default=DEFAULT_GOLDEN_PATH,
-        help="Path to golden dataset"
+        "--output-dir", type=Path, default=DEFAULT_RESULTS_DIR, help="Output directory for results"
     )
-    parser.add_argument(
-        "--output-dir",
-        type=Path,
-        default=DEFAULT_RESULTS_DIR,
-        help="Output directory for results"
-    )
-    parser.add_argument(
-        "--context-k",
-        type=int,
-        default=5,
-        help="Number of chunks to retrieve"
-    )
+    parser.add_argument("--context-k", type=int, default=5, help="Number of chunks to retrieve")
     parser.add_argument(
         "--metrics",
         nargs="+",
         choices=METRIC_NAMES,
         default=list(METRIC_NAMES),
-        help="Metrics to evaluate"
+        help="Metrics to evaluate",
+    )
+    parser.add_argument("--query-ids", nargs="+", help="Specific query IDs to evaluate")
+    parser.add_argument("--categories", nargs="+", help="Filter by category")
+    parser.add_argument("--difficulties", nargs="+", help="Filter by difficulty")
+    parser.add_argument("--limit", type=int, help="Limit number of cases")
+    parser.add_argument(
+        "--judge-model", help="DeepEval judge model (default: DEEPEVAL_JUDGE_MODEL from .env)"
+    )
+    parser.add_argument("--threshold", type=float, default=0.5, help="Passing threshold")
+    parser.add_argument("--strict", action="store_true", help="Strict mode (binary scoring)")
+    parser.add_argument("--fail-fast", action="store_true", help="Stop on first error")
+    parser.add_argument(
+        "--dry-run", action="store_true", help="Print configuration without running evaluation"
     )
     parser.add_argument(
-        "--query-ids",
-        nargs="+",
-        help="Specific query IDs to evaluate"
-    )
-    parser.add_argument(
-        "--categories",
-        nargs="+",
-        help="Filter by category"
-    )
-    parser.add_argument(
-        "--difficulties",
-        nargs="+",
-        help="Filter by difficulty"
-    )
-    parser.add_argument(
-        "--limit",
-        type=int,
-        help="Limit number of cases"
-    )
-    parser.add_argument(
-        "--judge-model",
-        help="DeepEval judge model (default: DEEPEVAL_JUDGE_MODEL from .env)"
-    )
-    parser.add_argument(
-        "--threshold",
-        type=float,
-        default=0.5,
-        help="Passing threshold"
-    )
-    parser.add_argument(
-        "--strict",
-        action="store_true",
-        help="Strict mode (binary scoring)"
-    )
-    parser.add_argument(
-        "--fail-fast",
-        action="store_true",
-        help="Stop on first error"
-    )
-    parser.add_argument(
-        "--dry-run",
-        action="store_true",
-        help="Print configuration without running evaluation"
-    )
-    parser.add_argument(
-        "--verbose",
-        action="store_true",
-        help="Print detailed progress during evaluation"
+        "--verbose", action="store_true", help="Print detailed progress during evaluation"
     )
     parser.add_argument(
         "--compare",
         action="store_true",
-        help="Compare all retriever evaluation runs in the results directory"
+        help="Compare all retriever evaluation runs in the results directory",
     )
     parser.add_argument(
         "--vector-store",
         choices=["numpy", "qdrant"],
-        help="Retrieval index backend (default: VECTOR_STORE from .env)"
+        help="Retrieval index backend (default: VECTOR_STORE from .env)",
     )
     args = parser.parse_args()
     if args.vector_store:

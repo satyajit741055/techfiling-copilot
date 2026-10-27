@@ -35,14 +35,20 @@ def load_cases(path: Path) -> list[dict[str, Any]]:
                 continue
             case = json.loads(line)
             missing = {
-                "source_qid", "doc_id", "query", "expected_answer", "ideal_context"
+                "source_qid",
+                "doc_id",
+                "query",
+                "expected_answer",
+                "ideal_context",
             } - case.keys()
             if missing:
                 raise ValueError(f"{path}:{line_number}: missing fields {sorted(missing)}")
             if not isinstance(case["ideal_context"], list) or not case["ideal_context"]:
                 raise ValueError(f"{path}:{line_number}: ideal_context must be a non-empty list")
             if not all(isinstance(context, str) and context for context in case["ideal_context"]):
-                raise ValueError(f"{path}:{line_number}: ideal_context values must be non-empty strings")
+                raise ValueError(
+                    f"{path}:{line_number}: ideal_context values must be non-empty strings"
+                )
             cases.append(case)
     if not cases:
         raise ValueError(f"No cases found in {path}")
@@ -180,7 +186,9 @@ def run_evaluation(args: argparse.Namespace) -> Path:
     generator = AnswerGenerator(config=config, system_prompt=system_prompt)
     metrics = build_metrics(args)
     timestamp = datetime.now().strftime("%Y-%m-%d_%H-%M-%S")
-    run_dir = args.output_dir / re.sub(r"[^\w.-]+", "_", f"{timestamp}_{args.provider}_{args.model}")
+    run_dir = args.output_dir / re.sub(
+        r"[^\w.-]+", "_", f"{timestamp}_{args.provider}_{args.model}"
+    )
     run_dir.mkdir(parents=True, exist_ok=False)
     records = []
 
@@ -200,7 +208,9 @@ def run_evaluation(args: argparse.Namespace) -> Path:
                     retrieval_context=case["ideal_context"],
                     metadata={"doc_id": case["doc_id"]},
                 )
-                scores = {name: metric_result(metric, test_case) for name, metric in metrics.items()}
+                scores = {
+                    name: metric_result(metric, test_case) for name, metric in metrics.items()
+                }
                 record = {
                     "status": "success",
                     "case": case,
@@ -302,17 +312,19 @@ def compare_runs(results_dir: Path) -> Path | None:
         summary = json.loads(summary_path.read_text(encoding="utf-8"))
         config = manifest.get("generator_config", {})
         metrics = summary.get("metrics", {})
-        rows.append({
-            "run_id": manifest.get("run_id", summary_path.parent.name),
-            "provider": config.get("provider"),
-            "model": config.get("model"),
-            "cases": summary.get("cases"),
-            "error_cases": summary.get("error_cases"),
-            "faithfulness": metrics.get("faithfulness", {}).get("mean_score"),
-            "answer_relevancy": metrics.get("answer_relevancy", {}).get("mean_score"),
-            "answer_correctness": metrics.get("answer_correctness", {}).get("mean_score"),
-            "signature": comparison_signature(manifest),
-        })
+        rows.append(
+            {
+                "run_id": manifest.get("run_id", summary_path.parent.name),
+                "provider": config.get("provider"),
+                "model": config.get("model"),
+                "cases": summary.get("cases"),
+                "error_cases": summary.get("error_cases"),
+                "faithfulness": metrics.get("faithfulness", {}).get("mean_score"),
+                "answer_relevancy": metrics.get("answer_relevancy", {}).get("mean_score"),
+                "answer_correctness": metrics.get("answer_correctness", {}).get("mean_score"),
+                "signature": comparison_signature(manifest),
+            }
+        )
     if not rows:
         print(f"No DeepEval generator runs found in: {results_dir}")
         return None
@@ -331,7 +343,9 @@ def compare_runs(results_dir: Path) -> Path | None:
         ]
         for row in rows
     ]
-    widths = [max(len(headers[i]), *(len(row[i]) for row in display_rows)) for i in range(len(headers))]
+    widths = [
+        max(len(headers[i]), *(len(row[i]) for row in display_rows)) for i in range(len(headers))
+    ]
     print("  ".join(header.ljust(widths[i]) for i, header in enumerate(headers)))
     print("  ".join("-" * width for width in widths))
     for row in display_rows:
@@ -342,7 +356,9 @@ def compare_runs(results_dir: Path) -> Path | None:
     timestamp = datetime.now().strftime("%Y-%m-%d_%H-%M-%S")
     output_path = results_dir / f"comparison_{timestamp}.json"
     output_path.write_text(
-        json.dumps({"timestamp": timestamp, "directly_comparable": comparable, "runs": rows}, indent=2),
+        json.dumps(
+            {"timestamp": timestamp, "directly_comparable": comparable, "runs": rows}, indent=2
+        ),
         encoding="utf-8",
     )
     print(f"\nComparison saved to: {output_path}")
@@ -354,7 +370,8 @@ def parse_args() -> argparse.Namespace:
     parser.add_argument("--golden-path", type=Path, default=DEFAULT_GOLDEN_PATH)
     parser.add_argument("--output-dir", type=Path, default=DEFAULT_RESULTS_DIR)
     parser.add_argument(
-        "--provider", choices=["ollama", "huggingface", "openai", "anthropic", "google"],
+        "--provider",
+        choices=["ollama", "huggingface", "openai", "anthropic", "google"],
         help="Generator provider (default: from .env execution mode / LLM_PROVIDER)",
     )
     parser.add_argument("--model", help="Generator model (default: provider default from .env)")

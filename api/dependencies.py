@@ -39,6 +39,7 @@ _filings: list[dict] | None = None
 # INITIALIZATION
 # =============================================================================
 
+
 def _load_filings_from_disk() -> list[dict]:
     """
     Load filing metadata from data/parsed/*.document.json files.
@@ -133,6 +134,7 @@ def shutdown_generator() -> None:
 # =============================================================================
 # DEPENDENCY INJECTION
 # =============================================================================
+
 
 def get_generator() -> "AnswerGenerator":
     """

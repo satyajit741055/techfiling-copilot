@@ -54,16 +54,26 @@ def process(
 
     all_chunks = []
     for doc_id in doc_ids:
-        chunks = chunk_doc_id(doc_id, parsed_dir, max_chars, min_chars, table_max_chars, pseudo_headings)
+        chunks = chunk_doc_id(
+            doc_id, parsed_dir, max_chars, min_chars, table_max_chars, pseudo_headings
+        )
         write_chunks(chunks, out_dir / f"{doc_id}.chunks.jsonl")
         all_chunks += chunks
         logger.info(f"{doc_id}: {len(chunks)} chunks")
     logger.info(f"Total chunks: {len(all_chunks)}")
 
     embeddings, manifest = embed_and_save(
-        all_chunks, out_dir, model_name, device, batch_size,
-        {"max_chars": max_chars, "min_chars": min_chars, "table_max_chars": table_max_chars,
-         "pseudo_headings": pseudo_headings},
+        all_chunks,
+        out_dir,
+        model_name,
+        device,
+        batch_size,
+        {
+            "max_chars": max_chars,
+            "min_chars": min_chars,
+            "table_max_chars": table_max_chars,
+            "pseudo_headings": pseudo_headings,
+        },
         model_cache_dir=model_cache_dir,
     )
     logger.info(f"Embeddings shape: {embeddings.shape} -> {out_dir}")
@@ -75,7 +85,9 @@ def process(
 
         store = QdrantChunkStore.from_settings()
         n = store.index_chunks(
-            all_chunks, embeddings, manifest["embedding_model"],
+            all_chunks,
+            embeddings,
+            manifest["embedding_model"],
             filings=load_filing_metadata(parsed_dir, doc_ids),
         )
         logger.info(f"Indexed {n} chunks into Qdrant collection {store.collection!r}")
@@ -83,7 +95,9 @@ def process(
 
 
 def main() -> None:
-    parser = argparse.ArgumentParser(description="Parse, chunk and embed 10-K filings into data/chunks/<run>/.")
+    parser = argparse.ArgumentParser(
+        description="Parse, chunk and embed 10-K filings into data/chunks/<run>/."
+    )
     parser.add_argument("--raw-dir", type=Path, default=RAW_DIR)
     parser.add_argument("--parsed-dir", type=Path, default=PARSED_DIR)
     parser.add_argument("--chunks-dir", type=Path, default=CHUNKS_DIR)
@@ -91,16 +105,33 @@ def main() -> None:
     parser.add_argument("--device", help="cuda | cpu (default: cuda if available)")
     parser.add_argument("--model-cache-dir", type=Path, default=MODEL_CACHE_DIR)
     parser.add_argument("--batch-size", type=int, default=64)
-    parser.add_argument("--skip-parse", action="store_true", help="reuse existing data/parsed/*.elements.jsonl")
+    parser.add_argument(
+        "--skip-parse", action="store_true", help="reuse existing data/parsed/*.elements.jsonl"
+    )
     parser.add_argument("--max-chars", type=int, default=MAX_CHARS)
     parser.add_argument("--min-chars", type=int, default=MIN_CHARS)
     parser.add_argument("--table-max-chars", type=int, default=TABLE_MAX_CHARS)
-    parser.add_argument("--pseudo-headings", action=argparse.BooleanOptionalAction, default=True,
-                        help="start new chunks at short heading-like paragraphs (default: on)")
+    parser.add_argument(
+        "--pseudo-headings",
+        action=argparse.BooleanOptionalAction,
+        default=True,
+        help="start new chunks at short heading-like paragraphs (default: on)",
+    )
     args = parser.parse_args()
-    process(args.raw_dir, args.parsed_dir, args.chunks_dir, args.model, args.device, args.batch_size,
-            args.skip_parse, args.max_chars, args.min_chars, args.table_max_chars, args.model_cache_dir,
-            args.pseudo_headings)
+    process(
+        args.raw_dir,
+        args.parsed_dir,
+        args.chunks_dir,
+        args.model,
+        args.device,
+        args.batch_size,
+        args.skip_parse,
+        args.max_chars,
+        args.min_chars,
+        args.table_max_chars,
+        args.model_cache_dir,
+        args.pseudo_headings,
+    )
 
 
 if __name__ == "__main__":

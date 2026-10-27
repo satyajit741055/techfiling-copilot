@@ -8,7 +8,6 @@ Tests cover:
 """
 
 
-
 class TestHealthEndpoint:
     """Tests for GET /health endpoint."""
 
@@ -110,18 +109,14 @@ class TestQuestionsEndpoint:
         """Questions should reject too-short questions."""
         response = client.post(
             "/questions",
-            json={"question": "Hi", "doc_id": "AAPL_10-K_2025"}  # Too short (min 3 chars)
+            json={"question": "Hi", "doc_id": "AAPL_10-K_2025"},  # Too short (min 3 chars)
         )
         assert response.status_code == 422
 
     def test_questions_rejects_invalid_doc_id(self, client):
         """Questions should reject non-existent doc_id."""
         response = client.post(
-            "/questions",
-            json={
-                "question": "What was the revenue?",
-                "doc_id": "INVALID_DOC_ID"
-            }
+            "/questions", json={"question": "What was the revenue?", "doc_id": "INVALID_DOC_ID"}
         )
         assert response.status_code == 404
         assert "not found" in response.json()["detail"].lower()
@@ -179,8 +174,8 @@ class TestQuestionsEndpoint:
             json={
                 "question": "What was Apple's total net sales?",
                 "doc_id": "AAPL_10-K_2025",
-                "context_k": 3
-            }
+                "context_k": 3,
+            },
         )
         assert response.status_code == 200
 

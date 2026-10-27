@@ -15,8 +15,13 @@ from model_runtime.local import LocalEmbedder, LocalReranker
 @pytest.fixture(autouse=True)
 def _clean_env(monkeypatch):
     for key in (
-        "MODEL_EXECUTION_MODE", "EMBEDDING_EXECUTION_MODE", "RERANKER_EXECUTION_MODE",
-        "GENERATION_EXECUTION_MODE", "LLM_PROVIDER", "LLM_MODEL", "HUGGINGFACE_API_KEY",
+        "MODEL_EXECUTION_MODE",
+        "EMBEDDING_EXECUTION_MODE",
+        "RERANKER_EXECUTION_MODE",
+        "GENERATION_EXECUTION_MODE",
+        "LLM_PROVIDER",
+        "LLM_MODEL",
+        "HUGGINGFACE_API_KEY",
     ):
         monkeypatch.delenv(key, raising=False)
 
@@ -31,7 +36,9 @@ def make_settings(**overrides) -> Settings:
 def test_local_mode_defaults_to_ollama_qwen():
     s = make_settings()
     assert (s.effective_embedding_mode, s.effective_reranker_mode, s.effective_generation_mode) == (
-        "local", "local", "local",
+        "local",
+        "local",
+        "local",
     )
     assert s.effective_llm_provider == "ollama"
     assert s.effective_model == "qwen2.5-7b-instruct:latest"
@@ -177,10 +184,7 @@ def test_hf_reranker_serverless_text_ranking_format():
         )
         return httpx.Response(
             200,
-            json=[
-                {"index": i, "score": len(body["inputs"]["texts"][i])}
-                for i in ranked
-            ],
+            json=[{"index": i, "score": len(body["inputs"]["texts"][i])} for i in ranked],
         )
 
     reranker = HuggingFaceApiReranker(
@@ -193,7 +197,9 @@ def test_hf_reranker_tei_format_reorders_by_index():
     def handler(request):
         body = json.loads(request.content)
         ranked = sorted(range(len(body["texts"])), key=lambda i: -len(body["texts"][i]))
-        return httpx.Response(200, json=[{"index": i, "score": len(body["texts"][i])} for i in ranked])
+        return httpx.Response(
+            200, json=[{"index": i, "score": len(body["texts"][i])} for i in ranked]
+        )
 
     reranker = HuggingFaceApiReranker(
         "ce", api_key="k", url="https://endpoint/rerank", client=_mock_client(handler)
@@ -204,7 +210,9 @@ def test_hf_reranker_tei_format_reorders_by_index():
 
 def test_hf_reranker_raises_on_http_error():
     reranker = HuggingFaceApiReranker(
-        "ce", api_key="k", url="https://x/{model}",
+        "ce",
+        api_key="k",
+        url="https://x/{model}",
         client=_mock_client(lambda request: httpx.Response(503, text="loading")),
     )
     with pytest.raises(RuntimeError, match="503"):

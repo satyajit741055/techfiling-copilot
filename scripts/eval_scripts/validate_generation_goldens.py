@@ -44,6 +44,7 @@ MAX_EXPECTED_CASES = 200
 
 class ValidationError:
     """A validation error."""
+
     def __init__(self, case_id: str, error_type: str, message: str):
         self.case_id = case_id
         self.error_type = error_type
@@ -55,6 +56,7 @@ class ValidationError:
 
 class ValidationWarning:
     """A validation warning (non-fatal)."""
+
     def __init__(self, case_id: str, warning_type: str, message: str):
         self.case_id = case_id
         self.warning_type = warning_type
@@ -69,7 +71,9 @@ def sha256_text(text: str) -> str:
     return hashlib.sha256(text.encode("utf-8")).hexdigest()
 
 
-def validate_case(case: dict, case_idx: int) -> tuple[list[ValidationError], list[ValidationWarning]]:
+def validate_case(
+    case: dict, case_idx: int
+) -> tuple[list[ValidationError], list[ValidationWarning]]:
     """Validate a single case."""
     errors = []
     warnings = []
@@ -78,29 +82,42 @@ def validate_case(case: dict, case_idx: int) -> tuple[list[ValidationError], lis
 
     # Required fields
     required_fields = [
-        "id", "source_qid", "query", "category", "difficulty",
-        "context_variant", "chunk_run", "answerable", "context",
-        "gold_chunk_ids", "review_status", "review_notes"
+        "id",
+        "source_qid",
+        "query",
+        "category",
+        "difficulty",
+        "context_variant",
+        "chunk_run",
+        "answerable",
+        "context",
+        "gold_chunk_ids",
+        "review_status",
+        "review_notes",
     ]
 
     for field in required_fields:
         if field not in case:
-            errors.append(ValidationError(case_id, "missing_field", f"Missing required field: {field}"))
+            errors.append(
+                ValidationError(case_id, "missing_field", f"Missing required field: {field}")
+            )
 
     # Validate chunk_run
     if case.get("chunk_run") != EXPECTED_CHUNK_RUN:
-        errors.append(ValidationError(
-            case_id, "wrong_chunk_run",
-            f"Expected chunk_run={EXPECTED_CHUNK_RUN}, got {case.get('chunk_run')}"
-        ))
+        errors.append(
+            ValidationError(
+                case_id,
+                "wrong_chunk_run",
+                f"Expected chunk_run={EXPECTED_CHUNK_RUN}, got {case.get('chunk_run')}",
+            )
+        )
 
     # Validate context_variant
     variant = case.get("context_variant")
     if variant not in EXPECTED_VARIANTS and variant != "trap":
-        errors.append(ValidationError(
-            case_id, "invalid_variant",
-            f"Invalid context_variant: {variant}"
-        ))
+        errors.append(
+            ValidationError(case_id, "invalid_variant", f"Invalid context_variant: {variant}")
+        )
 
     # Validate context entries
     context = case.get("context", [])
@@ -109,46 +126,71 @@ def validate_case(case: dict, case_idx: int) -> tuple[list[ValidationError], lis
     for i, entry in enumerate(context):
         # Check required context entry fields
         if "chunk_id" not in entry:
-            errors.append(ValidationError(case_id, "context_missing_chunk_id", f"Context entry {i} missing chunk_id"))
+            errors.append(
+                ValidationError(
+                    case_id, "context_missing_chunk_id", f"Context entry {i} missing chunk_id"
+                )
+            )
             continue
 
         if "is_gold" not in entry:
-            errors.append(ValidationError(case_id, "context_missing_is_gold", f"Context entry {i} missing is_gold"))
+            errors.append(
+                ValidationError(
+                    case_id, "context_missing_is_gold", f"Context entry {i} missing is_gold"
+                )
+            )
 
         if "text_sha256" not in entry:
-            errors.append(ValidationError(case_id, "context_missing_hash", f"Context entry {i} missing text_sha256"))
+            errors.append(
+                ValidationError(
+                    case_id, "context_missing_hash", f"Context entry {i} missing text_sha256"
+                )
+            )
 
         if "chunk" not in entry:
-            errors.append(ValidationError(case_id, "context_missing_chunk", f"Context entry {i} missing chunk dict"))
+            errors.append(
+                ValidationError(
+                    case_id, "context_missing_chunk", f"Context entry {i} missing chunk dict"
+                )
+            )
             continue
 
         chunk = entry.get("chunk", {})
 
         # Validate chunk_id consistency
         if entry.get("chunk_id") != chunk.get("chunk_id"):
-            errors.append(ValidationError(
-                case_id, "chunk_id_mismatch",
-                f"Context entry {i}: chunk_id mismatch ({entry.get('chunk_id')} vs {chunk.get('chunk_id')})"
-            ))
+            errors.append(
+                ValidationError(
+                    case_id,
+                    "chunk_id_mismatch",
+                    f"Context entry {i}: chunk_id mismatch ({entry.get('chunk_id')} vs {chunk.get('chunk_id')})",
+                )
+            )
 
         # Validate SHA-256 hash
         chunk_text = chunk.get("text", "")
         expected_hash = sha256_text(chunk_text)
         if entry.get("text_sha256") != expected_hash:
-            errors.append(ValidationError(
-                case_id, "hash_mismatch",
-                f"Context entry {i}: SHA-256 mismatch for chunk {entry.get('chunk_id')}"
-            ))
+            errors.append(
+                ValidationError(
+                    case_id,
+                    "hash_mismatch",
+                    f"Context entry {i}: SHA-256 mismatch for chunk {entry.get('chunk_id')}",
+                )
+            )
 
         # Validate doc_id consistency (except for cross-document and trap cases)
         case_doc_id = case.get("doc_id")
         chunk_doc_id = chunk.get("doc_id")
         if case_doc_id and chunk_doc_id and case_doc_id != chunk_doc_id:
             if variant != "trap" and case.get("category") != "cross_document":
-                warnings.append(ValidationWarning(
-                    case_id, "doc_id_mismatch",
-                    f"Context entry {i}: chunk doc_id ({chunk_doc_id}) differs from case doc_id ({case_doc_id})"
-                ))
+                warnings.append(
+                    ValidationWarning(
+                        case_id,
+                        "doc_id_mismatch",
+                        f"Context entry {i}: chunk doc_id ({chunk_doc_id}) differs from case doc_id ({case_doc_id})",
+                    )
+                )
 
         # Track gold chunks
         if entry.get("is_gold"):
@@ -157,10 +199,13 @@ def validate_case(case: dict, case_idx: int) -> tuple[list[ValidationError], lis
     # Validate gold_chunk_ids consistency
     gold_chunk_ids = case.get("gold_chunk_ids", [])
     if set(gold_chunk_ids) != set(gold_chunk_ids_from_context):
-        errors.append(ValidationError(
-            case_id, "gold_chunk_ids_mismatch",
-            f"gold_chunk_ids ({gold_chunk_ids}) doesn't match is_gold=true entries ({gold_chunk_ids_from_context})"
-        ))
+        errors.append(
+            ValidationError(
+                case_id,
+                "gold_chunk_ids_mismatch",
+                f"gold_chunk_ids ({gold_chunk_ids}) doesn't match is_gold=true entries ({gold_chunk_ids_from_context})",
+            )
+        )
 
     # Validate answerability constraints
     answerable = case.get("answerable")
@@ -168,59 +213,77 @@ def validate_case(case: dict, case_idx: int) -> tuple[list[ValidationError], lis
     if answerable:
         # Answerable cases must have gold chunks and expected answer
         if not gold_chunk_ids and variant != "trap":
-            errors.append(ValidationError(
-                case_id, "answerable_no_gold",
-                "answerable=true but no gold chunks"
-            ))
+            errors.append(
+                ValidationError(case_id, "answerable_no_gold", "answerable=true but no gold chunks")
+            )
 
         expected_answer = case.get("expected_answer")
         expected_values = case.get("expected_values", [])
         required_facts = case.get("required_facts", [])
 
         if not expected_answer and not expected_values and not required_facts:
-            errors.append(ValidationError(
-                case_id, "answerable_no_expected",
-                "answerable=true but no expected_answer, expected_values, or required_facts"
-            ))
+            errors.append(
+                ValidationError(
+                    case_id,
+                    "answerable_no_expected",
+                    "answerable=true but no expected_answer, expected_values, or required_facts",
+                )
+            )
 
         if case.get("unanswerable_reason"):
-            warnings.append(ValidationWarning(
-                case_id, "answerable_has_reason",
-                "answerable=true but unanswerable_reason is set"
-            ))
+            warnings.append(
+                ValidationWarning(
+                    case_id,
+                    "answerable_has_reason",
+                    "answerable=true but unanswerable_reason is set",
+                )
+            )
     else:
         # Unanswerable cases must have no gold chunks and have a reason
         if gold_chunk_ids:
-            errors.append(ValidationError(
-                case_id, "unanswerable_has_gold",
-                f"answerable=false but has gold chunks: {gold_chunk_ids}"
-            ))
+            errors.append(
+                ValidationError(
+                    case_id,
+                    "unanswerable_has_gold",
+                    f"answerable=false but has gold chunks: {gold_chunk_ids}",
+                )
+            )
 
         if not case.get("unanswerable_reason"):
-            errors.append(ValidationError(
-                case_id, "unanswerable_no_reason",
-                "answerable=false but no unanswerable_reason"
-            ))
+            errors.append(
+                ValidationError(
+                    case_id, "unanswerable_no_reason", "answerable=false but no unanswerable_reason"
+                )
+            )
 
     # Validate oracle_plus_distractors context size
     if variant == "oracle_plus_distractors":
         if len(context) < 3:
-            warnings.append(ValidationWarning(
-                case_id, "small_context",
-                f"oracle_plus_distractors has only {len(context)} chunks (expected ~5)"
-            ))
+            warnings.append(
+                ValidationWarning(
+                    case_id,
+                    "small_context",
+                    f"oracle_plus_distractors has only {len(context)} chunks (expected ~5)",
+                )
+            )
         elif len(context) > 8:
-            warnings.append(ValidationWarning(
-                case_id, "large_context",
-                f"oracle_plus_distractors has {len(context)} chunks (expected ~5)"
-            ))
+            warnings.append(
+                ValidationWarning(
+                    case_id,
+                    "large_context",
+                    f"oracle_plus_distractors has {len(context)} chunks (expected ~5)",
+                )
+            )
 
     # Validate review_status
     if case.get("review_status") not in ("needs_review", "approved"):
-        warnings.append(ValidationWarning(
-            case_id, "unexpected_review_status",
-            f"review_status should be 'needs_review' or 'approved', got '{case.get('review_status')}'"
-        ))
+        warnings.append(
+            ValidationWarning(
+                case_id,
+                "unexpected_review_status",
+                f"review_status should be 'needs_review' or 'approved', got '{case.get('review_status')}'",
+            )
+        )
 
     return errors, warnings
 
@@ -260,17 +323,21 @@ def validate_dataset(cases: list[dict]) -> tuple[list[ValidationError], list[Val
     for source_qid, variants in source_variants.items():
         missing = EXPECTED_VARIANTS - variants
         if missing:
-            all_errors.append(ValidationError(
-                source_qid, "missing_variants",
-                f"Source question missing variants: {missing}"
-            ))
+            all_errors.append(
+                ValidationError(
+                    source_qid, "missing_variants", f"Source question missing variants: {missing}"
+                )
+            )
 
         extra = variants - EXPECTED_VARIANTS
         if extra:
-            all_warnings.append(ValidationWarning(
-                source_qid, "extra_variants",
-                f"Source question has unexpected variants: {extra}"
-            ))
+            all_warnings.append(
+                ValidationWarning(
+                    source_qid,
+                    "extra_variants",
+                    f"Source question has unexpected variants: {extra}",
+                )
+            )
 
     # Validate total count
     total_cases = len(cases)
@@ -278,22 +345,31 @@ def validate_dataset(cases: list[dict]) -> tuple[list[ValidationError], list[Val
     total_cases - trap_cases
 
     if total_cases < MIN_EXPECTED_CASES:
-        all_warnings.append(ValidationWarning(
-            "dataset", "low_count",
-            f"Total cases ({total_cases}) below expected minimum ({MIN_EXPECTED_CASES})"
-        ))
+        all_warnings.append(
+            ValidationWarning(
+                "dataset",
+                "low_count",
+                f"Total cases ({total_cases}) below expected minimum ({MIN_EXPECTED_CASES})",
+            )
+        )
     elif total_cases > MAX_EXPECTED_CASES:
-        all_warnings.append(ValidationWarning(
-            "dataset", "high_count",
-            f"Total cases ({total_cases}) above expected maximum ({MAX_EXPECTED_CASES})"
-        ))
+        all_warnings.append(
+            ValidationWarning(
+                "dataset",
+                "high_count",
+                f"Total cases ({total_cases}) above expected maximum ({MAX_EXPECTED_CASES})",
+            )
+        )
 
     # Validate source question count
     if len(source_variants) != EXPECTED_SOURCE_QUESTIONS:
-        all_warnings.append(ValidationWarning(
-            "dataset", "source_count",
-            f"Found {len(source_variants)} source questions, expected {EXPECTED_SOURCE_QUESTIONS}"
-        ))
+        all_warnings.append(
+            ValidationWarning(
+                "dataset",
+                "source_count",
+                f"Found {len(source_variants)} source questions, expected {EXPECTED_SOURCE_QUESTIONS}",
+            )
+        )
 
     return all_errors, all_warnings
 
@@ -316,15 +392,13 @@ def main():
     """Main entry point."""
     parser = argparse.ArgumentParser(description="Validate generation golden dataset")
     parser.add_argument(
-        "--strict",
-        action="store_true",
-        help="Exit with code 1 on warnings (not just errors)"
+        "--strict", action="store_true", help="Exit with code 1 on warnings (not just errors)"
     )
     parser.add_argument(
         "--path",
         type=Path,
         default=None,
-        help="Path to dataset (default: goldens/golden_generation_dataset.jsonl)"
+        help="Path to dataset (default: goldens/golden_generation_dataset.jsonl)",
     )
     args = parser.parse_args()
 

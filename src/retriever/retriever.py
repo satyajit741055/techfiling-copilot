@@ -64,7 +64,6 @@ class DenseRetriever:
         self.model_name = self.embedder.model_name
         self._validate_artifacts()
 
-
     @staticmethod
     def _resolve_run_directory(run_directory: str | Path | None) -> Path:
         """Resolve an explicit run directory or select the latest complete run."""
@@ -108,9 +107,7 @@ class DenseRetriever:
             ValueError: If the chunks, embeddings, manifest, or model disagree.
         """
         if self.embeddings.ndim != 2:
-            raise ValueError(
-                f"Expected a 2D embedding matrix, got shape {self.embeddings.shape}"
-            )
+            raise ValueError(f"Expected a 2D embedding matrix, got shape {self.embeddings.shape}")
         if len(self.chunks) != len(self.embeddings):
             raise ValueError(
                 "Chunk and embedding counts differ: "
@@ -243,8 +240,8 @@ def show(results: list[SearchResult], width: int = 350) -> None:
     for score, chunk in results:
         print(f"{score:.3f} | {chunk['breadcrumb']} [{chunk['type']}]")
         print("      ", chunk["text"][:width].replace("\n", " "))
-        print(f"element Order {chunk["element_orders"]}")
-        print("="*80)
+        print(f"element Order {chunk['element_orders']}")
+        print("=" * 80)
 
 
 def main() -> None:
@@ -274,6 +271,3 @@ def main() -> None:
 
 if __name__ == "__main__":
     main()
-
-
-

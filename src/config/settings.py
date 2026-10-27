@@ -49,12 +49,14 @@ from pydantic_settings import BaseSettings, SettingsConfigDict
 
 class Environment(str, Enum):
     """Application environment."""
+
     DEV = "dev"
     PROD = "prod"
 
 
 class LLMProvider(str, Enum):
     """Supported LLM providers."""
+
     OLLAMA = "ollama"
     HUGGINGFACE = "huggingface"
     OPENAI = "openai"
@@ -87,8 +89,7 @@ class Settings(BaseSettings):
     # ENVIRONMENT
     # =========================================================================
     ENVIRONMENT: Environment = Field(
-        default=Environment.DEV,
-        description="Application environment: 'dev' or 'prod'"
+        default=Environment.DEV, description="Application environment: 'dev' or 'prod'"
     )
 
     # =========================================================================
@@ -96,151 +97,108 @@ class Settings(BaseSettings):
     # =========================================================================
     MODEL_EXECUTION_MODE: ExecutionMode = Field(
         default="local",
-        description="Where models run: 'local' (CUDA/CPU + Ollama) or 'huggingface_api'"
+        description="Where models run: 'local' (CUDA/CPU + Ollama) or 'huggingface_api'",
     )
     EMBEDDING_EXECUTION_MODE: ExecutionMode | None = Field(
-        default=None,
-        description="Override MODEL_EXECUTION_MODE for the embedding model"
+        default=None, description="Override MODEL_EXECUTION_MODE for the embedding model"
     )
     RERANKER_EXECUTION_MODE: ExecutionMode | None = Field(
-        default=None,
-        description="Override MODEL_EXECUTION_MODE for the reranker"
+        default=None, description="Override MODEL_EXECUTION_MODE for the reranker"
     )
     GENERATION_EXECUTION_MODE: ExecutionMode | None = Field(
-        default=None,
-        description="Override MODEL_EXECUTION_MODE for answer generation"
+        default=None, description="Override MODEL_EXECUTION_MODE for answer generation"
     )
 
     # =========================================================================
     # LLM CONFIGURATION
     # =========================================================================
-    LLM_PROVIDER: LLMProvider = Field(
-        default=LLMProvider.OLLAMA,
-        description="LLM provider to use"
-    )
+    LLM_PROVIDER: LLMProvider = Field(default=LLMProvider.OLLAMA, description="LLM provider to use")
 
     # Model names per provider (with sensible defaults)
     LLM_MODEL: str = Field(
-        default="",
-        description="LLM model name (auto-selected based on provider if empty)"
+        default="", description="LLM model name (auto-selected based on provider if empty)"
     )
 
     # Default models per provider
     OLLAMA_MODEL: str = Field(
-        default="qwen2.5-7b-instruct:latest",
-        description="Default Ollama model"
+        default="qwen2.5-7b-instruct:latest", description="Default Ollama model"
     )
     HUGGINGFACE_MODEL: str = Field(
-        default="Qwen/Qwen2.5-7B-Instruct",
-        description="Default Hugging Face generation model"
+        default="Qwen/Qwen2.5-7B-Instruct", description="Default Hugging Face generation model"
     )
-    OPENAI_MODEL: str = Field(
-        default="gpt-4o-mini",
-        description="Default OpenAI model"
-    )
+    OPENAI_MODEL: str = Field(default="gpt-4o-mini", description="Default OpenAI model")
     ANTHROPIC_MODEL: str = Field(
-        default="claude-3-5-sonnet-20241022",
-        description="Default Anthropic model"
+        default="claude-3-5-sonnet-20241022", description="Default Anthropic model"
     )
-    GOOGLE_MODEL: str = Field(
-        default="gemini-1.5-pro",
-        description="Default Google model"
-    )
+    GOOGLE_MODEL: str = Field(default="gemini-1.5-pro", description="Default Google model")
 
     # Generation parameters
     LLM_TEMPERATURE: float = Field(
-        default=0.0,
-        ge=0.0,
-        le=2.0,
-        description="Generation temperature (0 for deterministic)"
+        default=0.0, ge=0.0, le=2.0, description="Generation temperature (0 for deterministic)"
     )
-    LLM_MAX_TOKENS: int = Field(
-        default=1024,
-        ge=1,
-        le=32768,
-        description="Maximum response tokens"
-    )
+    LLM_MAX_TOKENS: int = Field(default=1024, ge=1, le=32768, description="Maximum response tokens")
 
     # =========================================================================
     # API KEYS
     # =========================================================================
     HUGGINGFACE_API_KEY: str | None = Field(
-        default=None,
-        description="Hugging Face Inference API key"
+        default=None, description="Hugging Face Inference API key"
     )
-    OPENAI_API_KEY: str | None = Field(
-        default=None,
-        description="OpenAI API key"
-    )
-    ANTHROPIC_API_KEY: str | None = Field(
-        default=None,
-        description="Anthropic API key"
-    )
-    GOOGLE_API_KEY: str | None = Field(
-        default=None,
-        description="Google AI API key"
-    )
+    OPENAI_API_KEY: str | None = Field(default=None, description="OpenAI API key")
+    ANTHROPIC_API_KEY: str | None = Field(default=None, description="Anthropic API key")
+    GOOGLE_API_KEY: str | None = Field(default=None, description="Google AI API key")
 
     # =========================================================================
     # OLLAMA CONFIGURATION
     # =========================================================================
-    OLLAMA_HOST: str = Field(
-        default="http://localhost:11434",
-        description="Ollama server URL"
-    )
+    OLLAMA_HOST: str = Field(default="http://localhost:11434", description="Ollama server URL")
 
     # =========================================================================
     # HUGGING FACE CONFIGURATION
     # =========================================================================
     HUGGINGFACE_PROVIDER: str = Field(
         default="auto",
-        description="Inference provider for generation ('auto' picks an available provider)"
+        description="Inference provider for generation ('auto' picks an available provider)",
     )
     HUGGINGFACE_EMBEDDING_PROVIDER: str = Field(
-        default="hf-inference",
-        description="Inference provider for embeddings"
+        default="hf-inference", description="Inference provider for embeddings"
     )
     HUGGINGFACE_RERANKER_URL: str = Field(
         default="https://router.huggingface.co/hf-inference/models/{model}",
         description="Reranker endpoint; '{model}' is replaced by the reranker model. "
-                    "URLs ending in '/rerank' use the TEI rerank format."
+        "URLs ending in '/rerank' use the TEI rerank format.",
     )
     HUGGINGFACE_TIMEOUT: float = Field(
-        default=120.0,
-        gt=0,
-        description="Timeout in seconds for Hugging Face API requests"
+        default=120.0, gt=0, description="Timeout in seconds for Hugging Face API requests"
     )
 
     # =========================================================================
     # EVALUATION
     # =========================================================================
     DEEPEVAL_JUDGE_MODEL: str = Field(
-        default="gpt-4o-mini",
-        description="Judge model used by DeepEval metrics"
+        default="gpt-4o-mini", description="Judge model used by DeepEval metrics"
     )
 
     # =========================================================================
     # HARDWARE CONFIGURATION
     # =========================================================================
     DEVICE: Literal["cuda", "cpu", "auto"] = Field(
-        default="auto",
-        description="Compute device: 'cuda', 'cpu', or 'auto'"
+        default="auto", description="Compute device: 'cuda', 'cpu', or 'auto'"
     )
 
     # =========================================================================
     # EMBEDDING & RETRIEVAL MODELS
     # =========================================================================
     EMBEDDING_MODEL: str = Field(
-        default="BAAI/bge-base-en-v1.5",
-        description="Sentence transformer model for embeddings"
+        default="BAAI/bge-base-en-v1.5", description="Sentence transformer model for embeddings"
     )
     RERANKER_MODEL: str = Field(
         default="cross-encoder/ms-marco-MiniLM-L-6-v2",
-        description="Cross-encoder model for reranking"
+        description="Cross-encoder model for reranking",
     )
     RERANKER_MODEL_PROD: str = Field(
         default="cross-encoder/ettin-reranker-150m-v1",
-        description="Higher-quality reranker for production"
+        description="Higher-quality reranker for production",
     )
 
     # =========================================================================
@@ -250,18 +208,10 @@ class Settings(BaseSettings):
         default=0.85,
         ge=0.0,
         le=1.0,
-        description="Dense weight in hybrid retrieval (0=BM25 only, 1=dense only)"
+        description="Dense weight in hybrid retrieval (0=BM25 only, 1=dense only)",
     )
-    RETRIEVAL_K: int = Field(
-        default=50,
-        ge=1,
-        description="Number of candidates for reranking"
-    )
-    CONTEXT_K: int = Field(
-        default=5,
-        ge=1,
-        description="Number of chunks passed to LLM"
-    )
+    RETRIEVAL_K: int = Field(default=50, ge=1, description="Number of candidates for reranking")
+    CONTEXT_K: int = Field(default=5, ge=1, description="Number of chunks passed to LLM")
 
     # =========================================================================
     # VECTOR STORE
@@ -269,62 +219,57 @@ class Settings(BaseSettings):
     VECTOR_STORE: Literal["numpy", "qdrant"] = Field(
         default="numpy",
         description="Retrieval index backend: 'numpy' (.npy + in-memory BM25) or 'qdrant' "
-                    "(server-side dense + sparse hybrid search)"
+        "(server-side dense + sparse hybrid search)",
     )
     QDRANT_URL: str = Field(
         default="http://127.0.0.1:6333",
-        description="Qdrant URL (use ':memory:' for an ephemeral in-process store)"
+        description="Qdrant URL (use ':memory:' for an ephemeral in-process store)",
     )
-    QDRANT_API_KEY: str | None = Field(default=None, description="Qdrant API key (cloud / secured server)")
+    QDRANT_API_KEY: str | None = Field(
+        default=None, description="Qdrant API key (cloud / secured server)"
+    )
     QDRANT_COLLECTION: str = Field(
         default="filings_bge_base_v1",
-        description="Qdrant collection (use one per embedding model/version)"
+        description="Qdrant collection (use one per embedding model/version)",
     )
-    QDRANT_TIMEOUT: float = Field(default=30.0, gt=0, description="Qdrant request timeout in seconds")
+    QDRANT_TIMEOUT: float = Field(
+        default=30.0, gt=0, description="Qdrant request timeout in seconds"
+    )
 
     # =========================================================================
     # PATHS
     # =========================================================================
-    DATA_DIR: Path = Field(
-        default=ROOT / "data",
-        description="Base data directory"
-    )
+    DATA_DIR: Path = Field(default=ROOT / "data", description="Base data directory")
     MODEL_CACHE_DIR: Path = Field(
         default=ROOT / "models" / "sentence_transformers",
-        description="Directory for cached sentence transformer models"
+        description="Directory for cached sentence transformer models",
     )
     CHUNKS_DIR: Path = Field(
-        default=ROOT / "data" / "chunks",
-        description="Directory containing chunk data"
+        default=ROOT / "data" / "chunks", description="Directory containing chunk data"
     )
     RUN_DIRECTORY: str = Field(
         default="data/chunks/2026-10-24_12-46-23",
-        description="Active chunking run directory (relative to project root)"
+        description="Active chunking run directory (relative to project root)",
     )
 
     # =========================================================================
     # LOGGING
     # =========================================================================
     LOG_LEVEL: Literal["DEBUG", "INFO", "WARNING", "ERROR"] = Field(
-        default="INFO",
-        description="Logging level"
+        default="INFO", description="Logging level"
     )
     LOG_FORMAT: Literal["text", "json"] = Field(
         default="text",
-        description="Log format: 'text' for human-readable, 'json' for structured logging"
+        description="Log format: 'text' for human-readable, 'json' for structured logging",
     )
     LOG_FILE: str | None = Field(
-        default=None,
-        description="Path to log file (if set, logs will be written to file)"
+        default=None, description="Path to log file (if set, logs will be written to file)"
     )
     LOG_FILE_MAX_BYTES: int = Field(
         default=10 * 1024 * 1024,  # 10 MB
-        description="Maximum log file size before rotation"
+        description="Maximum log file size before rotation",
     )
-    LOG_FILE_BACKUP_COUNT: int = Field(
-        default=5,
-        description="Number of backup log files to keep"
-    )
+    LOG_FILE_BACKUP_COUNT: int = Field(default=5, description="Number of backup log files to keep")
 
     # =========================================================================
     # COMPUTED PROPERTIES
@@ -345,6 +290,7 @@ class Settings(BaseSettings):
         if self.DEVICE == "auto":
             try:
                 import torch
+
                 return "cuda" if torch.cuda.is_available() else "cpu"
             except ImportError:
                 return "cpu"
@@ -414,7 +360,8 @@ class Settings(BaseSettings):
         """Validate that required API keys are present for the selected provider."""
         provider = LLMProvider(self.effective_llm_provider)
         uses_hf_api = provider == LLMProvider.HUGGINGFACE or "huggingface_api" in (
-            self.effective_embedding_mode, self.effective_reranker_mode
+            self.effective_embedding_mode,
+            self.effective_reranker_mode,
         )
 
         if uses_hf_api and not self.HUGGINGFACE_API_KEY:
@@ -431,7 +378,9 @@ class Settings(BaseSettings):
         return self
 
     @field_validator(
-        "EMBEDDING_EXECUTION_MODE", "RERANKER_EXECUTION_MODE", "GENERATION_EXECUTION_MODE",
+        "EMBEDDING_EXECUTION_MODE",
+        "RERANKER_EXECUTION_MODE",
+        "GENERATION_EXECUTION_MODE",
         mode="before",
     )
     @classmethod

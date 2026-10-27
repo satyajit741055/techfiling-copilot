@@ -87,7 +87,11 @@ def _check_qdrant() -> DependencyCheck:
     finally:
         if store is not None:
             store.client.close()
-    return _ok(f"Qdrant collection {settings.QDRANT_COLLECTION}: {count} chunks") if count else _fail("Qdrant collection is empty")
+    return (
+        _ok(f"Qdrant collection {settings.QDRANT_COLLECTION}: {count} chunks")
+        if count
+        else _fail("Qdrant collection is empty")
+    )
 
 
 def _check_index_data() -> DependencyCheck:
@@ -98,10 +102,18 @@ def _check_index_data() -> DependencyCheck:
         return _fail(f"run directory not found: {settings.RUN_DIRECTORY}")
     missing = [
         label
-        for label, pattern in (("chunks", "*.chunks.jsonl"), ("embeddings", "*.npy"), ("manifest", "run_manifest.json"))
+        for label, pattern in (
+            ("chunks", "*.chunks.jsonl"),
+            ("embeddings", "*.npy"),
+            ("manifest", "run_manifest.json"),
+        )
         if not any(run_dir.glob(pattern))
     ]
-    return _fail(f"missing in run directory: {', '.join(missing)}") if missing else _ok("chunks, embeddings and manifest present")
+    return (
+        _fail(f"missing in run directory: {', '.join(missing)}")
+        if missing
+        else _ok("chunks, embeddings and manifest present")
+    )
 
 
 def _check_huggingface() -> DependencyCheck:
@@ -117,15 +129,25 @@ def _check_huggingface() -> DependencyCheck:
         return _fail(f"Hugging Face API unreachable ({type(exc).__name__})")
     if response.status_code in (401, 403):
         return _fail("Hugging Face API key rejected")
-    return _ok("Hugging Face API reachable, key accepted") if response.is_success else _fail(f"Hugging Face API returned {response.status_code}")
+    return (
+        _ok("Hugging Face API reachable, key accepted")
+        if response.is_success
+        else _fail(f"Hugging Face API returned {response.status_code}")
+    )
 
 
 def _check_ollama() -> DependencyCheck:
     try:
-        response = httpx.get(f"{settings.OLLAMA_HOST.rstrip('/')}/api/tags", timeout=CHECK_TIMEOUT_SECONDS)
+        response = httpx.get(
+            f"{settings.OLLAMA_HOST.rstrip('/')}/api/tags", timeout=CHECK_TIMEOUT_SECONDS
+        )
     except httpx.HTTPError as exc:
         return _fail(f"Ollama unreachable at {settings.OLLAMA_HOST} ({type(exc).__name__})")
-    return _ok("Ollama reachable") if response.is_success else _fail(f"Ollama returned {response.status_code}")
+    return (
+        _ok("Ollama reachable")
+        if response.is_success
+        else _fail(f"Ollama returned {response.status_code}")
+    )
 
 
 def _check_provider_key(provider: str) -> DependencyCheck:
@@ -170,5 +192,7 @@ def readiness_check(response: Response) -> ReadinessResponse:
     ready = all(check.status == "ok" for check in checks.values())
     if not ready:
         response.status_code = 503
-        logger.warning(f"Readiness check failed: { {name: c.detail for name, c in checks.items() if c.status != 'ok'} }")
+        logger.warning(
+            f"Readiness check failed: { {name: c.detail for name, c in checks.items() if c.status != 'ok'} }"
+        )
     return ReadinessResponse(status="ready" if ready else "not_ready", checks=checks)

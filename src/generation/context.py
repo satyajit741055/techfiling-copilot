@@ -103,26 +103,28 @@ def format_context(results: list) -> tuple[str, list[dict[str, Any]]]:
 
     for i, result in enumerate(results, start=1):
         # Handle both SearchResult objects and raw dictionaries
-        chunk = result.chunk if hasattr(result, 'chunk') else result
-        score = float(result.score) if hasattr(result, 'score') else None
+        chunk = result.chunk if hasattr(result, "chunk") else result
+        score = float(result.score) if hasattr(result, "score") else None
 
         # Format for prompt
         blocks.append(format_source(i, chunk))
 
         # Track source metadata for validation and API response
-        sources.append({
-            "source_id": f"S{i}",
-            "chunk_id": chunk.get("chunk_id"),
-            "doc_id": chunk.get("doc_id"),
-            "section": chunk.get("section"),
-            "section_title": chunk.get("section_title"),
-            "type": chunk.get("type"),
-            "element_orders": chunk.get("element_orders", []),
-            "table_id": chunk.get("table_id"),
-            "score": score,
-            "text": chunk.get("text", ""),  # Include text for API response
-            "breadcrumb": chunk.get("breadcrumb"),  # Full path for UI display
-        })
+        sources.append(
+            {
+                "source_id": f"S{i}",
+                "chunk_id": chunk.get("chunk_id"),
+                "doc_id": chunk.get("doc_id"),
+                "section": chunk.get("section"),
+                "section_title": chunk.get("section_title"),
+                "type": chunk.get("type"),
+                "element_orders": chunk.get("element_orders", []),
+                "table_id": chunk.get("table_id"),
+                "score": score,
+                "text": chunk.get("text", ""),  # Include text for API response
+                "breadcrumb": chunk.get("breadcrumb"),  # Full path for UI display
+            }
+        )
 
     context = "\n\n".join(blocks)
     return context, sources

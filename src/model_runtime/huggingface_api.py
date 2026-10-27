@@ -72,10 +72,12 @@ class HuggingFaceApiEmbedder:
     def encode_query(self, query: str) -> np.ndarray:
         return self._embed([self.query_prefix + query])[0]
 
-    def encode_documents(self, texts: Sequence[str], batch_size: int = API_BATCH_SIZE) -> np.ndarray:
+    def encode_documents(
+        self, texts: Sequence[str], batch_size: int = API_BATCH_SIZE
+    ) -> np.ndarray:
         texts = list(texts)
         step = max(1, min(batch_size, API_BATCH_SIZE))
-        batches = [self._embed(texts[i:i + step]) for i in range(0, len(texts), step)]
+        batches = [self._embed(texts[i : i + step]) for i in range(0, len(texts), step)]
         return np.vstack(batches) if batches else np.empty((0, 0), dtype=np.float32)
 
 
@@ -147,7 +149,9 @@ class HuggingFaceApiReranker:
         if not documents:
             return np.empty(0, dtype=np.float32)
         score_batch = self._score_tei if self.tei_format else self._score_hf_text_ranking
-        return np.concatenate([
-            score_batch(query, documents[i:i + API_BATCH_SIZE])
-            for i in range(0, len(documents), API_BATCH_SIZE)
-        ])
+        return np.concatenate(
+            [
+                score_batch(query, documents[i : i + API_BATCH_SIZE])
+                for i in range(0, len(documents), API_BATCH_SIZE)
+            ]
+        )

@@ -36,6 +36,7 @@ TARGET_CONTEXT_SIZE = 5
 @dataclass
 class ReviewItem:
     """An item flagged for manual review."""
+
     source_qid: str
     issue_type: str
     description: str
@@ -98,7 +99,9 @@ def extract_fiscal_period(text: str) -> str | None:
     return None
 
 
-def parse_expected_answer(expected_answer: str, category: str, query: str = "") -> tuple[list[dict], list[str]]:
+def parse_expected_answer(
+    expected_answer: str, category: str, query: str = ""
+) -> tuple[list[dict], list[str]]:
     """
     Parse expected_answer into structured expected_values and required_facts.
 
@@ -153,18 +156,26 @@ def parse_expected_answer(expected_answer: str, category: str, query: str = "") 
             value_key = (value, unit, currency)
             if value_key not in seen_values:
                 seen_values.add(value_key)
-                expected_values.append({
-                    "value": value,
-                    "unit": unit,
-                    "currency": currency,
-                    "period": period,
-                })
+                expected_values.append(
+                    {
+                        "value": value,
+                        "unit": unit,
+                        "currency": currency,
+                        "period": period,
+                    }
+                )
         except ValueError:
             pass
 
     # For non-numeric categories, split into atomic facts
-    if category in ("trend_explanation", "risk_factor", "business_description",
-                    "accounting_policy", "cross_section", "cross_document"):
+    if category in (
+        "trend_explanation",
+        "risk_factor",
+        "business_description",
+        "accounting_policy",
+        "cross_section",
+        "cross_document",
+    ):
         # Split on sentence-ending periods (not decimal points) and semicolons
         # Use negative lookbehind to avoid splitting on numbers like $2.69
         sentences = re.split(r"(?<![0-9])\.(?:\s|$)|;", expected_answer)
@@ -208,22 +219,26 @@ def find_gold_chunks(
         rel_doc_id = rel.get("doc_id", doc_id)  # cross-document questions
 
         if not rel_doc_id or rel_doc_id not in element_to_chunks:
-            review_items.append(ReviewItem(
-                source_qid=question["id"],
-                issue_type="missing_doc",
-                description=f"Document {rel_doc_id} not found in chunks",
-            ))
+            review_items.append(
+                ReviewItem(
+                    source_qid=question["id"],
+                    issue_type="missing_doc",
+                    description=f"Document {rel_doc_id} not found in chunks",
+                )
+            )
             continue
 
         for eo in element_orders:
             candidate_chunks = element_to_chunks[rel_doc_id].get(eo, [])
 
             if not candidate_chunks:
-                review_items.append(ReviewItem(
-                    source_qid=question["id"],
-                    issue_type="no_chunks_for_element",
-                    description=f"Element {eo} in {rel_doc_id} has no chunks",
-                ))
+                review_items.append(
+                    ReviewItem(
+                        source_qid=question["id"],
+                        issue_type="no_chunks_for_element",
+                        description=f"Element {eo} in {rel_doc_id} has no chunks",
+                    )
+                )
                 continue
 
             if len(candidate_chunks) == 1:
@@ -256,8 +271,18 @@ def find_gold_chunks(
                     )
 
                     # Check for key term overlap
-                    key_terms = ["total", "net sales", "revenue", "income", "expense",
-                                 "margin", "increase", "decrease", "million", "billion"]
+                    key_terms = [
+                        "total",
+                        "net sales",
+                        "revenue",
+                        "income",
+                        "expense",
+                        "margin",
+                        "increase",
+                        "decrease",
+                        "million",
+                        "billion",
+                    ]
                     term_match = sum(1 for t in key_terms if t in answer_lower and t in chunk_text)
 
                     if number_match or term_match >= 2:
@@ -273,15 +298,17 @@ def find_gold_chunks(
                     review_notes.append(
                         f"Element {eo} maps to {len(matching_chunks)} chunks that may contain answer"
                     )
-                    review_items.append(ReviewItem(
-                        source_qid=question["id"],
-                        issue_type="ambiguous_element_mapping",
-                        description=f"Element {eo} maps to {len(matching_chunks)} chunks",
-                        details={
-                            "element_order": eo,
-                            "chunk_ids": [c["chunk_id"] for c in matching_chunks],
-                        },
-                    ))
+                    review_items.append(
+                        ReviewItem(
+                            source_qid=question["id"],
+                            issue_type="ambiguous_element_mapping",
+                            description=f"Element {eo} maps to {len(matching_chunks)} chunks",
+                            details={
+                                "element_order": eo,
+                                "chunk_ids": [c["chunk_id"] for c in matching_chunks],
+                            },
+                        )
+                    )
                     # Include all matching chunks but flag for review
                     for chunk in matching_chunks:
                         if chunk["chunk_id"] not in seen_chunk_ids:
@@ -292,16 +319,18 @@ def find_gold_chunks(
                     review_notes.append(
                         f"Element {eo} has {len(candidate_chunks)} chunks but none clearly match answer"
                     )
-                    review_items.append(ReviewItem(
-                        source_qid=question["id"],
-                        issue_type="no_matching_chunk",
-                        description=f"Element {eo} chunks don't clearly contain answer",
-                        details={
-                            "element_order": eo,
-                            "chunk_ids": [c["chunk_id"] for c in candidate_chunks],
-                            "expected_answer": expected_answer[:100],
-                        },
-                    ))
+                    review_items.append(
+                        ReviewItem(
+                            source_qid=question["id"],
+                            issue_type="no_matching_chunk",
+                            description=f"Element {eo} chunks don't clearly contain answer",
+                            details={
+                                "element_order": eo,
+                                "chunk_ids": [c["chunk_id"] for c in candidate_chunks],
+                                "expected_answer": expected_answer[:100],
+                            },
+                        )
+                    )
                     # Include first chunk but flag for review
                     chunk = candidate_chunks[0]
                     if chunk["chunk_id"] not in seen_chunk_ids:
@@ -494,256 +523,280 @@ def build_trap_cases(
     trap_cases = []
 
     # Trap 1: Wrong fiscal period (FY2020 asked against FY2025 filing)
-    trap_cases.append({
-        "id": "trap_001",
-        "source_qid": None,
-        "query": "What was Apple's total net sales in fiscal year 2020?",
-        "doc_id": "AAPL_10-K_2025",
-        "category": "trap",
-        "difficulty": "medium",
-        "context_variant": "trap",
-        "chunk_run": CHUNK_RUN,
-        "answerable": False,
-        "expected_answer": None,
-        "expected_values": [],
-        "required_facts": [],
-        "gold_chunk_ids": [],
-        "context": _select_trap_context(chunks_by_doc, "AAPL_10-K_2025", rng, 3),
-        "unanswerable_reason": "The supplied context is from fiscal 2025, not fiscal 2020.",
-        "review_status": "needs_review",
-        "review_notes": ["Hand-written trap: wrong fiscal period"],
-    })
+    trap_cases.append(
+        {
+            "id": "trap_001",
+            "source_qid": None,
+            "query": "What was Apple's total net sales in fiscal year 2020?",
+            "doc_id": "AAPL_10-K_2025",
+            "category": "trap",
+            "difficulty": "medium",
+            "context_variant": "trap",
+            "chunk_run": CHUNK_RUN,
+            "answerable": False,
+            "expected_answer": None,
+            "expected_values": [],
+            "required_facts": [],
+            "gold_chunk_ids": [],
+            "context": _select_trap_context(chunks_by_doc, "AAPL_10-K_2025", rng, 3),
+            "unanswerable_reason": "The supplied context is from fiscal 2025, not fiscal 2020.",
+            "review_status": "needs_review",
+            "review_notes": ["Hand-written trap: wrong fiscal period"],
+        }
+    )
 
     # Trap 2: Metric not reported
-    trap_cases.append({
-        "id": "trap_002",
-        "source_qid": None,
-        "query": "What was Tesla's customer acquisition cost per vehicle in 2025?",
-        "doc_id": "TSLA_10-K_2025",
-        "category": "trap",
-        "difficulty": "hard",
-        "context_variant": "trap",
-        "chunk_run": CHUNK_RUN,
-        "answerable": False,
-        "expected_answer": None,
-        "expected_values": [],
-        "required_facts": [],
-        "gold_chunk_ids": [],
-        "context": _select_trap_context(chunks_by_doc, "TSLA_10-K_2025", rng, 3),
-        "unanswerable_reason": "Customer acquisition cost per vehicle is not disclosed in the filing.",
-        "review_status": "needs_review",
-        "review_notes": ["Hand-written trap: metric not reported"],
-    })
+    trap_cases.append(
+        {
+            "id": "trap_002",
+            "source_qid": None,
+            "query": "What was Tesla's customer acquisition cost per vehicle in 2025?",
+            "doc_id": "TSLA_10-K_2025",
+            "category": "trap",
+            "difficulty": "hard",
+            "context_variant": "trap",
+            "chunk_run": CHUNK_RUN,
+            "answerable": False,
+            "expected_answer": None,
+            "expected_values": [],
+            "required_facts": [],
+            "gold_chunk_ids": [],
+            "context": _select_trap_context(chunks_by_doc, "TSLA_10-K_2025", rng, 3),
+            "unanswerable_reason": "Customer acquisition cost per vehicle is not disclosed in the filing.",
+            "review_status": "needs_review",
+            "review_notes": ["Hand-written trap: metric not reported"],
+        }
+    )
 
     # Trap 3: Cross-company mismatch
-    trap_cases.append({
-        "id": "trap_003",
-        "source_qid": None,
-        "query": "What was Microsoft's iPhone revenue in fiscal 2026?",
-        "doc_id": "MSFT_10-K_2026",
-        "category": "trap",
-        "difficulty": "easy",
-        "context_variant": "trap",
-        "chunk_run": CHUNK_RUN,
-        "answerable": False,
-        "expected_answer": None,
-        "expected_values": [],
-        "required_facts": [],
-        "gold_chunk_ids": [],
-        "context": _select_trap_context(chunks_by_doc, "MSFT_10-K_2026", rng, 3),
-        "unanswerable_reason": "Microsoft does not sell iPhones; iPhone is an Apple product.",
-        "review_status": "needs_review",
-        "review_notes": ["Hand-written trap: cross-company product mismatch"],
-    })
+    trap_cases.append(
+        {
+            "id": "trap_003",
+            "source_qid": None,
+            "query": "What was Microsoft's iPhone revenue in fiscal 2026?",
+            "doc_id": "MSFT_10-K_2026",
+            "category": "trap",
+            "difficulty": "easy",
+            "context_variant": "trap",
+            "chunk_run": CHUNK_RUN,
+            "answerable": False,
+            "expected_answer": None,
+            "expected_values": [],
+            "required_facts": [],
+            "gold_chunk_ids": [],
+            "context": _select_trap_context(chunks_by_doc, "MSFT_10-K_2026", rng, 3),
+            "unanswerable_reason": "Microsoft does not sell iPhones; iPhone is an Apple product.",
+            "review_status": "needs_review",
+            "review_notes": ["Hand-written trap: cross-company product mismatch"],
+        }
+    )
 
     # Trap 4: Incomplete calculation (one input missing)
-    trap_cases.append({
-        "id": "trap_004",
-        "source_qid": None,
-        "query": "What was Apple's year-over-year revenue growth rate from fiscal 2024 to 2025?",
-        "doc_id": "AAPL_10-K_2025",
-        "category": "trap",
-        "difficulty": "medium",
-        "context_variant": "trap",
-        "chunk_run": CHUNK_RUN,
-        "answerable": False,
-        "expected_answer": None,
-        "expected_values": [],
-        "required_facts": [],
-        "gold_chunk_ids": [],
-        "context": _select_trap_context_partial(chunks_by_doc, "AAPL_10-K_2025", rng),
-        "unanswerable_reason": "The context contains only fiscal 2025 revenue; fiscal 2024 revenue is needed for the calculation.",
-        "review_status": "needs_review",
-        "review_notes": ["Hand-written trap: incomplete calculation inputs"],
-    })
+    trap_cases.append(
+        {
+            "id": "trap_004",
+            "source_qid": None,
+            "query": "What was Apple's year-over-year revenue growth rate from fiscal 2024 to 2025?",
+            "doc_id": "AAPL_10-K_2025",
+            "category": "trap",
+            "difficulty": "medium",
+            "context_variant": "trap",
+            "chunk_run": CHUNK_RUN,
+            "answerable": False,
+            "expected_answer": None,
+            "expected_values": [],
+            "required_facts": [],
+            "gold_chunk_ids": [],
+            "context": _select_trap_context_partial(chunks_by_doc, "AAPL_10-K_2025", rng),
+            "unanswerable_reason": "The context contains only fiscal 2025 revenue; fiscal 2024 revenue is needed for the calculation.",
+            "review_status": "needs_review",
+            "review_notes": ["Hand-written trap: incomplete calculation inputs"],
+        }
+    )
 
     # Trap 5: Contradictory premise
-    trap_cases.append({
-        "id": "trap_005",
-        "source_qid": None,
-        "query": "Why did Tesla's total revenue decrease in 2025 compared to 2024?",
-        "doc_id": "TSLA_10-K_2025",
-        "category": "trap",
-        "difficulty": "medium",
-        "context_variant": "trap",
-        "chunk_run": CHUNK_RUN,
-        "answerable": False,
-        "expected_answer": None,
-        "expected_values": [],
-        "required_facts": [],
-        "gold_chunk_ids": [],
-        "context": _select_trap_context(chunks_by_doc, "TSLA_10-K_2025", rng, 3),
-        "unanswerable_reason": "The premise is incorrect; Tesla's total revenue did not decrease in 2025.",
-        "review_status": "needs_review",
-        "review_notes": ["Hand-written trap: contradictory premise"],
-    })
+    trap_cases.append(
+        {
+            "id": "trap_005",
+            "source_qid": None,
+            "query": "Why did Tesla's total revenue decrease in 2025 compared to 2024?",
+            "doc_id": "TSLA_10-K_2025",
+            "category": "trap",
+            "difficulty": "medium",
+            "context_variant": "trap",
+            "chunk_run": CHUNK_RUN,
+            "answerable": False,
+            "expected_answer": None,
+            "expected_values": [],
+            "required_facts": [],
+            "gold_chunk_ids": [],
+            "context": _select_trap_context(chunks_by_doc, "TSLA_10-K_2025", rng, 3),
+            "unanswerable_reason": "The premise is incorrect; Tesla's total revenue did not decrease in 2025.",
+            "review_status": "needs_review",
+            "review_notes": ["Hand-written trap: contradictory premise"],
+        }
+    )
 
     # Trap 6: Wrong company context
-    trap_cases.append({
-        "id": "trap_006",
-        "source_qid": None,
-        "query": "What was Apple's Azure revenue in fiscal 2025?",
-        "doc_id": "AAPL_10-K_2025",
-        "category": "trap",
-        "difficulty": "easy",
-        "context_variant": "trap",
-        "chunk_run": CHUNK_RUN,
-        "answerable": False,
-        "expected_answer": None,
-        "expected_values": [],
-        "required_facts": [],
-        "gold_chunk_ids": [],
-        "context": _select_trap_context(chunks_by_doc, "AAPL_10-K_2025", rng, 3),
-        "unanswerable_reason": "Azure is a Microsoft product, not an Apple product.",
-        "review_status": "needs_review",
-        "review_notes": ["Hand-written trap: wrong company product"],
-    })
+    trap_cases.append(
+        {
+            "id": "trap_006",
+            "source_qid": None,
+            "query": "What was Apple's Azure revenue in fiscal 2025?",
+            "doc_id": "AAPL_10-K_2025",
+            "category": "trap",
+            "difficulty": "easy",
+            "context_variant": "trap",
+            "chunk_run": CHUNK_RUN,
+            "answerable": False,
+            "expected_answer": None,
+            "expected_values": [],
+            "required_facts": [],
+            "gold_chunk_ids": [],
+            "context": _select_trap_context(chunks_by_doc, "AAPL_10-K_2025", rng, 3),
+            "unanswerable_reason": "Azure is a Microsoft product, not an Apple product.",
+            "review_status": "needs_review",
+            "review_notes": ["Hand-written trap: wrong company product"],
+        }
+    )
 
     # Trap 7: Future period not in filing
-    trap_cases.append({
-        "id": "trap_007",
-        "source_qid": None,
-        "query": "What is Microsoft's projected revenue for fiscal year 2030?",
-        "doc_id": "MSFT_10-K_2026",
-        "category": "trap",
-        "difficulty": "medium",
-        "context_variant": "trap",
-        "chunk_run": CHUNK_RUN,
-        "answerable": False,
-        "expected_answer": None,
-        "expected_values": [],
-        "required_facts": [],
-        "gold_chunk_ids": [],
-        "context": _select_trap_context(chunks_by_doc, "MSFT_10-K_2026", rng, 3),
-        "unanswerable_reason": "The filing does not contain revenue projections for fiscal 2030.",
-        "review_status": "needs_review",
-        "review_notes": ["Hand-written trap: future period not disclosed"],
-    })
+    trap_cases.append(
+        {
+            "id": "trap_007",
+            "source_qid": None,
+            "query": "What is Microsoft's projected revenue for fiscal year 2030?",
+            "doc_id": "MSFT_10-K_2026",
+            "category": "trap",
+            "difficulty": "medium",
+            "context_variant": "trap",
+            "chunk_run": CHUNK_RUN,
+            "answerable": False,
+            "expected_answer": None,
+            "expected_values": [],
+            "required_facts": [],
+            "gold_chunk_ids": [],
+            "context": _select_trap_context(chunks_by_doc, "MSFT_10-K_2026", rng, 3),
+            "unanswerable_reason": "The filing does not contain revenue projections for fiscal 2030.",
+            "review_status": "needs_review",
+            "review_notes": ["Hand-written trap: future period not disclosed"],
+        }
+    )
 
     # Trap 8: Segment not reported separately
-    trap_cases.append({
-        "id": "trap_008",
-        "source_qid": None,
-        "query": "What was Tesla's revenue from the European market specifically in 2025?",
-        "doc_id": "TSLA_10-K_2025",
-        "category": "trap",
-        "difficulty": "hard",
-        "context_variant": "trap",
-        "chunk_run": CHUNK_RUN,
-        "answerable": False,
-        "expected_answer": None,
-        "expected_values": [],
-        "required_facts": [],
-        "gold_chunk_ids": [],
-        "context": _select_trap_context(chunks_by_doc, "TSLA_10-K_2025", rng, 3),
-        "unanswerable_reason": "Tesla does not report revenue by European market separately in this filing.",
-        "review_status": "needs_review",
-        "review_notes": ["Hand-written trap: segment not reported separately"],
-    })
+    trap_cases.append(
+        {
+            "id": "trap_008",
+            "source_qid": None,
+            "query": "What was Tesla's revenue from the European market specifically in 2025?",
+            "doc_id": "TSLA_10-K_2025",
+            "category": "trap",
+            "difficulty": "hard",
+            "context_variant": "trap",
+            "chunk_run": CHUNK_RUN,
+            "answerable": False,
+            "expected_answer": None,
+            "expected_values": [],
+            "required_facts": [],
+            "gold_chunk_ids": [],
+            "context": _select_trap_context(chunks_by_doc, "TSLA_10-K_2025", rng, 3),
+            "unanswerable_reason": "Tesla does not report revenue by European market separately in this filing.",
+            "review_status": "needs_review",
+            "review_notes": ["Hand-written trap: segment not reported separately"],
+        }
+    )
 
     # Trap 9: Metric exists but wrong unit asked
-    trap_cases.append({
-        "id": "trap_009",
-        "source_qid": None,
-        "query": "What was Apple's total net sales in fiscal 2025 in euros?",
-        "doc_id": "AAPL_10-K_2025",
-        "category": "trap",
-        "difficulty": "medium",
-        "context_variant": "trap",
-        "chunk_run": CHUNK_RUN,
-        "answerable": False,
-        "expected_answer": None,
-        "expected_values": [],
-        "required_facts": [],
-        "gold_chunk_ids": [],
-        "context": _select_trap_context(chunks_by_doc, "AAPL_10-K_2025", rng, 3),
-        "unanswerable_reason": "Apple reports net sales in USD, not euros. Currency conversion is not provided.",
-        "review_status": "needs_review",
-        "review_notes": ["Hand-written trap: wrong currency unit requested"],
-    })
+    trap_cases.append(
+        {
+            "id": "trap_009",
+            "source_qid": None,
+            "query": "What was Apple's total net sales in fiscal 2025 in euros?",
+            "doc_id": "AAPL_10-K_2025",
+            "category": "trap",
+            "difficulty": "medium",
+            "context_variant": "trap",
+            "chunk_run": CHUNK_RUN,
+            "answerable": False,
+            "expected_answer": None,
+            "expected_values": [],
+            "required_facts": [],
+            "gold_chunk_ids": [],
+            "context": _select_trap_context(chunks_by_doc, "AAPL_10-K_2025", rng, 3),
+            "unanswerable_reason": "Apple reports net sales in USD, not euros. Currency conversion is not provided.",
+            "review_status": "needs_review",
+            "review_notes": ["Hand-written trap: wrong currency unit requested"],
+        }
+    )
 
     # Trap 10: Derived metric not directly stated
-    trap_cases.append({
-        "id": "trap_010",
-        "source_qid": None,
-        "query": "What was Microsoft's revenue per employee in fiscal 2026?",
-        "doc_id": "MSFT_10-K_2026",
-        "category": "trap",
-        "difficulty": "hard",
-        "context_variant": "trap",
-        "chunk_run": CHUNK_RUN,
-        "answerable": False,
-        "expected_answer": None,
-        "expected_values": [],
-        "required_facts": [],
-        "gold_chunk_ids": [],
-        "context": _select_trap_context(chunks_by_doc, "MSFT_10-K_2026", rng, 3),
-        "unanswerable_reason": "Revenue per employee is not disclosed; employee count is not in the provided context.",
-        "review_status": "needs_review",
-        "review_notes": ["Hand-written trap: derived metric with missing input"],
-    })
+    trap_cases.append(
+        {
+            "id": "trap_010",
+            "source_qid": None,
+            "query": "What was Microsoft's revenue per employee in fiscal 2026?",
+            "doc_id": "MSFT_10-K_2026",
+            "category": "trap",
+            "difficulty": "hard",
+            "context_variant": "trap",
+            "chunk_run": CHUNK_RUN,
+            "answerable": False,
+            "expected_answer": None,
+            "expected_values": [],
+            "required_facts": [],
+            "gold_chunk_ids": [],
+            "context": _select_trap_context(chunks_by_doc, "MSFT_10-K_2026", rng, 3),
+            "unanswerable_reason": "Revenue per employee is not disclosed; employee count is not in the provided context.",
+            "review_status": "needs_review",
+            "review_notes": ["Hand-written trap: derived metric with missing input"],
+        }
+    )
 
     # Trap 11: Quarterly data asked but only annual available
-    trap_cases.append({
-        "id": "trap_011",
-        "source_qid": None,
-        "query": "What was Tesla's Q3 2025 automotive revenue?",
-        "doc_id": "TSLA_10-K_2025",
-        "category": "trap",
-        "difficulty": "medium",
-        "context_variant": "trap",
-        "chunk_run": CHUNK_RUN,
-        "answerable": False,
-        "expected_answer": None,
-        "expected_values": [],
-        "required_facts": [],
-        "gold_chunk_ids": [],
-        "context": _select_trap_context(chunks_by_doc, "TSLA_10-K_2025", rng, 3),
-        "unanswerable_reason": "The 10-K filing contains annual data; quarterly breakdown is not provided in this context.",
-        "review_status": "needs_review",
-        "review_notes": ["Hand-written trap: quarterly data not in annual filing"],
-    })
+    trap_cases.append(
+        {
+            "id": "trap_011",
+            "source_qid": None,
+            "query": "What was Tesla's Q3 2025 automotive revenue?",
+            "doc_id": "TSLA_10-K_2025",
+            "category": "trap",
+            "difficulty": "medium",
+            "context_variant": "trap",
+            "chunk_run": CHUNK_RUN,
+            "answerable": False,
+            "expected_answer": None,
+            "expected_values": [],
+            "required_facts": [],
+            "gold_chunk_ids": [],
+            "context": _select_trap_context(chunks_by_doc, "TSLA_10-K_2025", rng, 3),
+            "unanswerable_reason": "The 10-K filing contains annual data; quarterly breakdown is not provided in this context.",
+            "review_status": "needs_review",
+            "review_notes": ["Hand-written trap: quarterly data not in annual filing"],
+        }
+    )
 
     # Trap 12: Asking about subsidiary not mentioned
-    trap_cases.append({
-        "id": "trap_012",
-        "source_qid": None,
-        "query": "What was the revenue of Apple's Beats subsidiary in fiscal 2025?",
-        "doc_id": "AAPL_10-K_2025",
-        "category": "trap",
-        "difficulty": "hard",
-        "context_variant": "trap",
-        "chunk_run": CHUNK_RUN,
-        "answerable": False,
-        "expected_answer": None,
-        "expected_values": [],
-        "required_facts": [],
-        "gold_chunk_ids": [],
-        "context": _select_trap_context(chunks_by_doc, "AAPL_10-K_2025", rng, 3),
-        "unanswerable_reason": "Beats subsidiary revenue is not reported separately in the filing.",
-        "review_status": "needs_review",
-        "review_notes": ["Hand-written trap: subsidiary revenue not disclosed"],
-    })
+    trap_cases.append(
+        {
+            "id": "trap_012",
+            "source_qid": None,
+            "query": "What was the revenue of Apple's Beats subsidiary in fiscal 2025?",
+            "doc_id": "AAPL_10-K_2025",
+            "category": "trap",
+            "difficulty": "hard",
+            "context_variant": "trap",
+            "chunk_run": CHUNK_RUN,
+            "answerable": False,
+            "expected_answer": None,
+            "expected_values": [],
+            "required_facts": [],
+            "gold_chunk_ids": [],
+            "context": _select_trap_context(chunks_by_doc, "AAPL_10-K_2025", rng, 3),
+            "unanswerable_reason": "Beats subsidiary revenue is not reported separately in the filing.",
+            "review_status": "needs_review",
+            "review_notes": ["Hand-written trap: subsidiary revenue not disclosed"],
+        }
+    )
 
     return trap_cases
 
@@ -807,25 +860,29 @@ def handle_negative_questions(
 
     # All three variants are unanswerable for negative questions
     for variant in ["oracle", "oracle_plus_distractors", "no_gold"]:
-        cases.append({
-            "id": f"{question['id']}_{variant}",
-            "source_qid": question["id"],
-            "query": question["query"],
-            "doc_id": doc_id,
-            "category": question.get("category"),
-            "difficulty": question.get("difficulty"),
-            "context_variant": variant,
-            "chunk_run": CHUNK_RUN,
-            "answerable": False,
-            "expected_answer": None,
-            "expected_values": [],
-            "required_facts": [],
-            "gold_chunk_ids": [],
-            "context": context,
-            "unanswerable_reason": question.get("expected_answer", "Not disclosed in these filings"),
-            "review_status": "needs_review",
-            "review_notes": ["Negative question: no relevant elements in source"],
-        })
+        cases.append(
+            {
+                "id": f"{question['id']}_{variant}",
+                "source_qid": question["id"],
+                "query": question["query"],
+                "doc_id": doc_id,
+                "category": question.get("category"),
+                "difficulty": question.get("difficulty"),
+                "context_variant": variant,
+                "chunk_run": CHUNK_RUN,
+                "answerable": False,
+                "expected_answer": None,
+                "expected_values": [],
+                "required_facts": [],
+                "gold_chunk_ids": [],
+                "context": context,
+                "unanswerable_reason": question.get(
+                    "expected_answer", "Not disclosed in these filings"
+                ),
+                "review_status": "needs_review",
+                "review_notes": ["Negative question: no relevant elements in source"],
+            }
+        )
 
     return cases
 
@@ -859,11 +916,13 @@ def handle_cross_document_questions(
         rel_doc_id = rel.get("doc_id")
 
         if not rel_doc_id or rel_doc_id not in element_to_chunks:
-            review_items.append(ReviewItem(
-                source_qid=question["id"],
-                issue_type="missing_doc_cross",
-                description=f"Cross-document: {rel_doc_id} not found",
-            ))
+            review_items.append(
+                ReviewItem(
+                    source_qid=question["id"],
+                    issue_type="missing_doc_cross",
+                    description=f"Cross-document: {rel_doc_id} not found",
+                )
+            )
             continue
 
         for eo in element_orders:
@@ -872,14 +931,18 @@ def handle_cross_document_questions(
                 # Take first chunk for simplicity, flag for review
                 all_gold_chunks.append(candidate_chunks[0])
                 if len(candidate_chunks) > 1:
-                    review_notes.append(f"Element {eo} in {rel_doc_id} has {len(candidate_chunks)} chunks")
+                    review_notes.append(
+                        f"Element {eo} in {rel_doc_id} has {len(candidate_chunks)} chunks"
+                    )
 
     if not all_gold_chunks:
-        review_items.append(ReviewItem(
-            source_qid=question["id"],
-            issue_type="no_gold_chunks_cross",
-            description="Cross-document question has no gold chunks",
-        ))
+        review_items.append(
+            ReviewItem(
+                source_qid=question["id"],
+                issue_type="no_gold_chunks_cross",
+                description="Cross-document question has no gold chunks",
+            )
+        )
         return []
 
     # Parse expected answer
@@ -888,25 +951,27 @@ def handle_cross_document_questions(
     )
 
     # Build oracle case
-    cases.append({
-        "id": f"{question['id']}_oracle",
-        "source_qid": question["id"],
-        "query": question["query"],
-        "doc_id": None,  # Cross-document
-        "category": question.get("category"),
-        "difficulty": question.get("difficulty"),
-        "context_variant": "oracle",
-        "chunk_run": CHUNK_RUN,
-        "answerable": True,
-        "expected_answer": expected_answer,
-        "expected_values": expected_values,
-        "required_facts": required_facts,
-        "gold_chunk_ids": [c["chunk_id"] for c in all_gold_chunks],
-        "context": [build_context_entry(c, is_gold=True) for c in all_gold_chunks],
-        "unanswerable_reason": None,
-        "review_status": "needs_review",
-        "review_notes": review_notes + ["Cross-document question"],
-    })
+    cases.append(
+        {
+            "id": f"{question['id']}_oracle",
+            "source_qid": question["id"],
+            "query": question["query"],
+            "doc_id": None,  # Cross-document
+            "category": question.get("category"),
+            "difficulty": question.get("difficulty"),
+            "context_variant": "oracle",
+            "chunk_run": CHUNK_RUN,
+            "answerable": True,
+            "expected_answer": expected_answer,
+            "expected_values": expected_values,
+            "required_facts": required_facts,
+            "gold_chunk_ids": [c["chunk_id"] for c in all_gold_chunks],
+            "context": [build_context_entry(c, is_gold=True) for c in all_gold_chunks],
+            "unanswerable_reason": None,
+            "review_status": "needs_review",
+            "review_notes": review_notes + ["Cross-document question"],
+        }
+    )
 
     # Build oracle_plus_distractors case
     # Add distractors from each document
@@ -921,47 +986,51 @@ def handle_cross_document_questions(
     all_context = [(c, True) for c in all_gold_chunks] + [(c, False) for c in distractors[:5]]
     rng.shuffle(all_context)
 
-    cases.append({
-        "id": f"{question['id']}_oracle_plus_distractors",
-        "source_qid": question["id"],
-        "query": question["query"],
-        "doc_id": None,
-        "category": question.get("category"),
-        "difficulty": question.get("difficulty"),
-        "context_variant": "oracle_plus_distractors",
-        "chunk_run": CHUNK_RUN,
-        "answerable": True,
-        "expected_answer": expected_answer,
-        "expected_values": expected_values,
-        "required_facts": required_facts,
-        "gold_chunk_ids": [c["chunk_id"] for c in all_gold_chunks],
-        "context": [build_context_entry(c, is_gold) for c, is_gold in all_context],
-        "unanswerable_reason": None,
-        "review_status": "needs_review",
-        "review_notes": review_notes + ["Cross-document question"],
-    })
+    cases.append(
+        {
+            "id": f"{question['id']}_oracle_plus_distractors",
+            "source_qid": question["id"],
+            "query": question["query"],
+            "doc_id": None,
+            "category": question.get("category"),
+            "difficulty": question.get("difficulty"),
+            "context_variant": "oracle_plus_distractors",
+            "chunk_run": CHUNK_RUN,
+            "answerable": True,
+            "expected_answer": expected_answer,
+            "expected_values": expected_values,
+            "required_facts": required_facts,
+            "gold_chunk_ids": [c["chunk_id"] for c in all_gold_chunks],
+            "context": [build_context_entry(c, is_gold) for c, is_gold in all_context],
+            "unanswerable_reason": None,
+            "review_status": "needs_review",
+            "review_notes": review_notes + ["Cross-document question"],
+        }
+    )
 
     # Build no_gold case - distractors only
     no_gold_distractors = distractors[:5] if distractors else []
-    cases.append({
-        "id": f"{question['id']}_no_gold",
-        "source_qid": question["id"],
-        "query": question["query"],
-        "doc_id": None,
-        "category": question.get("category"),
-        "difficulty": question.get("difficulty"),
-        "context_variant": "no_gold",
-        "chunk_run": CHUNK_RUN,
-        "answerable": False,
-        "expected_answer": None,
-        "expected_values": [],
-        "required_facts": [],
-        "gold_chunk_ids": [],
-        "context": [build_context_entry(c, is_gold=False) for c in no_gold_distractors],
-        "unanswerable_reason": "The supplied context does not contain the required evidence from all documents.",
-        "review_status": "needs_review",
-        "review_notes": review_notes + ["Cross-document question"],
-    })
+    cases.append(
+        {
+            "id": f"{question['id']}_no_gold",
+            "source_qid": question["id"],
+            "query": question["query"],
+            "doc_id": None,
+            "category": question.get("category"),
+            "difficulty": question.get("difficulty"),
+            "context_variant": "no_gold",
+            "chunk_run": CHUNK_RUN,
+            "answerable": False,
+            "expected_answer": None,
+            "expected_values": [],
+            "required_facts": [],
+            "gold_chunk_ids": [],
+            "context": [build_context_entry(c, is_gold=False) for c in no_gold_distractors],
+            "unanswerable_reason": "The supplied context does not contain the required evidence from all documents.",
+            "review_status": "needs_review",
+            "review_notes": review_notes + ["Cross-document question"],
+        }
+    )
 
     return cases
 
@@ -1000,22 +1069,24 @@ def build_generation_goldens(root: Path) -> tuple[list[dict], list[ReviewItem]]:
 
         # Handle cross-document questions
         if not doc_id:
-            cases.extend(handle_cross_document_questions(
-                question, element_to_chunks, chunks_by_doc, review_items, rng
-            ))
+            cases.extend(
+                handle_cross_document_questions(
+                    question, element_to_chunks, chunks_by_doc, review_items, rng
+                )
+            )
             continue
 
         # Standard single-document questions
-        gold_chunks, review_notes = find_gold_chunks(
-            question, element_to_chunks, review_items
-        )
+        gold_chunks, review_notes = find_gold_chunks(question, element_to_chunks, review_items)
 
         if not gold_chunks:
-            review_items.append(ReviewItem(
-                source_qid=qid,
-                issue_type="no_gold_chunks",
-                description="No gold chunks found for question",
-            ))
+            review_items.append(
+                ReviewItem(
+                    source_qid=qid,
+                    issue_type="no_gold_chunks",
+                    description="No gold chunks found for question",
+                )
+            )
             # Still create cases but flag them
             review_notes.append("WARNING: No gold chunks found")
 
@@ -1030,14 +1101,22 @@ def build_generation_goldens(root: Path) -> tuple[list[dict], list[ReviewItem]]:
         )
 
         # Build oracle case
-        cases.append(build_oracle_case(
-            question, gold_chunks, expected_values, required_facts, review_notes
-        ))
+        cases.append(
+            build_oracle_case(question, gold_chunks, expected_values, required_facts, review_notes)
+        )
 
         # Build oracle_plus_distractors case
-        cases.append(build_oracle_plus_distractors_case(
-            question, gold_chunks, distractors, expected_values, required_facts, review_notes, rng
-        ))
+        cases.append(
+            build_oracle_plus_distractors_case(
+                question,
+                gold_chunks,
+                distractors,
+                expected_values,
+                required_facts,
+                review_notes,
+                rng,
+            )
+        )
 
         # Build no_gold case
         # Use different distractors to ensure gold chunks are not included
@@ -1083,12 +1162,18 @@ def main():
     review_path = root / "goldens" / "generation_dataset_review.jsonl"
     with open(review_path, "w", encoding="utf-8") as f:
         for item in review_items:
-            f.write(json.dumps({
-                "source_qid": item.source_qid,
-                "issue_type": item.issue_type,
-                "description": item.description,
-                "details": item.details,
-            }, ensure_ascii=False) + "\n")
+            f.write(
+                json.dumps(
+                    {
+                        "source_qid": item.source_qid,
+                        "issue_type": item.issue_type,
+                        "description": item.description,
+                        "details": item.details,
+                    },
+                    ensure_ascii=False,
+                )
+                + "\n"
+            )
     print(f"Wrote {len(review_items)} review items to {review_path}")
 
     # Print summary

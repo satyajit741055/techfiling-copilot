@@ -44,6 +44,7 @@ logger = logging.getLogger(__name__)
 # LIFESPAN
 # =============================================================================
 
+
 @asynccontextmanager
 async def lifespan(app: FastAPI):
     """
@@ -60,11 +61,15 @@ async def lifespan(app: FastAPI):
     logger.info("=" * 60)
     logger.info("TechFiling Copilot API - Starting up...")
     logger.info("=" * 60)
-    logger.info(f"Environment: {api_settings.ENVIRONMENT} | CORS origins: {api_settings.CORS_ORIGINS}")
+    logger.info(
+        f"Environment: {api_settings.ENVIRONMENT} | CORS origins: {api_settings.CORS_ORIGINS}"
+    )
     if api_settings.API_ACCESS_KEY:
         logger.info("API key authentication: ENABLED")
     else:
-        logger.warning("API key authentication: DISABLED (API_ACCESS_KEY not set; allowed in dev only)")
+        logger.warning(
+            "API key authentication: DISABLED (API_ACCESS_KEY not set; allowed in dev only)"
+        )
 
     init_generator()
 
@@ -143,7 +148,9 @@ app.add_middleware(AuthMiddleware)
 if api_settings.supabase_auth_enabled:
     logger.info("Supabase JWT authentication: ENABLED (login required; per-user rate limiting)")
 else:
-    logger.info("Supabase JWT authentication: DISABLED (SUPABASE_URL / SUPABASE_JWT_SECRET not set; rate limiting uses IP)")
+    logger.info(
+        "Supabase JWT authentication: DISABLED (SUPABASE_URL / SUPABASE_JWT_SECRET not set; rate limiting uses IP)"
+    )
 
 # Add correlation ID middleware for request tracking
 app.add_middleware(CorrelationIDMiddleware)
@@ -158,13 +165,20 @@ if api_settings.ENVIRONMENT == "dev":
 # =============================================================================
 
 app.include_router(health.router, tags=["Health"])
-app.include_router(filings.router, tags=["Filings"], dependencies=[Depends(require_api_key), Depends(require_user)])
-app.include_router(questions.router, tags=["Questions"], dependencies=[Depends(require_api_key), Depends(require_user)])
+app.include_router(
+    filings.router, tags=["Filings"], dependencies=[Depends(require_api_key), Depends(require_user)]
+)
+app.include_router(
+    questions.router,
+    tags=["Questions"],
+    dependencies=[Depends(require_api_key), Depends(require_user)],
+)
 
 
 # =============================================================================
 # ROOT ENDPOINT
 # =============================================================================
+
 
 @app.get("/", include_in_schema=False)
 def root():

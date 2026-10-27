@@ -30,6 +30,7 @@ if TYPE_CHECKING:
 def _get_settings():
     """Lazy import to avoid circular imports."""
     from config.settings import settings
+
     return settings
 
 

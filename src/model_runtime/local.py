@@ -85,4 +85,6 @@ class LocalReranker:
     def score(self, query: str, documents: Sequence[str]) -> np.ndarray:
         if not documents:
             return np.empty(0, dtype=np.float32)
-        return np.asarray(self.model.predict([(query, text) for text in documents]), dtype=np.float32)
+        return np.asarray(
+            self.model.predict([(query, text) for text in documents]), dtype=np.float32
+        )

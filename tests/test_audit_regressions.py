@@ -12,7 +12,9 @@ def _validated(raw: str):
 
 
 def test_numeric_answer_with_abstention_does_not_crash():
-    answer = _validated('{"answer": 416161, "explanation": "x", "citations": ["S1"], "insufficient_context": true}')
+    answer = _validated(
+        '{"answer": 416161, "explanation": "x", "citations": ["S1"], "insufficient_context": true}'
+    )
     assert answer.answer == "416161"
     assert not answer.is_valid
 
@@ -28,13 +30,22 @@ def test_null_explanation_and_string_citation_are_coerced():
 
 
 def test_nested_json_after_prose_is_parsed_whole():
-    answer = _validated('Sure! {"answer":"a","explanation":"b","citations":["S1"],"calculation":{"x":1}}')
+    answer = _validated(
+        'Sure! {"answer":"a","explanation":"b","citations":["S1"],"calculation":{"x":1}}'
+    )
     assert answer.answer == "a" and answer.citations == ["S1"] and answer.calculation == '{"x": 1}'
 
 
 def _el(order, type_, text, section):
-    return {"doc_id": "D", "order": order, "type": type_, "text": text, "part": "Part I",
-            "section": section, "section_title": section}
+    return {
+        "doc_id": "D",
+        "order": order,
+        "type": type_,
+        "text": text,
+        "part": "Part I",
+        "section": section,
+        "section_title": section,
+    }
 
 
 def test_pseudo_heading_at_item_start_does_not_relabel_previous_item():
@@ -44,7 +55,10 @@ def test_pseudo_heading_at_item_start_does_not_relabel_previous_item():
         _el(2, "paragraph", "More body text here.", "Item 1A"),
     ]
     chunks = chunk_document(elements, min_chars=50)
-    assert [(c["section"], c["element_orders"]) for c in chunks] == [("Item 1", [0]), ("Item 1A", [1, 2])]
+    assert [(c["section"], c["element_orders"]) for c in chunks] == [
+        ("Item 1", [0]),
+        ("Item 1A", [1, 2]),
+    ]
 
 
 def _request(user: str):

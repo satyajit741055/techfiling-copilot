@@ -3,6 +3,7 @@
 Logic ported from exploration/00_explore_src.py. Writes, per document:
   <doc_id>.document.json, <doc_id>.elements.jsonl, <doc_id>.facts.jsonl and quality_report.csv
 """
+
 from __future__ import annotations
 
 import argparse
@@ -46,7 +47,9 @@ BLOCK_TAGS = ["div", "p", "table", "h1", "h2", "h3", "h4", "h5", "h6", "li", "ce
 SCALE_TO_UNITS = {3: "in thousands", 6: "in millions", 9: "in billions"}
 
 WS_RE = re.compile(r"\s+")
-UNITS_RE = re.compile(r"\b(?:in|dollars in|amounts in|\$ in)\s+(millions|thousands|billions)\b", re.I)
+UNITS_RE = re.compile(
+    r"\b(?:in|dollars in|amounts in|\$ in)\s+(millions|thousands|billions)\b", re.I
+)
 ITEM_RE = re.compile(r"^item\s+(\d{1,2}[a-c]?)\s*[.:\-–—]?\s*(.*)$", re.I)
 PART_RE = re.compile(r"^part\s+(iv|i{1,3})\b\.?\s*(.*)$", re.I)
 YEAR_RE = re.compile(r"^(?:fiscal\s+|fy\s*)?(?:19|20)\d{2}$", re.I)
@@ -56,7 +59,9 @@ DATE_RE = re.compile(
 )
 CURRENCY_RE = re.compile(r"^(?:US\$|C\$|A\$|\$|€|£|¥)$")
 NUM_CORE_RE = re.compile(r"^\d[\d,]*(?:\.\d+)?$|^\.\d+$")
-UNITS_ONLY_RE = re.compile(r"^\(?\s*(?:\$|dollars|amounts)?\s*in\s+(?:millions|thousands|billions)\b[^)]*\)?$", re.I)
+UNITS_ONLY_RE = re.compile(
+    r"^\(?\s*(?:\$|dollars|amounts)?\s*in\s+(?:millions|thousands|billions)\b[^)]*\)?$", re.I
+)
 MAGNITUDES = {"thousand": 1e3, "million": 1e6, "billion": 1e9, "trillion": 1e12}
 MAGNITUDE_RE = re.compile(r"(thousand|million|billion|trillion)s?$", re.I)
 PAGE_NUM_RE = re.compile(r"^(?:page\s*)?(?:\d{1,3}|[ivxlc]{1,6})$|^[-–—]\s*\d{1,3}\s*[-–—]$", re.I)
@@ -139,9 +144,11 @@ class Document:
     source_file: str
     elements: list[Element] = field(default_factory=list)
 
+
 def clean(s: str | None) -> str:
     """Collapse whitespace and non-breaking spaces into single spaces and strip the result."""
     return WS_RE.sub(" ", (s or "").replace("\xa0", " ")).strip()
+
 
 def style_of(tag) -> dict:
     """Parse a tag's inline ``style`` attribute into a {property: value} dict (lowercased)."""
@@ -152,6 +159,7 @@ def style_of(tag) -> dict:
             out[k.strip().lower()] = v.strip().lower()
     return out
 
+
 def to_pt(v: str) -> float:
     """Convert a CSS length (px/em/in/pt) to points, used to compare indentation."""
     m = re.match(r"(-?[\d.]+)\s*(pt|px|em|in)?", v or "")
@@ -160,6 +168,7 @@ def to_pt(v: str) -> float:
     n, unit = float(m.group(1)), m.group(2) or "px"
     return {"px": n * 0.75, "em": n * 10, "in": n * 72}.get(unit, n)
 
+
 def padding_left_pt(st: dict) -> float:
     """Return the left padding in points from a style dict, handling the shorthand ``padding``."""
     if "padding-left" in st:
@@ -167,6 +176,7 @@ def padding_left_pt(st: dict) -> float:
     parts = st.get("padding", "").split()
     idx = {1: 0, 2: 1, 3: 1, 4: 3}.get(len(parts))
     return to_pt(parts[idx]) if idx is not None else 0.0
+
 
 def is_bold(tag) -> bool:
     """True only if every piece of visible text in the tag is bold (via <b>/<strong> or font-weight)."""
@@ -185,6 +195,7 @@ def is_bold(tag) -> bool:
         if not bold:
             return False
     return True
+
 
 def load(path: Path) -> BeautifulSoup:
     """Read an HTML filing from disk and parse it into a BeautifulSoup tree (lxml backend)."""
@@ -213,10 +224,12 @@ def doc_metadata(soup: BeautifulSoup, path: Path) -> dict:
         "source_file": path.name,
     }
 
+
 def parse_contexts(soup: BeautifulSoup) -> dict:
     """Map each XBRL context id to its reporting period (start/end/instant) and dimensions."""
     out = {}
     for c in soup.find_all("xbrli:context"):
+
         def get(name):
             t = c.find(name)
             return t.get_text(strip=True) if t else None
@@ -226,10 +239,12 @@ def parse_contexts(soup: BeautifulSoup) -> dict:
             "start": get("xbrli:startdate"),
             "end": inst or get("xbrli:enddate"),
             "instant": inst is not None,
-            "dims": {m.get("dimension"): clean(m.get_text()) for m in c.find_all(["xbrldi:explicitmember", "xbrldi:typedmember"])},
+            "dims": {
+                m.get("dimension"): clean(m.get_text())
+                for m in c.find_all(["xbrldi:explicitmember", "xbrldi:typedmember"])
+            },
         }
     return out
-
 
 
 def parse_fact(t) -> XbrlFact:
@@ -240,14 +255,19 @@ def parse_fact(t) -> XbrlFact:
         shown = 0.0
     else:
         core = re.sub(r"[^\d.,]", "", txt)
-        core = core.replace(".", "").replace(",", ".") if "comma-decimal" in fmt else core.replace(",", "")
+        core = (
+            core.replace(".", "").replace(",", ".")
+            if "comma-decimal" in fmt
+            else core.replace(",", "")
+        )
         try:
             shown = float(core)
         except ValueError:
             shown = None
     value = None if shown is None else sign * shown * 10**scale
-    return XbrlFact(t.get("id"), t.get("name"), t.get("contextref"), t.get("unitref"), scale, sign, shown, value)
-
+    return XbrlFact(
+        t.get("id"), t.get("name"), t.get("contextref"), t.get("unitref"), scale, sign, shown, value
+    )
 
 
 def facts_records(facts: dict, contexts: dict, doc_id: str) -> list[dict]:
@@ -255,10 +275,17 @@ def facts_records(facts: dict, contexts: dict, doc_id: str) -> list[dict]:
     rows = []
     for f in facts.values():
         ctx = contexts.get(f.context, {})
-        rows.append({**asdict(f), "period_start": ctx.get("start"), "period_end": ctx.get("end"),
-                     "instant": ctx.get("instant"), "dims": ctx.get("dims") or {}, "doc_id": doc_id})
+        rows.append(
+            {
+                **asdict(f),
+                "period_start": ctx.get("start"),
+                "period_end": ctx.get("end"),
+                "instant": ctx.get("instant"),
+                "dims": ctx.get("dims") or {},
+                "doc_id": doc_id,
+            }
+        )
     return rows
-
 
 
 def strip_noise(soup: BeautifulSoup) -> Counter:
@@ -273,7 +300,9 @@ def strip_noise(soup: BeautifulSoup) -> Counter:
             t.decompose()
     for br in soup.find_all("br"):
         br.replace_with(" ")
-    for block in soup.find_all(["div", "p", "li"]):  # stacked divs inside one cell must not glue words together
+    for block in soup.find_all(
+        ["div", "p", "li"]
+    ):  # stacked divs inside one cell must not glue words together
         block.append(" ")
     return removed
 
@@ -288,6 +317,7 @@ def find_boilerplate(texts: list[str]) -> set[str]:
     counts = Counter(norm_key(t) for t in texts if len(t) <= CONFIG["boilerplate_max_len"])
     return {k for k, n in counts.items() if n >= CONFIG["boilerplate_min_repeats"]}
 
+
 def is_boilerplate(text: str, boilerplate: set[str], bold: bool = False) -> bool:
     """Decide whether a line should be dropped as boilerplate/page-number, keeping meaningful units and Item/Part headings."""
     if PAGE_NUM_RE.match(text):
@@ -297,6 +327,7 @@ def is_boilerplate(text: str, boilerplate: set[str], bold: bool = False) -> bool
     if bold and (ITEM_RE.fullmatch(text) or PART_RE.fullmatch(text)):
         return False
     return len(text) <= CONFIG["boilerplate_max_len"] and norm_key(text) in boilerplate
+
 
 def iter_blocks(body):
     """Yield the leaf block elements (and top-level tables) of the document in reading order."""
@@ -318,7 +349,6 @@ def detect_section(text: str, bold: bool):
     if m := PART_RE.match(text):
         return "part", f"Part {m.group(1).upper()}", clean(m.group(2)) or None
     return None
-
 
 
 @dataclass
@@ -363,21 +393,31 @@ def raw_rows(table) -> list[list[RawCell]]:
             lead = raw.strip(" \t\r\n")
             nbsp = len(lead) - len(lead.lstrip("\xa0"))
             text = clean(raw)
-            inner_pad = max((padding_left_pt(style_of(d)) for d in td.find_all(["div", "p"])), default=0.0)
-            cells.append(RawCell(
-                text=text, start=col, span=cs, bold=bool(text) and is_bold(td),
-                indent_pt=padding_left_pt(style_of(td)) + inner_pad + nbsp * CONFIG["nbsp_pt"],
-                fact_ids=[f.get("id") for f in td.find_all("ix:nonfraction")],
-                has_link=td.find("a", href=re.compile(r"^#")) is not None,
-            ))
-            for rr in range(r + 1, r + rs):  # fill down: the spanned rows show this text too (no fact ids: no double count)
+            inner_pad = max(
+                (padding_left_pt(style_of(d)) for d in td.find_all(["div", "p"])), default=0.0
+            )
+            cells.append(
+                RawCell(
+                    text=text,
+                    start=col,
+                    span=cs,
+                    bold=bool(text) and is_bold(td),
+                    indent_pt=padding_left_pt(style_of(td)) + inner_pad + nbsp * CONFIG["nbsp_pt"],
+                    fact_ids=[f.get("id") for f in td.find_all("ix:nonfraction")],
+                    has_link=td.find("a", href=re.compile(r"^#")) is not None,
+                )
+            )
+            for rr in range(
+                r + 1, r + rs
+            ):  # fill down: the spanned rows show this text too (no fact ids: no double count)
                 c = cells[-1]
-                carried[rr][col] = RawCell(c.text, c.start, c.span, c.bold, c.indent_pt, [], c.has_link)
+                carried[rr][col] = RawCell(
+                    c.text, c.start, c.span, c.bold, c.indent_pt, [], c.has_link
+                )
             col += cs
         cells += carried.pop(r, {}).values()
         rows.append(sorted(cells, key=lambda c: c.start))
     return rows
-
 
 
 def parse_number(t: str):
@@ -446,7 +486,6 @@ def merge_fragments(cells: list[RawCell]) -> list[RawCell]:
     return out
 
 
-
 def classify(merged: list[list[RawCell]]) -> str:
     """Classify a whole table as layout / toc / financial / textual based on links, facts, and numeric density."""
     cells = [c for r in merged for c in r]
@@ -458,13 +497,23 @@ def classify(merged: list[list[RawCell]]) -> str:
         return "financial"
     lstart = label_start(merged)  # ignore the label column: exhibit numbers like "3.1" are not data
     values = [c for c in cells if c.start != lstart]
-    numeric = sum(c.ctype == "NUMBER" for c in values)  # dashes alone (e.g. "—" trading symbol) don't make a table numeric
-    return "financial" if values and numeric / len(values) >= CONFIG["numeric_table_ratio"] else "textual"
+    numeric = sum(
+        c.ctype == "NUMBER" for c in values
+    )  # dashes alone (e.g. "—" trading symbol) don't make a table numeric
+    return (
+        "financial"
+        if values and numeric / len(values) >= CONFIG["numeric_table_ratio"]
+        else "textual"
+    )
 
 
 def label_start(merged) -> int:
     """Infer the grid column where row labels begin (the most common first-cell position of data rows)."""
-    starts = [r[0].start for r in merged if len(r) > 1 and any(c.ctype in ("NUMBER", "DASH") or c.fact_ids for c in r[1:])]
+    starts = [
+        r[0].start
+        for r in merged
+        if len(r) > 1 and any(c.ctype in ("NUMBER", "DASH") or c.fact_ids for c in r[1:])
+    ]
     return Counter(starts).most_common(1)[0][0] if starts else 0
 
 
@@ -479,13 +528,14 @@ def header_row_count(merged, lstart: int) -> int:
             break
         units_only = len(cells) == 1 and UNITS_RE.search(cells[0].text)
         label_empty = cells[0].start > lstart
-        multi = len(cells) >= 2 and (all(c.bold for c in cells) or any(c.ctype in ("YEAR", "DATE") for c in cells[1:]))
+        multi = len(cells) >= 2 and (
+            all(c.bold for c in cells) or any(c.ctype in ("YEAR", "DATE") for c in cells[1:])
+        )
         if units_only or label_empty or multi:
             n = i + 1
             continue
         break
     return n
-
 
 
 def merge_intervals(iv) -> list[list[int]]:
@@ -516,11 +566,19 @@ def column_groups(data_rows, lstart: int) -> list[list[int]]:
         A sorted list of ``[start, end)`` intervals, one per logical column.
     """
     multi = [c for r in data_rows if len(r) > 1 for c in r]  # single-cell rows are headings/notes
-    primary = merge_intervals([(c.start, c.start + c.span) for c in multi
-                               if c.ctype in ("NUMBER", "DASH") or c.fact_ids or c.start == lstart])
+    primary = merge_intervals(
+        [
+            (c.start, c.start + c.span)
+            for c in multi
+            if c.ctype in ("NUMBER", "DASH") or c.fact_ids or c.start == lstart
+        ]
+    )
     # text columns (descriptions, dates, "Not applicable") that don't overlap a value column get their own column
-    rest = [(c.start, c.start + c.span) for c in multi
-            if not any(c.start < ge and gs < c.start + c.span for gs, ge in primary)]
+    rest = [
+        (c.start, c.start + c.span)
+        for c in multi
+        if not any(c.start < ge and gs < c.start + c.span for gs, ge in primary)
+    ]
     groups = sorted(primary + merge_intervals(rest))
     return groups or merge_intervals([(c.start, c.start + c.span) for r in data_rows for c in r])
 
@@ -548,7 +606,12 @@ def project(cells, groups, is_header: bool):
         s, e = c.start, c.start + c.span
         hits = [j for j, (gs, ge) in enumerate(groups) if s < ge and gs < e]
         if not hits:
-            hits = [min(range(len(groups)), key=lambda j: min(abs(groups[j][0] - e), abs(groups[j][1] - s)))]
+            hits = [
+                min(
+                    range(len(groups)),
+                    key=lambda j: min(abs(groups[j][0] - e), abs(groups[j][1] - s)),
+                )
+            ]
             conflicts += 1
         if not is_header and len(hits) > 1:
             conflicts += 1
@@ -563,7 +626,9 @@ def column_names(header_rows, groups) -> list[str]:
     """Build each column's name by stacking the header-row fragments that project onto that column group."""
     parts = [[] for _ in groups]
     for cells in header_rows:
-        cells = [c for c in cells if not UNITS_ONLY_RE.match(c.text)]  # drop "(in millions)", keep "Number of RSUs (in thousands)"
+        cells = [
+            c for c in cells if not UNITS_ONLY_RE.match(c.text)
+        ]  # drop "(in millions)", keep "Number of RSUs (in thousands)"
         proj, _ = project(cells, groups, is_header=True)
         for j, cs in enumerate(proj):
             for c in cs:
@@ -572,14 +637,15 @@ def column_names(header_rows, groups) -> list[str]:
     return [clean(" ".join(p)) for p in parts]
 
 
-
 def to_cell(cs: list[RawCell]) -> Cell:
     """Combine the raw cells projected onto one column into a typed Cell (value, percent, currency, fact ids)."""
     if not cs:
         return Cell("", "EMPTY")
     text = clean(" ".join(c.text for c in cs))
     ctype = cell_type(text) if len(cs) > 1 else cs[0].ctype
-    v, pct, cur, _ = parse_number(text) if ctype in ("NUMBER", "DASH") else (None, False, None, False)
+    v, pct, cur, _ = (
+        parse_number(text) if ctype in ("NUMBER", "DASH") else (None, False, None, False)
+    )
     if ctype == "YEAR":
         v = float(text[-4:])
     return Cell(text, ctype, v, pct, cur, [f for c in cs for f in c.fact_ids])
@@ -604,8 +670,12 @@ def closes_group(total_label: str, heading: str) -> bool:
 class OpenGroup:
     indent: float
     label: str
-    mode: str | None = None  # "nested" (children indented deeper) or "flat" (children at the same indent or less)
-    child_indent: float = 0.0  # indent of the first child; a flat group closes on a row shallower than this
+    mode: str | None = (
+        None  # "nested" (children indented deeper) or "flat" (children at the same indent or less)
+    )
+    child_indent: float = (
+        0.0  # indent of the first child; a flat group closes on a row shallower than this
+    )
     n_data: int = 0
 
 
@@ -649,29 +719,50 @@ def build_rows(data_rows, groups):
         if not has_values and len(label) >= CONFIG["note_min_len"]:
             rows.append(Row(label, 0, [label], "note", False, values))
             continue
-        if not label and any(v.ctype in ("NUMBER", "DASH") for v in values) and rows and rows[-1].row_type == "data":
-            label = rows[-1].label  # continuation row: Apple prints "Operating leases" once for 2 lines
+        if (
+            not label
+            and any(v.ctype in ("NUMBER", "DASH") for v in values)
+            and rows
+            and rows[-1].row_type == "data"
+        ):
+            label = rows[
+                -1
+            ].label  # continuation row: Apple prints "Operating leases" once for 2 lines
         row_type = "heading" if label and not has_values else "data"
-        indent = label_cells[0].indent_pt if label_cells else math.inf  # unlabeled row continues the group
+        indent = (
+            label_cells[0].indent_pt if label_cells else math.inf
+        )  # unlabeled row continues the group
         is_total = bool(TOTAL_RE.match(label))
         bare = is_total and closes_group(label, "")  # "Total", "Subtotal", "Total (2)(3)"
         owner = None
         if is_total:  # a bare total only closes a group that has something to add up
-            owner = next((i for i in range(len(stack) - 1, -1, -1)
-                          if closes_group(label, stack[i].label) and (not bare or stack[i].n_data >= 2)), None)
-        if owner is not None:  # "Total X" belongs to open group X even when it isn't indented deeper
-            del stack[owner + 1:]
+            owner = next(
+                (
+                    i
+                    for i in range(len(stack) - 1, -1, -1)
+                    if closes_group(label, stack[i].label) and (not bare or stack[i].n_data >= 2)
+                ),
+                None,
+            )
+        if (
+            owner is not None
+        ):  # "Total X" belongs to open group X even when it isn't indented deeper
+            del stack[owner + 1 :]
         elif bare:  # bare total with no group to close: grand total
             stack.clear()
         elif row_type == "heading":
             while stack and indent - stack[-1].indent <= tol:
                 stack.pop()
         else:
-            if stack and stack[-1].mode is None:  # the first child always belongs to its heading and sets the style
+            if (
+                stack and stack[-1].mode is None
+            ):  # the first child always belongs to its heading and sets the style
                 stack[-1].mode = "nested" if indent - stack[-1].indent > tol else "flat"
                 stack[-1].child_indent = indent
-            while stack and ((stack[-1].mode == "nested" and indent - stack[-1].indent <= tol)
-                             or (stack[-1].mode == "flat" and indent < stack[-1].child_indent - tol)):
+            while stack and (
+                (stack[-1].mode == "nested" and indent - stack[-1].indent <= tol)
+                or (stack[-1].mode == "flat" and indent < stack[-1].child_indent - tol)
+            ):
                 stack.pop()
         path = [s.label for s in stack] + ([label] if label else [])
         rows.append(Row(label, len(stack), path, row_type, is_total, values))
@@ -685,13 +776,14 @@ def build_rows(data_rows, groups):
     return rows, conflicts
 
 
-
 def is_units_line(t: str) -> bool:
     """True if a line is purely a units notice like ``(in millions)``."""
     return bool(UNITS_RE.search(t)) and t.startswith("(") and t.endswith(")")
 
 
-def table_context(prev: list[tuple[str, bool]], header_text: str, fact_list: list[XbrlFact], company: str):
+def table_context(
+    prev: list[tuple[str, bool]], header_text: str, fact_list: list[XbrlFact], company: str
+):
     """Infer a table's title, units, and intro sentence from its surrounding text.
 
     Looks back a few lines before the table (nearest first). Units are taken from a
@@ -709,19 +801,26 @@ def table_context(prev: list[tuple[str, bool]], header_text: str, fact_list: lis
     Returns:
         A tuple ``(title, units, intro)``; any element may be ``None`` if not found.
     """
-    cands = prev[-CONFIG["title_lookback"]:][::-1]  # nearest first
-    units = next((t if is_units_line(t) else m.group(0) for t, _ in cands if (m := UNITS_RE.search(t))), None)
+    cands = prev[-CONFIG["title_lookback"] :][::-1]  # nearest first
+    units = next(
+        (t if is_units_line(t) else m.group(0) for t, _ in cands if (m := UNITS_RE.search(t))), None
+    )
     if not units and (m := UNITS_RE.search(header_text)):
-        units = next((p for p in re.findall(r"\([^()]*\)", header_text) if UNITS_RE.search(p)), m.group(0))
+        units = next(
+            (p for p in re.findall(r"\([^()]*\)", header_text) if UNITS_RE.search(p)), m.group(0)
+        )
     if not units:
         scales = Counter(f.scale for f in fact_list if f.unit and f.unit.lower() == "usd")
         units = SCALE_TO_UNITS.get(scales.most_common(1)[0][0]) if scales else None
-    usable = [(t, b) for t, b in cands if not is_units_line(t) and norm_label(t) != norm_label(company)]
+    usable = [
+        (t, b) for t, b in cands if not is_units_line(t) and norm_label(t) != norm_label(company)
+    ]
     title = next((t for t, b in usable if b and len(t) <= CONFIG["heading_max_len"]), None)
     before_title = usable[: next((i for i, (t, _) in enumerate(usable) if t == title), len(usable))]
-    intro = next((t for t, b in before_title[:2] if not b and len(t) > 40), None)  # only text between title and table
+    intro = next(
+        (t for t, b in before_title[:2] if not b and len(t) > 40), None
+    )  # only text between title and table
     return title, units, intro
-
 
 
 def purity(groups: dict) -> float | None:
@@ -762,8 +861,10 @@ def validate(rows: list[Row], columns: list[Column], facts: dict, contexts: dict
             # only numeric cells: ranges ("4.70-5.75%", 2 facts) and prose ("20 million vehicles delivered") are kept verbatim
             if len(c.fact_ids) == 1 and f.shown is not None and c.ctype in ("NUMBER", "DASH"):
                 n_value += 1
-                if c.value is not None and any(math.isclose(abs(c.value), abs(x), rel_tol=1e-9, abs_tol=1e-9)
-                                               for x in (f.shown, f.value)):
+                if c.value is not None and any(
+                    math.isclose(abs(c.value), abs(x), rel_tol=1e-9, abs_tol=1e-9)
+                    for x in (f.shown, f.value)
+                ):
                     value_ok += 1
             if c.value is not None and (c.value == 0 or (c.value < 0) == (f.sign < 0)):
                 sign_ok += 1
@@ -833,13 +934,17 @@ def score(kind, n_header, title, units, conflicts, n_cells, v) -> dict:
         s -= min(0.4, 2 * conflicts / max(1, n_cells))
         reasons.append(f"conflicts={conflicts}")
     if v.get("n_fact_cells"):
-        for key, w in (("value_match", 0.4), ("period_purity", 0.3), ("concept_purity", 0.2), ("header_period_agreement", 0.2)):
+        for key, w in (
+            ("value_match", 0.4),
+            ("period_purity", 0.3),
+            ("concept_purity", 0.2),
+            ("header_period_agreement", 0.2),
+        ):
             if v.get(key) is not None and v[key] < 1:
                 s -= w * (1 - v[key])
                 reasons.append(f"{key}={v[key]}")
     s = round(max(0.0, s), 3)
     return {**v, "score": s, "low_confidence": s < CONFIG["low_confidence"], "reasons": reasons}
-
 
 
 def fmt_value(c: Cell) -> str:
@@ -855,11 +960,20 @@ def fmt_value(c: Cell) -> str:
 def to_markdown(t: Table) -> str:
     """Render a parsed Table as a Markdown table (with title, units, breadcrumb labels, and footnotes)."""
     units = t.units if not t.units or t.units.startswith("(") else f"({t.units})"
-    head = f"**{t.title or 'Table'}**" + (f" {units}" if units and t.units not in (t.title or "") else "")
+    head = f"**{t.title or 'Table'}**" + (
+        f" {units}" if units and t.units not in (t.title or "") else ""
+    )
     if t.kind == "text_block":
         return "\n".join(r.label for r in t.rows)
-    names = [t.columns[0].name or "Line item"] + [c.name or f"Column {j}" for j, c in enumerate(t.columns[1:], 1)]
-    lines = [head, "", "| " + " | ".join(n.replace("|", "\\|") for n in names) + " |", "|" + "---|" * len(names)]
+    names = [t.columns[0].name or "Line item"] + [
+        c.name or f"Column {j}" for j, c in enumerate(t.columns[1:], 1)
+    ]
+    lines = [
+        head,
+        "",
+        "| " + " | ".join(n.replace("|", "\\|") for n in names) + " |",
+        "|" + "---|" * len(names),
+    ]
     notes = []
     for r in t.rows:
         if r.row_type == "note":
@@ -868,7 +982,6 @@ def to_markdown(t: Table) -> str:
             label = " > ".join(r.path).replace("|", "\\|")
             lines.append("| " + " | ".join([label] + [fmt_value(c) for c in r.cells]) + " |")
     return "\n".join(lines + ([""] + [f"_Note: {n}_" for n in notes] if notes else []))
-
 
 
 def parse_table(tag, table_id, prev_text, meta, facts, contexts) -> Table:
@@ -898,7 +1011,9 @@ def parse_table(tag, table_id, prev_text, meta, facts, contexts) -> Table:
         return Table(table_id, kind)
     lstart = label_start(merged)
     n_header = header_row_count(merged, lstart)
-    if not any(merged[n_header:]):  # every row looked like a header: it's a small text grid, keep all rows as data
+    if not any(
+        merged[n_header:]
+    ):  # every row looked like a header: it's a small text grid, keep all rows as data
         n_header = 0
     header_rows, data_rows = merged[:n_header], merged[n_header:]
     groups = column_groups([r for r in data_rows if r], lstart)
@@ -913,8 +1028,17 @@ def parse_table(tag, table_id, prev_text, meta, facts, contexts) -> Table:
     header_text = " ".join(c.text for r in header_rows for c in r)
     title, units, intro = table_context(prev_text, header_text, fact_list, meta["company"])
     n_cells = sum(len(r) for r in data_rows)
-    t = Table(table_id, kind, title, units, intro, columns, rows, v.get("period_axis"),
-              score(kind, n_header, title, units, conflicts, n_cells, v))
+    t = Table(
+        table_id,
+        kind,
+        title,
+        units,
+        intro,
+        columns,
+        rows,
+        v.get("period_axis"),
+        score(kind, n_header, title, units, conflicts, n_cells, v),
+    )
     t.markdown = to_markdown(t)
     return t
 
@@ -949,12 +1073,18 @@ def parse_document(path: Path):
     pending_title, prev_text, n_tables = False, [], 0
 
     def add(etype, text=None, table=None):
-        doc.elements.append(Element(meta["doc_id"], len(doc.elements), etype, part, section, section_title, text, table))
+        doc.elements.append(
+            Element(
+                meta["doc_id"], len(doc.elements), etype, part, section, section_title, text, table
+            )
+        )
 
     for b in blocks:
         if b.name == "table":
             n_tables += 1
-            t = parse_table(b, f"{meta['doc_id']}_t{n_tables:03d}", prev_text, meta, facts, contexts)
+            t = parse_table(
+                b, f"{meta['doc_id']}_t{n_tables:03d}", prev_text, meta, facts, contexts
+            )
             prev_text = []
             if t.kind in ("layout", "toc"):
                 removed[f"{t.kind}_tables"] += 1
@@ -983,11 +1113,12 @@ def parse_document(path: Path):
     return doc, facts, contexts, removed
 
 
-
 def save(doc: Document, facts: dict, contexts: dict, out_dir: Path = OUT_DIR) -> None:
     """Write a document's metadata (.document.json), elements (.elements.jsonl), and facts (.facts.jsonl) to disk."""
     meta = {k: v for k, v in asdict(doc).items() if k != "elements"}
-    (out_dir / f"{doc.doc_id}.document.json").write_text(json.dumps(meta, indent=2), encoding="utf-8")
+    (out_dir / f"{doc.doc_id}.document.json").write_text(
+        json.dumps(meta, indent=2), encoding="utf-8"
+    )
     with open(out_dir / f"{doc.doc_id}.elements.jsonl", "w", encoding="utf-8") as fh:
         for e in doc.elements:
             fh.write(json.dumps(asdict(e), ensure_ascii=False) + "\n")
@@ -996,22 +1127,48 @@ def save(doc: Document, facts: dict, contexts: dict, out_dir: Path = OUT_DIR) ->
             fh.write(json.dumps(row, ensure_ascii=False) + "\n")
 
 
-QUALITY_COLUMNS = ["doc_id", "table_id", "section", "kind", "title", "units", "rows", "cols", "score",
-                   "n_fact_cells", "value_match", "period_purity", "concept_purity",
-                   "header_period_agreement", "reasons"]
+QUALITY_COLUMNS = [
+    "doc_id",
+    "table_id",
+    "section",
+    "kind",
+    "title",
+    "units",
+    "rows",
+    "cols",
+    "score",
+    "n_fact_cells",
+    "value_match",
+    "period_purity",
+    "concept_purity",
+    "header_period_agreement",
+    "reasons",
+]
 
 
 def quality_rows(doc: Document) -> list[dict]:
     """Flatten each table's quality metrics into rows for the quality_report.csv summary."""
-    return [{"doc_id": doc.doc_id, "table_id": e.table.table_id, "section": e.section, "kind": e.table.kind,
-             "title": e.table.title, "units": e.table.units, "rows": len(e.table.rows),
-             "cols": len(e.table.columns),
-             **{k: e.table.quality.get(k) for k in QUALITY_COLUMNS[8:14]},
-             "reasons": ";".join(e.table.quality.get("reasons", []))}
-            for e in doc.elements if e.table]
+    return [
+        {
+            "doc_id": doc.doc_id,
+            "table_id": e.table.table_id,
+            "section": e.section,
+            "kind": e.table.kind,
+            "title": e.table.title,
+            "units": e.table.units,
+            "rows": len(e.table.rows),
+            "cols": len(e.table.columns),
+            **{k: e.table.quality.get(k) for k in QUALITY_COLUMNS[8:14]},
+            "reasons": ";".join(e.table.quality.get("reasons", [])),
+        }
+        for e in doc.elements
+        if e.table
+    ]
 
 
-def parse_all(raw_dir: Path = RAW_DIR, out_dir: Path = OUT_DIR, files: list[Path] | None = None) -> list[Document]:
+def parse_all(
+    raw_dir: Path = RAW_DIR, out_dir: Path = OUT_DIR, files: list[Path] | None = None
+) -> list[Document]:
     """Parse and save every filing (or the given files), write the combined quality_report.csv, and return the documents."""
     out_dir.mkdir(parents=True, exist_ok=True)
     docs, rows = [], []
@@ -1031,8 +1188,12 @@ def parse_all(raw_dir: Path = RAW_DIR, out_dir: Path = OUT_DIR, files: list[Path
 
 def main() -> None:
     """CLI entry point: parse the HTML files given on the command line (or the whole raw dir) into the output dir."""
-    parser = argparse.ArgumentParser(description="Parse 10-K Inline-XBRL HTML filings into elements.jsonl.")
-    parser.add_argument("files", nargs="*", type=Path, help="HTML files (default: every *.html in --raw-dir)")
+    parser = argparse.ArgumentParser(
+        description="Parse 10-K Inline-XBRL HTML filings into elements.jsonl."
+    )
+    parser.add_argument(
+        "files", nargs="*", type=Path, help="HTML files (default: every *.html in --raw-dir)"
+    )
     parser.add_argument("--raw-dir", type=Path, default=RAW_DIR)
     parser.add_argument("--out-dir", type=Path, default=OUT_DIR)
     args = parser.parse_args()

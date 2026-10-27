@@ -343,54 +343,54 @@ class AnswerGenerator:
                     verbose=False,
                 )
 
-                results.append({
-                    # Golden data
-                    "id": q.get("id"),
-                    "query": q["query"],
-                    "doc_id": q.get("doc_id"),
-                    "category": q.get("category"),
-                    "difficulty": q.get("difficulty"),
-                    "expected_answer": q.get("expected_answer"),
-                    "relevant_elements": q.get("relevant", []),
-
-                    # Generated data
-                    "generated_answer": gen_result.answer.answer,
-                    "explanation": gen_result.answer.explanation,
-                    "citations": gen_result.answer.citations,
-                    "calculation": gen_result.answer.calculation,
-                    "insufficient_context": gen_result.answer.insufficient_context,
-                    "is_valid": gen_result.answer.is_valid,
-                    "validation_errors": gen_result.answer.validation_errors,
-
-                    # Sources
-                    "sources": gen_result.sources,
-
-                    # Metadata
-                    "model": gen_result.model,
-                    "context_k": gen_result.context_k,
-                    "prompt_tokens": gen_result.prompt_tokens,
-                    "completion_tokens": gen_result.completion_tokens,
-                    "latency_seconds": gen_result.latency_seconds,
-                    "timestamp": gen_result.timestamp,
-
-                    # Status
-                    "status": "success",
-                    "error": None,
-                })
+                results.append(
+                    {
+                        # Golden data
+                        "id": q.get("id"),
+                        "query": q["query"],
+                        "doc_id": q.get("doc_id"),
+                        "category": q.get("category"),
+                        "difficulty": q.get("difficulty"),
+                        "expected_answer": q.get("expected_answer"),
+                        "relevant_elements": q.get("relevant", []),
+                        # Generated data
+                        "generated_answer": gen_result.answer.answer,
+                        "explanation": gen_result.answer.explanation,
+                        "citations": gen_result.answer.citations,
+                        "calculation": gen_result.answer.calculation,
+                        "insufficient_context": gen_result.answer.insufficient_context,
+                        "is_valid": gen_result.answer.is_valid,
+                        "validation_errors": gen_result.answer.validation_errors,
+                        # Sources
+                        "sources": gen_result.sources,
+                        # Metadata
+                        "model": gen_result.model,
+                        "context_k": gen_result.context_k,
+                        "prompt_tokens": gen_result.prompt_tokens,
+                        "completion_tokens": gen_result.completion_tokens,
+                        "latency_seconds": gen_result.latency_seconds,
+                        "timestamp": gen_result.timestamp,
+                        # Status
+                        "status": "success",
+                        "error": None,
+                    }
+                )
 
             except Exception as e:
                 if verbose:
                     logger.error(f"ERROR: {e}")
-                results.append({
-                    "id": q.get("id"),
-                    "query": q["query"],
-                    "doc_id": q.get("doc_id"),
-                    "category": q.get("category"),
-                    "difficulty": q.get("difficulty"),
-                    "expected_answer": q.get("expected_answer"),
-                    "status": "error",
-                    "error": str(e),
-                })
+                results.append(
+                    {
+                        "id": q.get("id"),
+                        "query": q["query"],
+                        "doc_id": q.get("doc_id"),
+                        "category": q.get("category"),
+                        "difficulty": q.get("difficulty"),
+                        "expected_answer": q.get("expected_answer"),
+                        "status": "error",
+                        "error": str(e),
+                    }
+                )
 
             # Rate limiting
             if delay_seconds > 0 and i < total:
@@ -466,7 +466,9 @@ def main():
     # Initialize generator
     logger.info("Initializing generator...")
     overrides = {"provider": args.provider, "model": args.model, "context_k": args.context_k}
-    config = GenerationConfig(**{key: value for key, value in overrides.items() if value is not None})
+    config = GenerationConfig(
+        **{key: value for key, value in overrides.items() if value is not None}
+    )
     generator = AnswerGenerator(config)
 
     def process_question(question: str, doc_id: str | None) -> None:

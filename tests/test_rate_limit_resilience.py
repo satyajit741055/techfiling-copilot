@@ -25,9 +25,16 @@ class _Req:
 @pytest.fixture
 def client(monkeypatch):
     monkeypatch.setattr(api_settings, "API_ACCESS_KEY", None)
-    app.dependency_overrides[get_filings] = lambda: [{
-        "doc_id": "AAPL_10-K_2025", "company": "Apple Inc.", "ticker": "AAPL",
-        "form": "10-K", "fiscal_year": 2025, "period_end": "September 27, 2025"}]
+    app.dependency_overrides[get_filings] = lambda: [
+        {
+            "doc_id": "AAPL_10-K_2025",
+            "company": "Apple Inc.",
+            "ticker": "AAPL",
+            "form": "10-K",
+            "fiscal_year": 2025,
+            "period_end": "September 27, 2025",
+        }
+    ]
     app.dependency_overrides[get_valid_doc_ids] = lambda: {"AAPL_10-K_2025"}
     app.dependency_overrides[get_rag_service] = lambda: type("R", (), {"model_name": "m"})()
     try:
@@ -64,7 +71,9 @@ class TestGlobalLimit:
         for i in range(3):
             rate_limit.check_rate_limit(_Req(user=f"u{i}", ip=f"10.0.0.{i}"), 3, 60, scope="global")
         with pytest.raises(HTTPException) as exc:
-            rate_limit.check_rate_limit(_Req(user="someone-else", ip="9.9.9.9"), 3, 60, scope="global")
+            rate_limit.check_rate_limit(
+                _Req(user="someone-else", ip="9.9.9.9"), 3, 60, scope="global"
+            )
         assert exc.value.status_code == 429
         assert exc.value.detail["scope"] == "global" and int(exc.value.headers["Retry-After"]) >= 1
 
@@ -79,7 +88,9 @@ class TestGlobalLimit:
     def _exhaust_global_bucket():
         limit = api_settings.RATE_LIMIT_GLOBAL_PER_MINUTE
         for i in range(limit):
-            rate_limit.check_rate_limit(_Req(user=f"u{i}", ip=f"10.0.{i}.1"), limit, 60, scope="global")
+            rate_limit.check_rate_limit(
+                _Req(user=f"u{i}", ip=f"10.0.{i}.1"), limit, 60, scope="global"
+            )
 
     def test_filings_endpoint_enforces_global_limit(self, client, in_memory):
         assert client.get("/filings").status_code == 200
@@ -91,7 +102,9 @@ class TestGlobalLimit:
 
     def test_questions_endpoint_enforces_global_limit(self, client, in_memory):
         self._exhaust_global_bucket()
-        blocked = client.post("/questions", json={"question": "What were net sales?", "doc_id": "AAPL_10-K_2025"})
+        blocked = client.post(
+            "/questions", json={"question": "What were net sales?", "doc_id": "AAPL_10-K_2025"}
+        )
         assert blocked.status_code == 429 and blocked.json()["detail"]["scope"] == "global"
 
     def test_questions_and_filings_share_one_global_bucket(self, client, in_memory):
@@ -99,7 +112,9 @@ class TestGlobalLimit:
         for i in range(limit - 1):
             rate_limit.check_rate_limit(_Req(user=f"u{i}"), limit, 60, scope="global")
         assert client.get("/filings").status_code == 200
-        blocked = client.post("/questions", json={"question": "What were net sales?", "doc_id": "AAPL_10-K_2025"})
+        blocked = client.post(
+            "/questions", json={"question": "What were net sales?", "doc_id": "AAPL_10-K_2025"}
+        )
         assert blocked.status_code == 429 and blocked.json()["detail"]["scope"] == "global"
 
     def test_health_is_not_globally_limited(self, client, in_memory):
@@ -108,7 +123,9 @@ class TestGlobalLimit:
 
     def test_per_user_headers_win_over_global_headers(self, client, in_memory):
         response = client.get("/filings")
-        assert response.headers["X-RateLimit-Limit"] == str(api_settings.RATE_LIMIT_FILINGS_PER_MINUTE)
+        assert response.headers["X-RateLimit-Limit"] == str(
+            api_settings.RATE_LIMIT_FILINGS_PER_MINUTE
+        )
 
 
 class TestRedisOutageAfterStartup:
@@ -162,6 +179,8 @@ class TestRedisOutageAfterStartup:
         assert request.state.rate_limit["remaining"] == 4 and broken.calls == 1
 
     def test_working_redis_path_does_not_touch_in_memory_store(self, redis_mode, monkeypatch):
-        monkeypatch.setattr(rate_limit, "moving_window", MovingWindowRateLimiter(storage_from_string("memory://")))
+        monkeypatch.setattr(
+            rate_limit, "moving_window", MovingWindowRateLimiter(storage_from_string("memory://"))
+        )
         rate_limit.check_rate_limit(_Req(user="u1"), 5, 60)
         assert not rate_limit.in_memory_limiter.requests

@@ -74,7 +74,9 @@ class QdrantChunkStore:
         params = self.client.get_collection(self.collection).config.params.vectors
         return int(params[DENSE].size)
 
-    def ensure_collection(self, dimension: int, embedding_model: Mapping[str, Any] | None = None) -> None:
+    def ensure_collection(
+        self, dimension: int, embedding_model: Mapping[str, Any] | None = None
+    ) -> None:
         """Create the collection and payload indexes if missing; verify the dimension otherwise."""
         if self.exists():
             if self.dimension() != dimension:
@@ -92,7 +94,9 @@ class QdrantChunkStore:
             return
         self.client.create_collection(
             self.collection,
-            vectors_config={DENSE: models.VectorParams(size=dimension, distance=models.Distance.COSINE)},
+            vectors_config={
+                DENSE: models.VectorParams(size=dimension, distance=models.Distance.COSINE)
+            },
             sparse_vectors_config={SPARSE: models.SparseVectorParams(modifier=models.Modifier.IDF)},
             metadata={"embedding_model": dict(embedding_model or {})},
         )
@@ -118,9 +122,9 @@ class QdrantChunkStore:
         if len(chunks) != len(vectors):
             raise ValueError(f"{len(chunks)} chunks versus {len(vectors)} vectors")
         for start in range(0, len(chunks), batch_size):
-            batch = chunks[start:start + batch_size]
+            batch = chunks[start : start + batch_size]
             points = []
-            for chunk, vector in zip(batch, vectors[start:start + batch_size]):
+            for chunk, vector in zip(batch, vectors[start : start + batch_size]):
                 indices, values = encode_document(chunk.get("embed_text") or chunk.get("text", ""))
                 points.append(
                     models.PointStruct(
@@ -166,7 +170,11 @@ class QdrantChunkStore:
                     self.collection,
                     points_selector=models.FilterSelector(
                         filter=models.Filter(
-                            must=[models.FieldCondition(key="doc_id", match=models.MatchValue(value=doc_id))],
+                            must=[
+                                models.FieldCondition(
+                                    key="doc_id", match=models.MatchValue(value=doc_id)
+                                )
+                            ],
                             must_not=[models.HasIdCondition(has_id=ids)],
                         )
                     ),
@@ -187,8 +195,11 @@ class QdrantChunkStore:
         offset = None
         while True:
             points, offset = self.client.scroll(
-                self.collection, limit=1000, offset=offset,
-                with_payload=["doc_id"], with_vectors=False,
+                self.collection,
+                limit=1000,
+                offset=offset,
+                with_payload=["doc_id"],
+                with_vectors=False,
             )
             found.update(p.payload["doc_id"] for p in points if p.payload and "doc_id" in p.payload)
             if offset is None:
@@ -202,8 +213,11 @@ class QdrantChunkStore:
         records = []
         for doc_id in self.doc_ids():
             points, _ = self.client.scroll(
-                self.collection, scroll_filter=self._filter({"doc_id": doc_id}), limit=1,
-                with_payload=[FILING_KEY], with_vectors=False,
+                self.collection,
+                scroll_filter=self._filter({"doc_id": doc_id}),
+                limit=1,
+                with_payload=[FILING_KEY],
+                with_vectors=False,
             )
             filing = (points[0].payload or {}).get(FILING_KEY) if points else None
             records.append({**(filing or {}), "doc_id": doc_id})
@@ -213,7 +227,11 @@ class QdrantChunkStore:
         offset = None
         while True:
             points, offset = self.client.scroll(
-                self.collection, limit=batch_size, offset=offset, with_payload=True, with_vectors=False
+                self.collection,
+                limit=batch_size,
+                offset=offset,
+                with_payload=True,
+                with_vectors=False,
             )
             yield from (self._chunk(p.payload) for p in points)
             if offset is None:
@@ -257,22 +275,36 @@ class QdrantChunkStore:
 
         if mode == "dense" or not indices:
             response = self.client.query_points(
-                self.collection, query=dense_vec, using=DENSE, query_filter=query_filter,
-                limit=k, with_payload=True,
+                self.collection,
+                query=dense_vec,
+                using=DENSE,
+                query_filter=query_filter,
+                limit=k,
+                with_payload=True,
             )
         elif mode == "sparse":
             response = self.client.query_points(
-                self.collection, query=sparse_vec, using=SPARSE, query_filter=query_filter,
-                limit=k, with_payload=True,
+                self.collection,
+                query=sparse_vec,
+                using=SPARSE,
+                query_filter=query_filter,
+                limit=k,
+                with_payload=True,
             )
         elif mode == "hybrid":
             response = self.client.query_points(
                 self.collection,
                 prefetch=[
-                    models.Prefetch(query=dense_vec, using=DENSE, filter=query_filter, limit=max(k, dense_k)),
-                    models.Prefetch(query=sparse_vec, using=SPARSE, filter=query_filter, limit=max(k, sparse_k)),
+                    models.Prefetch(
+                        query=dense_vec, using=DENSE, filter=query_filter, limit=max(k, dense_k)
+                    ),
+                    models.Prefetch(
+                        query=sparse_vec, using=SPARSE, filter=query_filter, limit=max(k, sparse_k)
+                    ),
                 ],
-                query=models.RrfQuery(rrf=models.Rrf(k=rrf_k, weights=[dense_weight, sparse_weight])),
+                query=models.RrfQuery(
+                    rrf=models.Rrf(k=rrf_k, weights=[dense_weight, sparse_weight])
+                ),
                 limit=k,
                 with_payload=True,
             )

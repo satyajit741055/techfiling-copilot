@@ -17,20 +17,33 @@ from ingestion.chunking.chunker import (
     write_chunks,
 )
 
-TABLE_MD = "| Item | 2025 | 2024 |\n|---|---|---|\n" + "\n".join(f"| Row {i} | {i * 10} | {i * 9} |" for i in range(40))
+TABLE_MD = "| Item | 2025 | 2024 |\n|---|---|---|\n" + "\n".join(
+    f"| Row {i} | {i * 10} | {i * 9} |" for i in range(40)
+)
 
 
 def _el(order, type_="paragraph", text="Body text.", section="Item 7", part="Part II", **extra):
     element = {
-        "doc_id": "D_10-K_2025", "order": order, "type": type_, "text": text,
-        "part": part, "section": section, "section_title": section,
+        "doc_id": "D_10-K_2025",
+        "order": order,
+        "type": type_,
+        "text": text,
+        "part": part,
+        "section": section,
+        "section_title": section,
     }
     element.update(extra)
     return element
 
 
 def _table(order, markdown=TABLE_MD, intro=None, **extra):
-    table = {"table_id": f"T{order}", "markdown": markdown, "intro": intro, "title": "Net sales", "units": "millions"}
+    table = {
+        "table_id": f"T{order}",
+        "markdown": markdown,
+        "intro": intro,
+        "title": "Net sales",
+        "units": "millions",
+    }
     table.update(extra)
     return _el(order, "table", None, table=table)
 
@@ -85,7 +98,10 @@ class TestLooksLikeHeading:
     def test_short_title_before_body(self):
         assert looks_like_heading(_el(0, text="Intelligent Cloud"), _el(1))
 
-    @pytest.mark.parametrize("text", ["Ends with period.", "Ends with colon:", "(a) enumerated", "1 numbered", "x" * 81, ""])
+    @pytest.mark.parametrize(
+        "text",
+        ["Ends with period.", "Ends with colon:", "(a) enumerated", "1 numbered", "x" * 81, ""],
+    )
     def test_rejected_texts(self, text):
         assert not looks_like_heading(_el(0, text=text), _el(1))
 
@@ -108,33 +124,51 @@ class TestChunkDocument:
     def test_never_crosses_section_boundary(self):
         els = [_el(0, section="Item 1"), _el(1, section="Item 1A"), _el(2, section="Item 1A")]
         chunks = chunk_document(els)
-        assert [(c["section"], c["element_orders"]) for c in chunks] == [("Item 1", [0]), ("Item 1A", [1, 2])]
+        assert [(c["section"], c["element_orders"]) for c in chunks] == [
+            ("Item 1", [0]),
+            ("Item 1A", [1, 2]),
+        ]
 
     def test_never_crosses_part_boundary(self):
         els = [_el(0, part="Part I", section="Item 1"), _el(1, part="Part II", section="Item 1")]
         assert [c["part"] for c in chunk_document(els)] == ["Part I", "Part II"]
 
     def test_heading_after_body_starts_new_chunk_and_is_in_breadcrumb(self):
-        els = [_el(0, text="First body."), _el(1, "heading", "Segment Results"), _el(2, text="Second body.")]
+        els = [
+            _el(0, text="First body."),
+            _el(1, "heading", "Segment Results"),
+            _el(2, text="Second body."),
+        ]
         chunks = chunk_document(els)
         assert [c["element_orders"] for c in chunks] == [[0], [2]]
         assert chunks[1]["headings"] == ["Segment Results"]
         assert chunks[1]["breadcrumb"].endswith("Segment Results")
 
     def test_headings_reset_at_new_section(self):
-        els = [_el(0, "heading", "Old heading", section="Item 1"), _el(1, section="Item 1"),
-               _el(2, section="Item 2"), ]
+        els = [
+            _el(0, "heading", "Old heading", section="Item 1"),
+            _el(1, section="Item 1"),
+            _el(2, section="Item 2"),
+        ]
         chunks = chunk_document(els)
         assert chunks[0]["headings"] == ["Old heading"] and chunks[1]["headings"] == []
 
     def test_pseudo_heading_starts_new_chunk_once_min_chars_reached(self):
-        els = [_el(0, text="Body sentence here. " * 15), _el(1, text="Greater China"), _el(2, text="China body text.")]
+        els = [
+            _el(0, text="Body sentence here. " * 15),
+            _el(1, text="Greater China"),
+            _el(2, text="China body text."),
+        ]
         chunks = chunk_document(els, min_chars=100)
         assert [c["element_orders"] for c in chunks] == [[0], [1, 2]]
         assert chunks[1]["text"].startswith("Greater China")
 
     def test_pseudo_headings_can_be_disabled(self):
-        els = [_el(0, text="Body sentence here. " * 15), _el(1, text="Greater China"), _el(2, text="China body text.")]
+        els = [
+            _el(0, text="Body sentence here. " * 15),
+            _el(1, text="Greater China"),
+            _el(2, text="China body text."),
+        ]
         assert len(chunk_document(els, min_chars=100, pseudo_headings=False)) == 1
 
     def test_oversized_paragraph_is_split(self):
@@ -154,13 +188,19 @@ class TestChunkDocument:
         els = [_el(0, text="Before."), _table(1, md, intro="Net sales were as follows. They rose.")]
         chunks = chunk_document(els)
         table = next(c for c in chunks if c["type"] == "table")
-        assert table["table_id"] == "T1" and table["units"] == "millions" and table["element_orders"] == [1]
+        assert (
+            table["table_id"] == "T1"
+            and table["units"] == "millions"
+            and table["element_orders"] == [1]
+        )
         assert table["table_context"] == "Net sales were as follows. They rose."
         assert table["text"] == f"{table['table_context']}\n\n{md}"
         assert [c["type"] for c in chunks] == ["text", "table"]
 
     def test_large_table_is_split_into_multiple_chunks(self):
-        chunks = [c for c in chunk_document([_table(0)], table_max_chars=300) if c["type"] == "table"]
+        chunks = [
+            c for c in chunk_document([_table(0)], table_max_chars=300) if c["type"] == "table"
+        ]
         assert len(chunks) > 1 and all(c["table_id"] == "T0" for c in chunks)
 
     def test_text_before_table_is_flushed_first(self):
@@ -183,8 +223,16 @@ class TestChunkDocument:
 class TestMergeTiny:
     def _chunks(self, *texts, section="Item 7"):
         return [
-            {"chunk_id": f"x{i}", "doc_id": "D", "section": section, "type": "text", "text": t,
-             "element_orders": [i], "breadcrumb": "bc", "embed_text": f"bc\n\n{t}"}
+            {
+                "chunk_id": f"x{i}",
+                "doc_id": "D",
+                "section": section,
+                "type": "text",
+                "text": t,
+                "element_orders": [i],
+                "breadcrumb": "bc",
+                "embed_text": f"bc\n\n{t}",
+            }
             for i, t in enumerate(texts)
         ]
 
@@ -192,7 +240,10 @@ class TestMergeTiny:
         merged = merge_tiny(self._chunks("tiny", "x" * 300), min_chars=200, max_chars=1000)
         assert len(merged) == 1
         assert merged[0]["text"] == "tiny\n\n" + "x" * 300 and merged[0]["element_orders"] == [0, 1]
-        assert merged[0]["embed_text"] == f"bc\n\n{merged[0]['text']}" and merged[0]["chunk_id"] == "D_c0000"
+        assert (
+            merged[0]["embed_text"] == f"bc\n\n{merged[0]['text']}"
+            and merged[0]["chunk_id"] == "D_c0000"
+        )
 
     def test_does_not_merge_when_over_max(self):
         assert len(merge_tiny(self._chunks("tiny", "x" * 300), min_chars=200, max_chars=100)) == 2
@@ -206,7 +257,9 @@ class TestMergeTiny:
         assert len(merge_tiny(chunks, min_chars=200, max_chars=1000)) == 2
 
     def test_large_chunks_are_untouched(self):
-        assert len(merge_tiny(self._chunks("x" * 300, "y" * 300), min_chars=200, max_chars=1000)) == 2
+        assert (
+            len(merge_tiny(self._chunks("x" * 300, "y" * 300), min_chars=200, max_chars=1000)) == 2
+        )
 
 
 class TestFileHelpers:
@@ -224,7 +277,9 @@ class TestFileHelpers:
         assert list_doc_ids(tmp_path) == ["A_10-K_2025", "B_10-K_2025"]
 
     def test_chunk_doc_id_and_write_chunks_roundtrip(self, tmp_path):
-        self._write_elements(tmp_path, "D_10-K_2025", [_el(0, text="Body. " * 50), _el(1, text="More. " * 50)])
+        self._write_elements(
+            tmp_path, "D_10-K_2025", [_el(0, text="Body. " * 50), _el(1, text="More. " * 50)]
+        )
         chunks = chunk_doc_id("D_10-K_2025", tmp_path)
         out = tmp_path / "out.jsonl"
         write_chunks(chunks, out)

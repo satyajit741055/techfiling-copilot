@@ -23,6 +23,7 @@ class LLMResponse:
         latency_seconds: Time taken for generation
         raw_response: Original provider-specific response object
     """
+
     content: str
     model: str
     prompt_tokens: int
@@ -45,6 +46,7 @@ class GeneratedAnswer:
         is_valid: Whether the answer passed validation
         validation_errors: List of validation error messages
     """
+
     answer: str | None
     explanation: str
     citations: list[str]
@@ -81,6 +83,7 @@ class GenerationResult:
         context: Formatted context string (for debugging)
         raw_response: Raw LLM response (for debugging)
     """
+
     # Input
     question: str
     doc_id: str | None

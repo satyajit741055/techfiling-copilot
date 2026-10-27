@@ -81,9 +81,7 @@ def setup_logging(
         if format_string is None:
             if settings.is_dev:
                 # More verbose format for development
-                format_string = (
-                    "%(asctime)s | %(levelname)-8s | %(name)s:%(lineno)d | %(message)s"
-                )
+                format_string = "%(asctime)s | %(levelname)-8s | %(name)s:%(lineno)d | %(message)s"
             else:
                 # Cleaner format for production
                 format_string = "%(asctime)s | %(levelname)-8s | %(message)s"

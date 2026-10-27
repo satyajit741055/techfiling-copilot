@@ -14,31 +14,23 @@ from pydantic import BaseModel, ConfigDict, Field
 # REQUEST MODELS
 # =============================================================================
 
+
 class QuestionRequest(BaseModel):
     """Request body for POST /questions."""
 
     question: str = Field(
-        ...,
-        min_length=3,
-        max_length=2000,
-        description="The question to ask about the filing"
+        ..., min_length=3, max_length=2000, description="The question to ask about the filing"
     )
-    doc_id: str = Field(
-        ...,
-        description="Filing ID to query, e.g., 'AAPL_10-K_2025'"
-    )
+    doc_id: str = Field(..., description="Filing ID to query, e.g., 'AAPL_10-K_2025'")
     context_k: int | None = Field(
-        None,
-        ge=1,
-        le=20,
-        description="Number of context chunks to use (default: from settings)"
+        None, ge=1, le=20, description="Number of context chunks to use (default: from settings)"
     )
 
     model_config = ConfigDict(
         json_schema_extra={
             "example": {
                 "question": "What was Apple's total net sales in fiscal 2025?",
-                "doc_id": "AAPL_10-K_2025"
+                "doc_id": "AAPL_10-K_2025",
             }
         }
     )
@@ -47,6 +39,7 @@ class QuestionRequest(BaseModel):
 # =============================================================================
 # RESPONSE MODELS
 # =============================================================================
+
 
 class SourceInfo(BaseModel):
     """Information about a source chunk used in the answer."""
@@ -60,7 +53,9 @@ class SourceInfo(BaseModel):
 
     # Optional metadata
     section: str | None = Field(None, description="Filing section")
-    section_title: str | None = Field(None, description="Filing section title, e.g., 'Legal Proceedings'")
+    section_title: str | None = Field(
+        None, description="Filing section title, e.g., 'Legal Proceedings'"
+    )
     table_id: str | None = Field(None, description="Table ID if chunk is a table")
     breadcrumb: str | None = Field(None, description="Full path: Doc > Part > Section > Title")
 
@@ -75,8 +70,7 @@ class AnswerInfo(BaseModel):
     insufficient_context: bool = Field(..., description="True if model abstained")
     is_valid: bool = Field(True, description="Whether answer passed validation")
     validation_errors: list[str] = Field(
-        default_factory=list,
-        description="Validation error messages"
+        default_factory=list, description="Validation error messages"
     )
 
 
@@ -121,18 +115,20 @@ class QuestionResponse(BaseModel):
         for src in result.sources:
             # Map element_orders to elements (API uses 'elements', pipeline uses 'element_orders')
             elements = src.get("elements") or src.get("element_orders") or []
-            sources.append(SourceInfo(
-                source_id=src.get("source_id", ""),
-                doc_id=src.get("doc_id", ""),
-                chunk_type=src.get("type", "text"),  # Pipeline uses 'type', not 'chunk_type'
-                score=src.get("score") or 0.0,
-                elements=elements,
-                text=src.get("text", ""),
-                section=src.get("section") or src.get("section_title"),
-                section_title=src.get("section_title"),
-                table_id=src.get("table_id"),
-                breadcrumb=src.get("breadcrumb"),
-            ))
+            sources.append(
+                SourceInfo(
+                    source_id=src.get("source_id", ""),
+                    doc_id=src.get("doc_id", ""),
+                    chunk_type=src.get("type", "text"),  # Pipeline uses 'type', not 'chunk_type'
+                    score=src.get("score") or 0.0,
+                    elements=elements,
+                    text=src.get("text", ""),
+                    section=src.get("section") or src.get("section_title"),
+                    section_title=src.get("section_title"),
+                    table_id=src.get("table_id"),
+                    breadcrumb=src.get("breadcrumb"),
+                )
+            )
 
         return cls(
             question=result.question,
@@ -152,6 +148,7 @@ class QuestionResponse(BaseModel):
 # FILINGS MODELS
 # =============================================================================
 
+
 class FilingInfo(BaseModel):
     """Information about an available filing."""
 
@@ -170,7 +167,7 @@ class FilingInfo(BaseModel):
                 "ticker": "AAPL",
                 "form": "10-K",
                 "fiscal_year": 2025,
-                "period_end": "September 27, 2025"
+                "period_end": "September 27, 2025",
             }
         }
     )
@@ -185,6 +182,7 @@ class FilingsResponse(BaseModel):
 # =============================================================================
 # HEALTH MODELS
 # =============================================================================
+
 
 class HealthResponse(BaseModel):
     """Response for GET /health."""

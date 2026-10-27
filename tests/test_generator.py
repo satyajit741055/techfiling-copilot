@@ -63,13 +63,21 @@ def _generator(llm: FakeLLM, retriever: FakeRetriever | None = None) -> AnswerGe
 
 
 GOOD = json.dumps(
-    {"answer": "$391 billion", "explanation": "e", "citations": ["S1"], "calculation": None, "insufficient_context": False}
+    {
+        "answer": "$391 billion",
+        "explanation": "e",
+        "citations": ["S1"],
+        "calculation": None,
+        "insufficient_context": False,
+    }
 )
 
 
 class TestFormatContext:
     def test_source_ids_are_one_based_and_ordered(self):
-        context, sources = format_context([SearchResult(0.9, _chunk(0)), SearchResult(0.5, _chunk(1))])
+        context, sources = format_context(
+            [SearchResult(0.9, _chunk(0)), SearchResult(0.5, _chunk(1))]
+        )
         assert [s["source_id"] for s in sources] == ["S1", "S2"]
         assert context.index('id="S1"') < context.index('id="S2"')
 
@@ -84,7 +92,9 @@ class TestFormatContext:
     def test_source_block_attributes(self):
         block = format_source(3, _chunk(5, type="table", table_id="T1", units="millions"))
         assert block.startswith('<source id="S3" doc="AAPL_10-K_2025" section="MD&A" type="table"')
-        assert 'elements="[5]"' in block and 'table_id="T1"' in block and 'units="millions"' in block
+        assert (
+            'elements="[5]"' in block and 'table_id="T1"' in block and 'units="millions"' in block
+        )
         assert block.endswith("chunk text 5\n</source>")
 
     def test_section_falls_back_to_unknown(self):
@@ -104,17 +114,23 @@ class TestPrompts:
             get_system_prompt("nope")
 
     def test_user_prompt_contains_question_and_sources(self):
-        prompt = build_user_prompt("What is X?", "<source id=\"S1\">t</source>")
+        prompt = build_user_prompt("What is X?", '<source id="S1">t</source>')
         assert "What is X?" in prompt and '<source id="S1">' in prompt
 
 
 class TestGenerate:
     def test_happy_path(self):
         llm = FakeLLM(GOOD)
-        result = _generator(llm).generate("Q?", [SearchResult(0.9, _chunk(0))], doc_id="AAPL_10-K_2025")
+        result = _generator(llm).generate(
+            "Q?", [SearchResult(0.9, _chunk(0))], doc_id="AAPL_10-K_2025"
+        )
         assert result.answer.answer == "$391 billion" and result.answer.is_valid
         assert result.doc_id == "AAPL_10-K_2025" and result.model == "fake-model"
-        assert (result.prompt_tokens, result.completion_tokens, result.latency_seconds) == (11, 7, 0.25)
+        assert (result.prompt_tokens, result.completion_tokens, result.latency_seconds) == (
+            11,
+            7,
+            0.25,
+        )
         assert result.context_k == 1 and result.raw_response == GOOD
         assert [s["source_id"] for s in result.sources] == ["S1"]
 
@@ -139,7 +155,9 @@ class TestGenerate:
         assert any("S7" in e for e in result.answer.validation_errors)
 
     def test_unparseable_llm_output_is_invalid_not_an_exception(self):
-        result = _generator(FakeLLM("sorry, I cannot")).generate("Q?", [SearchResult(0.9, _chunk(0))])
+        result = _generator(FakeLLM("sorry, I cannot")).generate(
+            "Q?", [SearchResult(0.9, _chunk(0))]
+        )
         assert not result.answer.is_valid and result.answer.answer is None
 
     def test_llm_errors_propagate(self):
@@ -191,7 +209,9 @@ class TestRetrieverSelection:
         monkeypatch.setattr(hybrid, "HybridRetrieverWithReranker", Stub)
         generator = AnswerGenerator(_config(), llm_client=FakeLLM(GOOD), root="/project")
         assert isinstance(generator.retriever, Stub)
-        assert built["rerank_k"] == 2 and built["run_directory"].replace("\\", "/").startswith("/project")
+        assert built["rerank_k"] == 2 and built["run_directory"].replace("\\", "/").startswith(
+            "/project"
+        )
 
     def test_qdrant_store_builds_qdrant_retriever(self, monkeypatch):
         import retriever.qdrant_retriever as qdrant

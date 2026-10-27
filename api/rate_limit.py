@@ -37,6 +37,7 @@ logger = logging.getLogger(__name__)
 # RATE LIMIT KEY FUNCTIONS
 # =============================================================================
 
+
 def get_rate_limit_key(request: Request) -> str:
     """
     Get rate limit key based on authentication status.
@@ -59,6 +60,7 @@ def get_rate_limit_key(request: Request) -> str:
 # =============================================================================
 # IN-MEMORY FALLBACK (DEV ONLY)
 # =============================================================================
+
 
 class InMemoryRateLimiter:
     """
@@ -123,24 +125,30 @@ in_memory_limiter = InMemoryRateLimiter()
 # RATE LIMITER SETUP
 # =============================================================================
 
+
 def get_redis_storage():
     """
     Get Redis storage URL or None for in-memory fallback.
     """
     redis_url = api_settings.RATE_LIMIT_REDIS_URL
     if not redis_url:
-        logger.info("Rate limit Redis URL not configured, using in-memory storage (development mode)")
+        logger.info(
+            "Rate limit Redis URL not configured, using in-memory storage (development mode)"
+        )
         return None
 
     try:
         # Test connection
         import redis
+
         client = redis.from_url(redis_url)
         client.ping()
         logger.info(f"Rate limiting using Redis at {redis_url}")
         return redis_url
     except Exception as e:
-        logger.warning(f"Failed to connect to Redis for rate limiting: {e}. Falling back to in-memory storage.")
+        logger.warning(
+            f"Failed to connect to Redis for rate limiting: {e}. Falling back to in-memory storage."
+        )
         return None
 
 
@@ -152,12 +160,15 @@ limiter = Limiter(
     strategy="moving-window",  # More accurate than fixed-window
     default_limits=[],  # No default limits; we use custom dependencies
 )
-moving_window = MovingWindowRateLimiter(storage_from_string(redis_url if redis_url else "memory://"))
+moving_window = MovingWindowRateLimiter(
+    storage_from_string(redis_url if redis_url else "memory://")
+)
 
 
 # =============================================================================
 # CUSTOM RATE LIMIT CHECK
 # =============================================================================
+
 
 def check_rate_limit(
     request: Request,
@@ -190,9 +201,13 @@ def check_rate_limit(
             stats = moving_window.get_window_stats(item, scoped_key)
             outcome = allowed, stats.remaining, math.ceil(stats.reset_time)
         except Exception as exc:
-            logger.warning(f"Redis rate limiter unavailable ({type(exc).__name__}); using in-memory limits")
+            logger.warning(
+                f"Redis rate limiter unavailable ({type(exc).__name__}); using in-memory limits"
+            )
     if outcome is None:
-        allowed, info = in_memory_limiter.is_allowed(f"{scope}:{limit}/{period}:{key}", limit, period)
+        allowed, info = in_memory_limiter.is_allowed(
+            f"{scope}:{limit}/{period}:{key}", limit, period
+        )
         outcome = allowed, info["remaining"], info["reset"]
     allowed, remaining, reset = outcome
 
@@ -217,6 +232,7 @@ def check_rate_limit(
 # =============================================================================
 # FASTAPI DEPENDENCY
 # =============================================================================
+
 
 def rate_limit_dependency(
     limit: int,
