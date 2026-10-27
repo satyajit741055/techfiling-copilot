@@ -18,7 +18,7 @@ import math
 import threading
 import time
 from collections import defaultdict
-from typing import Literal
+from typing import Callable, Literal
 
 from fastapi import HTTPException, Request, status
 from limits import RateLimitItemPerSecond
@@ -174,7 +174,7 @@ def check_rate_limit(
     request: Request,
     limit: int,
     period: int,
-    key_func: callable = get_rate_limit_key,
+    key_func: Callable[[Request], str] = get_rate_limit_key,
     scope: Literal["ip", "global"] = "ip",
 ) -> None:
     """

@@ -124,7 +124,7 @@ def load_records(path: Path) -> list[dict[str, Any]]:
     files = sorted(path.glob("*.jsonl")) if path.is_dir() else [path]
     if not files:
         raise FileNotFoundError(f"No .jsonl files in {path}")
-    records = []
+    records: list[dict[str, Any]] = []
     for file in files:
         with file.open(encoding="utf-8") as fh:
             records.extend(json.loads(line) for line in fh if line.strip())

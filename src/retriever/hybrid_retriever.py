@@ -934,7 +934,7 @@ def main() -> None:
 
     if args.mode == "bm25":
         logger.info("Loading BM25 retriever...")
-        retriever = BM25Retriever(args.run_directory)
+        retriever: Any = BM25Retriever(args.run_directory)
         results = retriever.search(
             args.query,
             k=args.k,

@@ -48,7 +48,7 @@ def _load_filings_from_disk() -> list[dict]:
         List of filing metadata dictionaries
     """
     parsed_dir = api_settings.PARSED_DATA_DIR
-    filings = []
+    filings: list[dict] = []
 
     if not parsed_dir.exists():
         logger.warning(f"Parsed data directory not found: {parsed_dir}")

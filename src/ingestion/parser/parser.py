@@ -206,7 +206,7 @@ def doc_metadata(soup: BeautifulSoup, path: Path) -> dict:
     """Extract document-level metadata (company, ticker, CIK, form, fiscal year, period end) from DEI tags."""
     dei = {}
     for t in soup.find_all("ix:nonnumeric"):
-        name = t.get("name", "")
+        name = str(t.get("name", ""))
         if name.startswith("dei:") and name not in dei:
             dei[name] = clean(t.get_text())
     company = dei.get("dei:EntityRegistrantName") or path.stem.split("__")[0].replace("_", " ")
@@ -290,7 +290,7 @@ def facts_records(facts: dict, contexts: dict, doc_id: str) -> list[dict]:
 
 def strip_noise(soup: BeautifulSoup) -> Counter:
     """Remove hidden/absolutely-positioned blocks and normalize <br> and block tags; return counts of what was removed."""
-    removed = Counter()
+    removed: Counter = Counter()
     for t in soup.find_all(style=re.compile(r"display\s*:\s*none", re.I)):
         removed["hidden_blocks"] += 1
         t.decompose()
@@ -380,7 +380,8 @@ def raw_rows(table) -> list[list[RawCell]]:
     Returns:
         A list of rows, each a list of RawCells sorted left-to-right by start column.
     """
-    rows, carried = [], defaultdict(dict)  # row -> {col: copy of a rowspan cell from above}
+    rows: list = []
+    carried: defaultdict = defaultdict(dict)  # row -> {col: copy of a rowspan cell from above}
     trs = [tr for tr in table.find_all("tr") if tr.find_parent("table") is table]
     for r, tr in enumerate(trs):
         col, cells = 0, []
@@ -601,7 +602,8 @@ def project(cells, groups, is_header: bool):
         A tuple ``(projected, conflicts)`` where ``projected`` is a list of cell lists,
         one per column group, and ``conflicts`` is the number of alignment problems found.
     """
-    out, conflicts = [[] for _ in groups], 0
+    out: list[list] = [[] for _ in groups]
+    conflicts = 0
     for c in cells:
         s, e = c.start, c.start + c.span
         hits = [j for j, (gs, ge) in enumerate(groups) if s < ge and gs < e]
@@ -624,7 +626,7 @@ def project(cells, groups, is_header: bool):
 
 def column_names(header_rows, groups) -> list[str]:
     """Build each column's name by stacking the header-row fragments that project onto that column group."""
-    parts = [[] for _ in groups]
+    parts: list[list] = [[] for _ in groups]
     for cells in header_rows:
         cells = [
             c for c in cells if not UNITS_ONLY_RE.match(c.text)
@@ -801,7 +803,7 @@ def table_context(
     Returns:
         A tuple ``(title, units, intro)``; any element may be ``None`` if not found.
     """
-    cands = prev[-CONFIG["title_lookback"] :][::-1]  # nearest first
+    cands = prev[-int(CONFIG["title_lookback"]) :][::-1]  # nearest first
     units = next(
         (t if is_units_line(t) else m.group(0) for t, _ in cands if (m := UNITS_RE.search(t))), None
     )
@@ -850,7 +852,10 @@ def validate(rows: list[Row], columns: list[Column], facts: dict, contexts: dict
         ``period_purity``, ``concept_purity``, ``header_period_agreement``); keys are omitted
         or ``None`` when there are no fact-backed cells to measure.
     """
-    by_col_p, by_row_p, by_col_c, by_row_c = (defaultdict(Counter) for _ in range(4))
+    by_col_p: defaultdict = defaultdict(Counter)
+    by_row_p: defaultdict = defaultdict(Counter)
+    by_col_c: defaultdict = defaultdict(Counter)
+    by_row_c: defaultdict = defaultdict(Counter)
     n = n_value = value_ok = sign_ok = 0
     for i, r in enumerate(rows):
         for j, c in enumerate(r.cells, start=1):
@@ -1070,7 +1075,8 @@ def parse_document(path: Path):
 
     doc = Document(**meta)
     part, section, section_title = "Front Matter", "Cover Page", "Cover Page"
-    pending_title, prev_text, n_tables = False, [], 0
+    pending_title, n_tables = False, 0
+    prev_text: list = []
 
     def add(etype, text=None, table=None):
         doc.elements.append(

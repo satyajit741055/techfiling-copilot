@@ -321,7 +321,7 @@ class AnswerGenerator:
             try:
                 return self.llm_client.generate(self.system_prompt, user_prompt), attempts
             except (ValueError, ImportError, TypeError) as error:
-                error.llm_attempts = attempts  # type: ignore[attr-defined]
+                error.llm_attempts = attempts  # type: ignore[union-attr]
                 raise
             except Exception as error:
                 if attempts > max_retries:

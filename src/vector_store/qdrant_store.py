@@ -4,7 +4,7 @@ from __future__ import annotations
 
 import uuid
 from collections.abc import Iterable, Mapping, Sequence
-from typing import Any
+from typing import Any, cast
 
 import numpy as np
 from qdrant_client import QdrantClient, models
@@ -72,7 +72,7 @@ class QdrantChunkStore:
 
     def dimension(self) -> int:
         params = self.client.get_collection(self.collection).config.params.vectors
-        return int(params[DENSE].size)
+        return int(params[DENSE].size)  # type: ignore[index]
 
     def ensure_collection(
         self, dimension: int, embedding_model: Mapping[str, Any] | None = None
@@ -175,7 +175,7 @@ class QdrantChunkStore:
                                     key="doc_id", match=models.MatchValue(value=doc_id)
                                 )
                             ],
-                            must_not=[models.HasIdCondition(has_id=ids)],
+                            must_not=[models.HasIdCondition(has_id=cast(Any, ids))],
                         )
                     ),
                     wait=True,

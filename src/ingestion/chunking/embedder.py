@@ -288,7 +288,7 @@ def embed_and_save(
 
 def load_chunks(chunks_dir: Path) -> list[dict]:
     """Load all chunk JSON Lines files from a directory in filename order."""
-    chunks = []
+    chunks: list[dict] = []
     for path in sorted(chunks_dir.glob("*.chunks.jsonl")):
         with path.open(encoding="utf-8") as fh:
             chunks.extend(json.loads(line) for line in fh if line.strip())

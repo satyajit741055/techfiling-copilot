@@ -8,7 +8,7 @@ This enables per-user rate limiting and user tracking.
 import logging
 import threading
 import time
-from typing import Annotated
+from typing import Annotated, Any
 
 import httpx
 from fastapi import Header, HTTPException, Request, status
@@ -99,9 +99,11 @@ def verify_supabase_token(token: str) -> AuthUser:
         header = jwt.get_unverified_header(token)
         alg = header.get("alg")
         if alg == "HS256" and api_settings.SUPABASE_JWT_SECRET:
-            key, algorithms = api_settings.SUPABASE_JWT_SECRET, ["HS256"]
+            key: Any = api_settings.SUPABASE_JWT_SECRET
+            algorithms = ["HS256"]
         elif alg in ASYMMETRIC_ALGORITHMS and api_settings.SUPABASE_URL:
-            key, algorithms = _get_signing_key(header.get("kid")), [alg]
+            key = _get_signing_key(header.get("kid"))
+            algorithms = [alg]
         else:
             raise JWTError(f"Unsupported or unconfigured token algorithm: {alg}")
 

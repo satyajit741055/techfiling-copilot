@@ -34,7 +34,11 @@ class HuggingFaceApiEmbedder:
         if client is None:
             from huggingface_hub import InferenceClient
 
-            client = InferenceClient(provider=provider, api_key=api_key, timeout=timeout)
+            client = InferenceClient(
+                provider=provider,  # type: ignore[arg-type]
+                api_key=api_key,
+                timeout=timeout,
+            )
         self.client = client
         self.model_name = model_name
         self.query_prefix = query_prefix

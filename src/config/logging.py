@@ -75,7 +75,7 @@ def setup_logging(
 
     # Determine formatter based on settings
     if settings.LOG_FORMAT == "json":
-        formatter = JSONFormatter()
+        formatter: logging.Formatter = JSONFormatter()
     else:
         # Text format
         if format_string is None:
@@ -88,7 +88,7 @@ def setup_logging(
         formatter = logging.Formatter(format_string, datefmt="%Y-%m-%d %H:%M:%S")
 
     # Configure handlers
-    handlers = []
+    handlers: list[logging.Handler] = []
 
     # Filing text contains characters (e.g. checkboxes) the Windows console codec cannot encode
     if hasattr(sys.stdout, "reconfigure"):

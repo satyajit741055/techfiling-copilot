@@ -104,7 +104,8 @@ def concise_table_intro(intro: str | None, max_chars: int = 300) -> str:
     sentences = [s.strip() for s in SENT_SPLIT.split(intro) if s.strip()]
     if not sentences:
         return intro[-max_chars:]
-    selected, total = [], 0
+    selected: list[str] = []
+    total = 0
     for sentence in reversed(sentences):
         additional = len(sentence) + (1 if selected else 0)
         if selected and total + additional > max_chars:
@@ -133,7 +134,8 @@ def split_table_markdown(md: str, max_chars: int) -> list[str]:
     lines = md.split("\n")
     sep = next(i for i, line in enumerate(lines) if re.fullmatch(r"\|[-| ]+\|", line))
     head, rows = lines[: sep + 1], lines[sep + 1 :]
-    pieces, cur = [], []
+    pieces: list[str] = []
+    cur: list[str] = []
     for r in rows:
         if cur and len("\n".join(head + cur + [r])) > max_chars:
             pieces.append("\n".join(head + cur))
@@ -172,8 +174,11 @@ def chunk_document(
         Chunks never cross part/section boundaries; oversized sentences and table
         rows remain atomic and may exceed their preferred limits.
     """
-    chunks, buf, buf_orders, headings = [], [], [], []
-    state = {"key": None, "first": None}
+    chunks: list[dict] = []
+    buf: list[str] = []
+    buf_orders: list[int] = []
+    headings: list[str] = []
+    state: dict = {"key": None, "first": None}
 
     def emit(type_, text, orders, ref, extra=None):
         """Create a chunk from buffered content and append it to the result."""
@@ -271,7 +276,7 @@ def merge_tiny(
         Compacted chunks with sequentially reassigned chunk IDs. Input chunk
         dictionaries retained in the result are modified in place.
     """
-    out = []
+    out: list[dict] = []
     for c in chunks:
         p = out[-1] if out else None
         if (

@@ -60,12 +60,9 @@ jobs:
         run: uv run ruff format --check .
 
   # Job 2: Type checking with mypy
-  # DISABLED: Codebase has 111 type errors that need to be fixed incrementally
-  # To enable: Remove the 'if: false' line
   type-check:
     name: Type Check (mypy)
     runs-on: ubuntu-latest
-    if: false  # Disabled until type errors are fixed
 
     steps:
       # Step 1: Checkout the code

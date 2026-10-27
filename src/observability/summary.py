@@ -42,7 +42,8 @@ def distribution(values: Iterable[float]) -> dict[str, float | int | None]:
 def split_cold_warm(records: list[dict[str, Any]], warmup: int) -> tuple[list, list]:
     """Cold = flagged by the service (model load / first requests) or within the first `warmup`
     records of the run. Everything else is warm."""
-    cold, warm = [], []
+    cold: list[dict[str, Any]] = []
+    warm: list[dict[str, Any]] = []
     for index, record in enumerate(records):
         (cold if record.get("is_cold") or index < warmup else warm).append(record)
     return cold, warm
