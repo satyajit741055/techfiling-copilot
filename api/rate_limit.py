@@ -15,6 +15,7 @@ Features:
 
 import logging
 import math
+import threading
 import time
 from collections import defaultdict
 from typing import Literal
@@ -25,6 +26,7 @@ from limits.storage import storage_from_string
 from limits.strategies import MovingWindowRateLimiter
 from slowapi import Limiter
 from slowapi.util import get_remote_address
+from starlette.concurrency import run_in_threadpool
 
 from api.config import api_settings
 
@@ -67,6 +69,7 @@ class InMemoryRateLimiter:
 
     def __init__(self):
         self.requests = defaultdict(list)  # IP -> list of timestamps
+        self._lock = threading.Lock()
 
     def is_allowed(self, key: str, limit: int, period: int) -> tuple[bool, dict]:
         """
@@ -80,13 +83,18 @@ class InMemoryRateLimiter:
         Returns:
             (allowed, info) tuple where info contains remaining/reset time
         """
-        import time
+        with self._lock:
+            return self._is_allowed(key, limit, period)
 
+    def _is_allowed(self, key: str, limit: int, period: int) -> tuple[bool, dict]:
         now = time.time()
         window_start = now - period
 
         # Clean old requests
         self.requests[key] = [ts for ts in self.requests[key] if ts > window_start]
+        if len(self.requests) > 10_000:
+            for stale in [k for k, v in self.requests.items() if not v or v[-1] <= window_start]:
+                del self.requests[stale]
 
         # Check limit
         current_count = len(self.requests[key])
@@ -171,7 +179,7 @@ def check_rate_limit(
     Raises:
         HTTPException: If rate limit is exceeded
     """
-    key = key_func(request)
+    key = "global" if scope == "global" else key_func(request)
 
     if redis_url:
         item = RateLimitItemPerSecond(limit, period)
@@ -180,7 +188,7 @@ def check_rate_limit(
         stats = moving_window.get_window_stats(item, scoped_key)
         remaining, reset = stats.remaining, math.ceil(stats.reset_time)
     else:
-        allowed, info = in_memory_limiter.is_allowed(key, limit, period)
+        allowed, info = in_memory_limiter.is_allowed(f"{scope}:{limit}/{period}:{key}", limit, period)
         remaining, reset = info["remaining"], info["reset"]
 
     request.state.rate_limit = {"limit": limit, "remaining": remaining, "reset": reset}
@@ -226,6 +234,6 @@ def rate_limit_dependency(
     """
 
     async def check(request: Request):
-        check_rate_limit(request, limit, period, scope=scope)
+        await run_in_threadpool(check_rate_limit, request, limit, period, scope=scope)
 
     return check

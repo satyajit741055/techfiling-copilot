@@ -140,13 +140,8 @@ class LLMClient:
         """Initialize Ollama client for local LLM with CUDA."""
         try:
             import ollama
-            # Configure Ollama host from settings
             ollama_host = self._settings.OLLAMA_HOST
-            if ollama_host and ollama_host != "http://localhost:11434":
-                # Set environment variable for non-default host
-                import os
-                os.environ["OLLAMA_HOST"] = ollama_host
-            self._client = ollama
+            self._client = ollama.Client(host=ollama_host) if ollama_host else ollama
             logger.info(f"Ollama client initialized (model: {self.model}, host: {ollama_host})")
         except ImportError:
             raise ImportError("Install ollama: pip install ollama")
