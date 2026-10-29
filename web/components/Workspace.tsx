@@ -43,7 +43,7 @@ export function Workspace() {
   const [cooldown, setCooldown] = useState(0);
   const [quota, setQuota] = useState<Quota | null>(null);
 
-  const [history, setHistory] = useState<HistoryEntry[]>([]);
+  const [history, setHistory] = useState<HistoryEntry[]>(() => loadHistory(userId));
   const [historyOpen, setHistoryOpen] = useState(false);
 
   const handleError = useCallback(
@@ -65,10 +65,6 @@ export function Workspace() {
       .catch(handleError)
       .finally(() => setInitialLoading(false));
   }, [handleError]);
-
-  useEffect(() => {
-    setHistory(loadHistory(userId));
-  }, [userId]);
 
   useEffect(() => {
     if (cooldown <= 0) return;

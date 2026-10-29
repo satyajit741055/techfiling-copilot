@@ -11,7 +11,8 @@ build/
 dist/
 wheels/
 *.egg-info/
-
+docs/ARCHITECTURE.md
+agentic_plan.md
 .venv/
 venv/
 logs/

@@ -178,9 +178,9 @@ QDRANT_URL=http://127.0.0.1:6333
 QDRANT_COLLECTION=filings_bge_base_v1
 ```
 
-New filings ingested with `VECTOR_STORE=qdrant` are indexed automatically. See `DOCKER.md` for the Docker setup (including a data-free backend image with `INCLUDE_DATA=false`) and `study/12_qdrant_vector_store.md` for the rationale and tradeoffs.
+New filings ingested with `VECTOR_STORE=qdrant` are indexed automatically. See `DOCKER.md` for the Docker setup, including a data-free backend image with `INCLUDE_DATA=false`.
 
-See `.env.example` for all options and `study/11_model_execution_modes.md` for backend selection, component overrides, reranker endpoint formats, and embedding-index compatibility.
+See `.env.example` for all model execution, component override, reranker endpoint, and embedding-index compatibility options.
 
 ## API Endpoints
 
@@ -427,6 +427,12 @@ uv run ruff check .
 
 # Type check
 uv run mypy src api
+
+# Frontend checks
+cd web
+npm run lint
+npm run typecheck
+npm run build
 ```
 
 ## Roadmap
@@ -440,7 +446,7 @@ uv run mypy src api
 
 ## License
 
-This project is for portfolio/demonstration purposes.
+This project is provided for portfolio and demonstration purposes. No open-source license is currently granted; all rights are reserved by the repository owner.
 
 ## Acknowledgments
 
