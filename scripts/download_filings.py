@@ -12,7 +12,7 @@ from typing import Any
 from urllib import error, request
 
 ROOT = Path(__file__).resolve().parents[1]
-DEFAULT_OUTPUT_DIR = ROOT / "data" / "raw_htm"
+DEFAULT_OUTPUT_DIR = ROOT / "data" / "raw_html"
 COMPANY_CIKS = {
     "AAPL": "0000320193",
     "MSFT": "0000789019",
@@ -47,7 +47,9 @@ def get_json(url: str, user_agent: str) -> dict[str, Any]:
     return json.loads(fetch(url, user_agent, "application/json").decode("utf-8"))
 
 
-def extract_10k_filings(submission: dict[str, Any]) -> list[dict[str, str]]:
+def extract_10k_filings(
+    submission: dict[str, Any], start_year: int | None = None, end_year: int | None = None
+) -> list[dict[str, str]]:
     recent = submission["filings"]["recent"] if "filings" in submission else submission
     filings = []
     for form, accession, document, filing_date, report_date in zip(
@@ -59,9 +61,14 @@ def extract_10k_filings(submission: dict[str, Any]) -> list[dict[str, str]]:
         strict=True,
     ):
         if form == "10-K":
+            fiscal_year = int((report_date or filing_date)[:4])
+            if start_year is not None and fiscal_year < start_year:
+                continue
+            if end_year is not None and fiscal_year > end_year:
+                continue
             filings.append(
                 {
-                    "fiscal_year": (report_date or filing_date)[:4],
+                    "fiscal_year": str(fiscal_year),
                     "form": form,
                     "accession_number": accession,
                     "primary_document": document,
@@ -72,15 +79,23 @@ def extract_10k_filings(submission: dict[str, Any]) -> list[dict[str, str]]:
     return filings
 
 
-def list_filings(cik: str, count: int, user_agent: str) -> list[dict[str, str]]:
+def list_filings(
+    cik: str,
+    count: int,
+    user_agent: str,
+    start_year: int | None = None,
+    end_year: int | None = None,
+) -> list[dict[str, str]]:
     submission = get_json(f"{SEC_SUBMISSIONS_URL}/CIK{cik}.json", user_agent)
-    filings = extract_10k_filings(submission)
+    filings = extract_10k_filings(submission, start_year, end_year)
     for historical_file in submission.get("filings", {}).get("files", []):
         if len(filings) >= count:
             break
         filings.extend(
             extract_10k_filings(
-                get_json(f"{SEC_SUBMISSIONS_URL}/{historical_file['name']}", user_agent)
+                get_json(f"{SEC_SUBMISSIONS_URL}/{historical_file['name']}", user_agent),
+                start_year,
+                end_year,
             )
         )
         time.sleep(REQUEST_DELAY_SECONDS)
@@ -94,7 +109,11 @@ def list_filings(cik: str, count: int, user_agent: str) -> list[dict[str, str]]:
 
 
 def download_filings(
-    output_dir: Path, filings_per_company: int, user_agent: str
+    output_dir: Path,
+    filings_per_company: int,
+    user_agent: str,
+    start_year: int | None = None,
+    end_year: int | None = None,
 ) -> dict[str, Any]:
     output_dir.mkdir(parents=True, exist_ok=True)
     manifest: dict[str, Any] = {
@@ -109,7 +128,7 @@ def download_filings(
 
     for ticker, cik in COMPANY_CIKS.items():
         print(f"Finding {ticker} 10-K filings...")
-        filings = list_filings(cik, filings_per_company, user_agent)
+        filings = list_filings(cik, filings_per_company, user_agent, start_year, end_year)
         if len(filings) < filings_per_company:
             raise RuntimeError(
                 f"SEC returned only {len(filings)} 10-K filings for {ticker}; "
@@ -122,8 +141,7 @@ def download_filings(
                 f"{SEC_ARCHIVES_URL}/{int(cik)}/{accession_path}/"
                 f"{filing['primary_document']}"
             )
-            suffix = Path(filing["primary_document"]).suffix or ".html"
-            local_path = output_dir / f"{ticker}_10-K_{filing['fiscal_year']}{suffix}"
+            local_path = output_dir / f"{ticker}_10-K_{filing['fiscal_year']}.html"
             status = "skipped"
             if not local_path.exists():
                 local_path.write_bytes(
@@ -158,10 +176,20 @@ def download_filings(
 
 def parse_args() -> argparse.Namespace:
     parser = argparse.ArgumentParser(
-        description="Download six years of 10-K filings for the agentic RAG corpus."
+        description="Download 10-K filings for the agentic RAG corpus."
     )
     parser.add_argument("--output-dir", type=Path, default=DEFAULT_OUTPUT_DIR)
     parser.add_argument("--filings-per-company", type=int, default=6)
+    parser.add_argument(
+        "--start-year",
+        type=int,
+        help="Start year for filings (inclusive). E.g., 2020",
+    )
+    parser.add_argument(
+        "--end-year",
+        type=int,
+        help="End year for filings (inclusive). E.g., 2025",
+    )
     parser.add_argument(
         "--user-agent",
         default=os.getenv("SEC_USER_AGENT"),
@@ -170,6 +198,8 @@ def parse_args() -> argparse.Namespace:
     args = parser.parse_args()
     if args.filings_per_company < 1:
         parser.error("--filings-per-company must be at least 1")
+    if args.start_year and args.end_year and args.start_year > args.end_year:
+        parser.error("--start-year must be less than or equal to --end-year")
     if not args.user_agent:
         parser.error("set SEC_USER_AGENT or pass --user-agent with your name and email")
     return args
@@ -177,7 +207,13 @@ def parse_args() -> argparse.Namespace:
 
 def main() -> None:
     args = parse_args()
-    manifest = download_filings(args.output_dir, args.filings_per_company, args.user_agent)
+    manifest = download_filings(
+        args.output_dir,
+        args.filings_per_company,
+        args.user_agent,
+        args.start_year,
+        args.end_year,
+    )
     print(
         f"Finished: {manifest['downloaded_count']} downloaded, "
         f"{manifest['skipped_count']} already present in {args.output_dir}"

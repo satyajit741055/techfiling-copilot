@@ -1,6 +1,6 @@
 {
   "source": "SEC EDGAR",
-  "generated_at_utc": "2026-10-30T14:02:26.956035+00:00",
+  "generated_at_utc": "2026-10-30T14:19:03.653034+00:00",
   "form": "10-K",
   "filings_per_company": 6,
   "downloaded_count": 36,
@@ -16,7 +16,7 @@
       "filing_date": "2025-10-31",
       "report_date": "2025-09-27",
       "source_url": "https://www.sec.gov/Archives/edgar/data/320193/000032019325000079/aapl-20250927.htm",
-      "local_path": "AAPL_10-K_2025.htm",
+      "local_path": "AAPL_10-K_2025.html",
       "status": "downloaded"
     },
     {
@@ -29,7 +29,7 @@
       "filing_date": "2024-11-01",
       "report_date": "2024-09-28",
       "source_url": "https://www.sec.gov/Archives/edgar/data/320193/000032019324000123/aapl-20240928.htm",
-      "local_path": "AAPL_10-K_2024.htm",
+      "local_path": "AAPL_10-K_2024.html",
       "status": "downloaded"
     },
     {
@@ -42,7 +42,7 @@
       "filing_date": "2023-11-03",
       "report_date": "2023-09-30",
       "source_url": "https://www.sec.gov/Archives/edgar/data/320193/000032019323000106/aapl-20230930.htm",
-      "local_path": "AAPL_10-K_2023.htm",
+      "local_path": "AAPL_10-K_2023.html",
       "status": "downloaded"
     },
     {
@@ -55,7 +55,7 @@
       "filing_date": "2022-10-28",
       "report_date": "2022-09-24",
       "source_url": "https://www.sec.gov/Archives/edgar/data/320193/000032019322000108/aapl-20220924.htm",
-      "local_path": "AAPL_10-K_2022.htm",
+      "local_path": "AAPL_10-K_2022.html",
       "status": "downloaded"
     },
     {
@@ -68,7 +68,7 @@
       "filing_date": "2021-10-29",
       "report_date": "2021-09-25",
       "source_url": "https://www.sec.gov/Archives/edgar/data/320193/000032019321000105/aapl-20210925.htm",
-      "local_path": "AAPL_10-K_2021.htm",
+      "local_path": "AAPL_10-K_2021.html",
       "status": "downloaded"
     },
     {
@@ -81,20 +81,7 @@
       "filing_date": "2020-10-30",
       "report_date": "2020-09-26",
       "source_url": "https://www.sec.gov/Archives/edgar/data/320193/000032019320000096/aapl-20200926.htm",
-      "local_path": "AAPL_10-K_2020.htm",
-      "status": "downloaded"
-    },
-    {
-      "ticker": "MSFT",
-      "cik": "0000789019",
-      "fiscal_year": "2026",
-      "form": "10-K",
-      "accession_number": "0001193125-26-323660",
-      "primary_document": "msft-20260630.htm",
-      "filing_date": "2026-07-29",
-      "report_date": "2026-06-30",
-      "source_url": "https://www.sec.gov/Archives/edgar/data/789019/000119312526323660/msft-20260630.htm",
-      "local_path": "MSFT_10-K_2026.htm",
+      "local_path": "AAPL_10-K_2020.html",
       "status": "downloaded"
     },
     {
@@ -107,7 +94,7 @@
       "filing_date": "2025-07-30",
       "report_date": "2025-06-30",
       "source_url": "https://www.sec.gov/Archives/edgar/data/789019/000095017025100235/msft-20250630.htm",
-      "local_path": "MSFT_10-K_2025.htm",
+      "local_path": "MSFT_10-K_2025.html",
       "status": "downloaded"
     },
     {
@@ -120,7 +107,7 @@
       "filing_date": "2024-07-30",
       "report_date": "2024-06-30",
       "source_url": "https://www.sec.gov/Archives/edgar/data/789019/000095017024087843/msft-20240630.htm",
-      "local_path": "MSFT_10-K_2024.htm",
+      "local_path": "MSFT_10-K_2024.html",
       "status": "downloaded"
     },
     {
@@ -133,7 +120,7 @@
       "filing_date": "2023-07-27",
       "report_date": "2023-06-30",
       "source_url": "https://www.sec.gov/Archives/edgar/data/789019/000095017023035122/msft-20230630.htm",
-      "local_path": "MSFT_10-K_2023.htm",
+      "local_path": "MSFT_10-K_2023.html",
       "status": "downloaded"
     },
     {
@@ -146,7 +133,7 @@
       "filing_date": "2022-07-28",
       "report_date": "2022-06-30",
       "source_url": "https://www.sec.gov/Archives/edgar/data/789019/000156459022026876/msft-10k_20220630.htm",
-      "local_path": "MSFT_10-K_2022.htm",
+      "local_path": "MSFT_10-K_2022.html",
       "status": "downloaded"
     },
     {
@@ -159,20 +146,20 @@
       "filing_date": "2021-07-29",
       "report_date": "2021-06-30",
       "source_url": "https://www.sec.gov/Archives/edgar/data/789019/000156459021039151/msft-10k_20210630.htm",
-      "local_path": "MSFT_10-K_2021.htm",
+      "local_path": "MSFT_10-K_2021.html",
       "status": "downloaded"
     },
     {
-      "ticker": "NVDA",
-      "cik": "0001045810",
-      "fiscal_year": "2026",
+      "ticker": "MSFT",
+      "cik": "0000789019",
+      "fiscal_year": "2020",
       "form": "10-K",
-      "accession_number": "0001045810-26-000021",
-      "primary_document": "nvda-20260125.htm",
-      "filing_date": "2026-02-25",
-      "report_date": "2026-01-25",
-      "source_url": "https://www.sec.gov/Archives/edgar/data/1045810/000104581026000021/nvda-20260125.htm",
-      "local_path": "NVDA_10-K_2026.htm",
+      "accession_number": "0001564590-20-034944",
+      "primary_document": "msft-10k_20200630.htm",
+      "filing_date": "2020-07-30",
+      "report_date": "2020-06-30",
+      "source_url": "https://www.sec.gov/Archives/edgar/data/789019/000156459020034944/msft-10k_20200630.htm",
+      "local_path": "MSFT_10-K_2020.html",
       "status": "downloaded"
     },
     {
@@ -185,7 +172,7 @@
       "filing_date": "2025-02-26",
       "report_date": "2025-01-26",
       "source_url": "https://www.sec.gov/Archives/edgar/data/1045810/000104581025000023/nvda-20250126.htm",
-      "local_path": "NVDA_10-K_2025.htm",
+      "local_path": "NVDA_10-K_2025.html",
       "status": "downloaded"
     },
     {
@@ -198,7 +185,7 @@
       "filing_date": "2024-02-21",
       "report_date": "2024-01-28",
       "source_url": "https://www.sec.gov/Archives/edgar/data/1045810/000104581024000029/nvda-20240128.htm",
-      "local_path": "NVDA_10-K_2024.htm",
+      "local_path": "NVDA_10-K_2024.html",
       "status": "downloaded"
     },
     {
@@ -211,7 +198,7 @@
       "filing_date": "2023-02-24",
       "report_date": "2023-01-29",
       "source_url": "https://www.sec.gov/Archives/edgar/data/1045810/000104581023000017/nvda-20230129.htm",
-      "local_path": "NVDA_10-K_2023.htm",
+      "local_path": "NVDA_10-K_2023.html",
       "status": "downloaded"
     },
     {
@@ -224,7 +211,7 @@
       "filing_date": "2022-03-18",
       "report_date": "2022-01-30",
       "source_url": "https://www.sec.gov/Archives/edgar/data/1045810/000104581022000036/nvda-20220130.htm",
-      "local_path": "NVDA_10-K_2022.htm",
+      "local_path": "NVDA_10-K_2022.html",
       "status": "downloaded"
     },
     {
@@ -237,7 +224,20 @@
       "filing_date": "2021-02-26",
       "report_date": "2021-01-31",
       "source_url": "https://www.sec.gov/Archives/edgar/data/1045810/000104581021000010/nvda-20210131.htm",
-      "local_path": "NVDA_10-K_2021.htm",
+      "local_path": "NVDA_10-K_2021.html",
+      "status": "downloaded"
+    },
+    {
+      "ticker": "NVDA",
+      "cik": "0001045810",
+      "fiscal_year": "2020",
+      "form": "10-K",
+      "accession_number": "0001045810-20-000010",
+      "primary_document": "nvda-2020x10k.htm",
+      "filing_date": "2020-02-20",
+      "report_date": "2020-01-26",
+      "source_url": "https://www.sec.gov/Archives/edgar/data/1045810/000104581020000010/nvda-2020x10k.htm",
+      "local_path": "NVDA_10-K_2020.html",
       "status": "downloaded"
     },
     {
@@ -250,7 +250,7 @@
       "filing_date": "2026-02-06",
       "report_date": "2025-12-31",
       "source_url": "https://www.sec.gov/Archives/edgar/data/1018724/000101872426000004/amzn-20251231.htm",
-      "local_path": "AMZN_10-K_2025.htm",
+      "local_path": "AMZN_10-K_2025.html",
       "status": "downloaded"
     },
     {
@@ -263,7 +263,7 @@
       "filing_date": "2025-02-07",
       "report_date": "2024-12-31",
       "source_url": "https://www.sec.gov/Archives/edgar/data/1018724/000101872425000004/amzn-20241231.htm",
-      "local_path": "AMZN_10-K_2024.htm",
+      "local_path": "AMZN_10-K_2024.html",
       "status": "downloaded"
     },
     {
@@ -276,7 +276,7 @@
       "filing_date": "2024-02-02",
       "report_date": "2023-12-31",
       "source_url": "https://www.sec.gov/Archives/edgar/data/1018724/000101872424000008/amzn-20231231.htm",
-      "local_path": "AMZN_10-K_2023.htm",
+      "local_path": "AMZN_10-K_2023.html",
       "status": "downloaded"
     },
     {
@@ -289,7 +289,7 @@
       "filing_date": "2023-02-03",
       "report_date": "2022-12-31",
       "source_url": "https://www.sec.gov/Archives/edgar/data/1018724/000101872423000004/amzn-20221231.htm",
-      "local_path": "AMZN_10-K_2022.htm",
+      "local_path": "AMZN_10-K_2022.html",
       "status": "downloaded"
     },
     {
@@ -302,7 +302,7 @@
       "filing_date": "2022-02-04",
       "report_date": "2021-12-31",
       "source_url": "https://www.sec.gov/Archives/edgar/data/1018724/000101872422000005/amzn-20211231.htm",
-      "local_path": "AMZN_10-K_2021.htm",
+      "local_path": "AMZN_10-K_2021.html",
       "status": "downloaded"
     },
     {
@@ -315,7 +315,7 @@
       "filing_date": "2021-02-03",
       "report_date": "2020-12-31",
       "source_url": "https://www.sec.gov/Archives/edgar/data/1018724/000101872421000004/amzn-20201231.htm",
-      "local_path": "AMZN_10-K_2020.htm",
+      "local_path": "AMZN_10-K_2020.html",
       "status": "downloaded"
     },
     {
@@ -328,7 +328,7 @@
       "filing_date": "2026-02-05",
       "report_date": "2025-12-31",
       "source_url": "https://www.sec.gov/Archives/edgar/data/1652044/000165204426000018/goog-20251231.htm",
-      "local_path": "GOOGL_10-K_2025.htm",
+      "local_path": "GOOGL_10-K_2025.html",
       "status": "downloaded"
     },
     {
@@ -341,7 +341,7 @@
       "filing_date": "2025-02-05",
       "report_date": "2024-12-31",
       "source_url": "https://www.sec.gov/Archives/edgar/data/1652044/000165204425000014/goog-20241231.htm",
-      "local_path": "GOOGL_10-K_2024.htm",
+      "local_path": "GOOGL_10-K_2024.html",
       "status": "downloaded"
     },
     {
@@ -354,7 +354,7 @@
       "filing_date": "2024-01-31",
       "report_date": "2023-12-31",
       "source_url": "https://www.sec.gov/Archives/edgar/data/1652044/000165204424000022/goog-20231231.htm",
-      "local_path": "GOOGL_10-K_2023.htm",
+      "local_path": "GOOGL_10-K_2023.html",
       "status": "downloaded"
     },
     {
@@ -367,7 +367,7 @@
       "filing_date": "2023-02-03",
       "report_date": "2022-12-31",
       "source_url": "https://www.sec.gov/Archives/edgar/data/1652044/000165204423000016/goog-20221231.htm",
-      "local_path": "GOOGL_10-K_2022.htm",
+      "local_path": "GOOGL_10-K_2022.html",
       "status": "downloaded"
     },
     {
@@ -380,7 +380,7 @@
       "filing_date": "2022-02-02",
       "report_date": "2021-12-31",
       "source_url": "https://www.sec.gov/Archives/edgar/data/1652044/000165204422000019/goog-20211231.htm",
-      "local_path": "GOOGL_10-K_2021.htm",
+      "local_path": "GOOGL_10-K_2021.html",
       "status": "downloaded"
     },
     {
@@ -393,7 +393,7 @@
       "filing_date": "2021-02-03",
       "report_date": "2020-12-31",
       "source_url": "https://www.sec.gov/Archives/edgar/data/1652044/000165204421000010/goog-20201231.htm",
-      "local_path": "GOOGL_10-K_2020.htm",
+      "local_path": "GOOGL_10-K_2020.html",
       "status": "downloaded"
     },
     {
@@ -406,7 +406,7 @@
       "filing_date": "2026-01-29",
       "report_date": "2025-12-31",
       "source_url": "https://www.sec.gov/Archives/edgar/data/1318605/000162828026003952/tsla-20251231.htm",
-      "local_path": "TSLA_10-K_2025.htm",
+      "local_path": "TSLA_10-K_2025.html",
       "status": "downloaded"
     },
     {
@@ -419,7 +419,7 @@
       "filing_date": "2025-01-30",
       "report_date": "2024-12-31",
       "source_url": "https://www.sec.gov/Archives/edgar/data/1318605/000162828025003063/tsla-20241231.htm",
-      "local_path": "TSLA_10-K_2024.htm",
+      "local_path": "TSLA_10-K_2024.html",
       "status": "downloaded"
     },
     {
@@ -432,7 +432,7 @@
       "filing_date": "2024-01-29",
       "report_date": "2023-12-31",
       "source_url": "https://www.sec.gov/Archives/edgar/data/1318605/000162828024002390/tsla-20231231.htm",
-      "local_path": "TSLA_10-K_2023.htm",
+      "local_path": "TSLA_10-K_2023.html",
       "status": "downloaded"
     },
     {
@@ -445,7 +445,7 @@
       "filing_date": "2023-01-31",
       "report_date": "2022-12-31",
       "source_url": "https://www.sec.gov/Archives/edgar/data/1318605/000095017023001409/tsla-20221231.htm",
-      "local_path": "TSLA_10-K_2022.htm",
+      "local_path": "TSLA_10-K_2022.html",
       "status": "downloaded"
     },
     {
@@ -458,7 +458,7 @@
       "filing_date": "2022-02-07",
       "report_date": "2021-12-31",
       "source_url": "https://www.sec.gov/Archives/edgar/data/1318605/000095017022000796/tsla-20211231.htm",
-      "local_path": "TSLA_10-K_2021.htm",
+      "local_path": "TSLA_10-K_2021.html",
       "status": "downloaded"
     },
     {
@@ -471,7 +471,7 @@
       "filing_date": "2021-02-08",
       "report_date": "2020-12-31",
       "source_url": "https://www.sec.gov/Archives/edgar/data/1318605/000156459021004599/tsla-10k_20201231.htm",
-      "local_path": "TSLA_10-K_2020.htm",
+      "local_path": "TSLA_10-K_2020.html",
       "status": "downloaded"
     }
   ]
