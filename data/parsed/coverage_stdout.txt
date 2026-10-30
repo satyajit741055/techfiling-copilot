@@ -1,0 +1,476 @@
+document           verdict confidence     words    blocks     facts structure   parser*
+* parser self-score: informational only, excluded from confidence and verdict
+AAPL_10-K_2020     PASS         99.3%    100.0%    100.0%    100.0%     97.4%     97.3%
+AAPL_10-K_2021     PASS         99.7%    100.0%    100.0%    100.0%     98.8%     97.4%
+AAPL_10-K_2022     PASS         99.7%    100.0%    100.0%    100.0%     98.8%     97.8%
+AAPL_10-K_2023     PASS         99.7%    100.0%    100.0%    100.0%     98.8%     98.0%
+AAPL_10-K_2024     PASS         99.7%    100.0%    100.0%    100.0%     99.1%     97.9%
+AAPL_10-K_2025     PASS         99.7%    100.0%    100.0%    100.0%     98.8%     97.8%
+AMZN_10-K_2020     WARN         98.5%    100.0%    100.0%    100.0%     94.6%     98.2%
+AMZN_10-K_2021     WARN         98.5%    100.0%    100.0%    100.0%     94.5%     98.2%
+AMZN_10-K_2022     WARN         98.5%    100.0%    100.0%    100.0%     94.5%     98.3%
+AMZN_10-K_2023     WARN         98.5%    100.0%    100.0%    100.0%     94.5%     98.3%
+AMZN_10-K_2024     PASS         98.7%    100.0%    100.0%    100.0%     95.4%     98.3%
+AMZN_10-K_2025     PASS         98.7%    100.0%    100.0%    100.0%     95.2%     97.9%
+GOOGL_10-K_2020    PASS         98.8%    100.0%    100.0%    100.0%     95.8%     98.9%
+GOOGL_10-K_2021    PASS         99.4%    100.0%    100.0%    100.0%     97.7%     98.7%
+GOOGL_10-K_2022    PASS         99.2%    100.0%    100.0%    100.0%     97.1%     98.8%
+GOOGL_10-K_2023    PASS         99.2%    100.0%    100.0%    100.0%     96.9%     98.9%
+GOOGL_10-K_2024    PASS         99.1%    100.0%    100.0%    100.0%     96.7%     98.7%
+GOOGL_10-K_2025    PASS         99.5%    100.0%    100.0%    100.0%     98.2%     98.8%
+MSFT_10-K_2020     PASS         99.4%     99.6%    100.0%    100.0%     98.2%     97.4%
+MSFT_10-K_2021     PASS         99.6%     99.6%    100.0%    100.0%     98.8%     97.9%
+MSFT_10-K_2022     PASS         99.6%     99.6%    100.0%    100.0%     98.8%     97.9%
+MSFT_10-K_2023     PASS         99.5%     99.6%    100.0%    100.0%     98.5%     98.0%
+MSFT_10-K_2024     PASS         99.4%     99.6%    100.0%    100.0%     98.2%     98.0%
+MSFT_10-K_2025     PASS         99.3%     99.5%    100.0%    100.0%     98.0%     98.1%
+NVDA_10-K_2020     PASS         99.2%    100.0%    100.0%    100.0%     97.0%     98.6%
+NVDA_10-K_2021     PASS         99.8%    100.0%    100.0%    100.0%     99.3%     98.6%
+NVDA_10-K_2022     PASS         99.8%    100.0%    100.0%    100.0%     99.4%     98.6%
+NVDA_10-K_2023     PASS         99.8%    100.0%    100.0%    100.0%     99.3%     98.3%
+NVDA_10-K_2024     PASS         99.8%    100.0%    100.0%    100.0%     99.3%     98.3%
+NVDA_10-K_2025     PASS         99.9%    100.0%    100.0%    100.0%     99.5%     98.1%
+TSLA_10-K_2020     PASS         99.4%     99.8%    100.0%    100.0%     98.0%     95.8%
+TSLA_10-K_2021     PASS         99.6%     99.7%    100.0%    100.0%     98.9%     98.9%
+TSLA_10-K_2022     PASS         99.9%     99.7%    100.0%    100.0%     99.8%     99.0%
+TSLA_10-K_2023     PASS        100.0%    100.0%    100.0%    100.0%    100.0%     99.0%
+TSLA_10-K_2024     PASS        100.0%    100.0%    100.0%    100.0%    100.0%     99.0%
+TSLA_10-K_2025     PASS        100.0%    100.0%    100.0%    100.0%    100.0%     98.2%
+
+--- AAPL_10-K_2020
+  words : 100.00% of content (97.60% of all visible text); 938 tokens excluded by design {'page_furniture_blocks': 69, 'toc_tables': 3, 'repeated_or_page_number_lines': 13}
+  facts : 1219 visible | linked ok 1070 | in text only 149 | value mismatch 0 | missing 0
+  struct: rows matched 590/590 | lost HTML rows 0 | column purity 100.00% (1509 values) | unaligned rows 1 | totals 157/181 | HTML tables 63 (unpaired 0, parsed unpaired 0)
+  sects : ok | 22 Items | unlabeled 0.00% | missing none | non-contiguous none
+  total does not add up: AAPL_10-K_2020_t013: Total (1/2 columns add up)
+  total does not add up: AAPL_10-K_2020_t015: Total cash, cash equivalents and marketable securities (0/5 columns add up)
+  total does not add up: AAPL_10-K_2020_t015: Total assets (0/5 columns add up)
+  total does not add up: AAPL_10-K_2020_t023: Total term debt (0/3 columns add up)
+  total does not add up: AAPL_10-K_2020_t029: Total shareholders’ equity, ending balances (0/3 columns add up)
+  total does not add up: AAPL_10-K_2020_t049: Maturities greater than 90 days > Total repayments of commercial paper, net (0/3 columns add up)
+  total does not add up: AAPL_10-K_2020_t050: Fourth quarter 2020 debt issuance of $5.5 billion > Total term debt (0/2 columns add up)
+  total does not add up: AAPL_10-K_2020_t053: Total amounts reclassified from AOCI (0/2 columns add up)
+  tables: 61 parsed, mean accuracy 0.973, completeness 0.992 (title from {'heading': 25, 'caption': 36}), low confidence: none
+
+--- AAPL_10-K_2021
+  words : 100.00% of content (97.53% of all visible text); 885 tokens excluded by design {'page_furniture_blocks': 62, 'toc_tables': 3, 'repeated_or_page_number_lines': 13}
+  facts : 1030 visible | linked ok 905 | in text only 125 | value mismatch 0 | missing 0
+  struct: rows matched 497/497 | lost HTML rows 0 | column purity 100.00% (1259 values) | unaligned rows 1 | totals 136/145 | HTML tables 52 (unpaired 0, parsed unpaired 0)
+  sects : ok | 23 Items | unlabeled 0.00% | missing none | non-contiguous none
+  total does not add up: AAPL_10-K_2021_t013: Total (1/2 columns add up)
+  total does not add up: AAPL_10-K_2021_t026: Total shareholders’ equity, ending balances (0/3 columns add up)
+  total does not add up: AAPL_10-K_2021_t044: Maturities greater than 90 days > Total proceeds from/(repayments of) commercial paper, net (0/3 columns add up)
+  total does not add up: AAPL_10-K_2021_t045: Fourth quarter 2021 debt issuance > Total term debt (0/2 columns add up)
+  tables: 50 parsed, mean accuracy 0.974, completeness 0.990 (title from {'heading': 19, 'caption': 31}), low confidence: none
+
+--- AAPL_10-K_2022
+  words : 100.00% of content (97.46% of all visible text); 871 tokens excluded by design {'page_furniture_blocks': 60, 'toc_tables': 3, 'repeated_or_page_number_lines': 13}
+  facts : 1016 visible | linked ok 903 | in text only 113 | value mismatch 0 | missing 0
+  struct: rows matched 503/503 | lost HTML rows 0 | column purity 100.00% (1264 values) | unaligned rows 1 | totals 143/152 | HTML tables 52 (unpaired 0, parsed unpaired 0)
+  sects : ok | 23 Items | unlabeled 0.00% | missing none | non-contiguous none
+  total does not add up: AAPL_10-K_2022_t013: Total (1/2 columns add up)
+  total does not add up: AAPL_10-K_2022_t026: Total shareholders’ equity, ending balances (0/3 columns add up)
+  total does not add up: AAPL_10-K_2022_t045: Maturities greater than 90 days > Total proceeds from/(repayments of) commercial paper, net (0/3 columns add up)
+  total does not add up: AAPL_10-K_2022_t046: Fourth quarter 2022 debt issuance > Total term debt (0/2 columns add up)
+  tables: 51 parsed, mean accuracy 0.978, completeness 0.990 (title from {'heading': 19, 'caption': 32}), low confidence: none
+
+--- AAPL_10-K_2023
+  words : 100.00% of content (97.26% of all visible text); 875 tokens excluded by design {'page_furniture_blocks': 60, 'toc_tables': 3, 'repeated_or_page_number_lines': 13}
+  facts : 991 visible | linked ok 891 | in text only 100 | value mismatch 0 | missing 0
+  struct: rows matched 503/503 | lost HTML rows 0 | column purity 100.00% (1260 values) | unaligned rows 1 | totals 146/155 | HTML tables 55 (unpaired 0, parsed unpaired 0)
+  sects : ok | 24 Items | unlabeled 0.00% | missing none | non-contiguous none
+  total does not add up: AAPL_10-K_2023_t013: Total (1/2 columns add up)
+  total does not add up: AAPL_10-K_2023_t026: Total shareholders’ equity, ending balances (0/3 columns add up)
+  total does not add up: AAPL_10-K_2023_t047: Maturities greater than 90 days > Total proceeds from/(repayments of) commercial paper, net (0/3 columns add up)
+  total does not add up: AAPL_10-K_2023_t048: Third quarter 2023 debt issuance > Total term debt principal (0/2 columns add up)
+  tables: 54 parsed, mean accuracy 0.980, completeness 0.991 (title from {'heading': 20, 'caption': 34}), low confidence: none
+
+--- AAPL_10-K_2024
+  words : 100.00% of content (97.32% of all visible text); 868 tokens excluded by design {'page_furniture_blocks': 59, 'toc_tables': 3, 'repeated_or_page_number_lines': 13}
+  facts : 963 visible | linked ok 856 | in text only 107 | value mismatch 0 | missing 0
+  struct: rows matched 483/483 | lost HTML rows 0 | column purity 100.00% (1214 values) | unaligned rows 1 | totals 144/151 | HTML tables 52 (unpaired 0, parsed unpaired 0)
+  sects : ok | 24 Items | unlabeled 0.00% | missing none | non-contiguous none
+  total does not add up: AAPL_10-K_2024_t013: Total (1/2 columns add up)
+  total does not add up: AAPL_10-K_2024_t026: Total shareholders’ equity, ending balances (0/3 columns add up)
+  total does not add up: AAPL_10-K_2024_t044: Maturities greater than 90 days > Total proceeds from/(repayments of) commercial paper, net (0/3 columns add up)
+  tables: 50 parsed, mean accuracy 0.979, completeness 0.990 (title from {'heading': 18, 'caption': 32}), low confidence: none
+
+--- AAPL_10-K_2025
+  words : 100.00% of content (97.37% of all visible text); 875 tokens excluded by design {'page_furniture_blocks': 60, 'toc_tables': 3, 'repeated_or_page_number_lines': 13}
+  facts : 969 visible | linked ok 871 | in text only 98 | value mismatch 0 | missing 0
+  struct: rows matched 462/462 | lost HTML rows 0 | column purity 100.00% (1228 values) | unaligned rows 1 | totals 137/146 | HTML tables 51 (unpaired 0, parsed unpaired 0)
+  sects : ok | 24 Items | unlabeled 0.00% | missing none | non-contiguous none
+  total does not add up: AAPL_10-K_2025_t013: Total (1/2 columns add up)
+  total does not add up: AAPL_10-K_2025_t026: Total shareholders’ equity, ending balances (0/3 columns add up)
+  total does not add up: AAPL_10-K_2025_t042: Maturities greater than 90 days > Total proceeds from/(repayments of) commercial paper, net (0/3 columns add up)
+  total does not add up: AAPL_10-K_2025_t043: 2025 debt issuance > Total term debt principal (0/2 columns add up)
+  tables: 49 parsed, mean accuracy 0.978, completeness 0.990 (title from {'heading': 19, 'caption': 30}), low confidence: none
+
+--- AMZN_10-K_2020
+  words : 100.00% of content (98.48% of all visible text); 587 tokens excluded by design {'page_furniture_blocks': 74, 'toc_tables': 2, 'repeated_or_page_number_lines': 118}
+  facts : 1253 visible | linked ok 1035 | in text only 218 | value mismatch 0 | missing 0
+  struct: rows matched 592/592 | lost HTML rows 0 | column purity 100.00% (1399 values) | unaligned rows 0 | totals 70/96 | HTML tables 79 (unpaired 0, parsed unpaired 0)
+  sects : ok | 22 Items | unlabeled 0.00% | missing none | non-contiguous none
+  total does not add up: AMZN_10-K_2020_t022: Balance Sheets > Total long-term obligations (0/5 columns add up)
+  total does not add up: AMZN_10-K_2020_t040: Total other comprehensive income (loss) (0/3 columns add up)
+  total does not add up: AMZN_10-K_2020_t044: Total dilutive effect of outstanding stock awards (0/3 columns add up)
+  total does not add up: AMZN_10-K_2020_t045: Total cash, cash equivalents, and marketable securities (0/1 columns add up)
+  total does not add up: AMZN_10-K_2020_t046: Total cash, cash equivalents, and marketable securities (0/1 columns add up)
+  total does not add up: AMZN_10-K_2020_t050: Total accumulated depreciation and amortization (1) (0/2 columns add up)
+  total does not add up: AMZN_10-K_2020_t050: Total property and equipment, net (0/2 columns add up)
+  total does not add up: AMZN_10-K_2020_t051: Total lease cost (0/2 columns add up)
+  total does not add up: AMZN_10-K_2020_t056: Finite-lived intangible assets (2) > Total finite-lived intangible assets (6/7 columns add up)
+  total does not add up: AMZN_10-K_2020_t066: Effect of > Total (0/3 columns add up)
+  tables: 60 parsed, mean accuracy 0.982, completeness 0.992 (title from {'heading': 34, 'caption': 26}), low confidence: none
+
+--- AMZN_10-K_2021
+  words : 100.00% of content (98.44% of all visible text); 597 tokens excluded by design {'page_furniture_blocks': 74, 'toc_tables': 2, 'repeated_or_page_number_lines': 116}
+  facts : 1231 visible | linked ok 1008 | in text only 223 | value mismatch 0 | missing 0
+  struct: rows matched 571/571 | lost HTML rows 0 | column purity 100.00% (1326 values) | unaligned rows 0 | totals 73/101 | HTML tables 88 (unpaired 0, parsed unpaired 0)
+  sects : ok | 23 Items | unlabeled 0.00% | missing none | non-contiguous none
+  total does not add up: AMZN_10-K_2021_t038: Total other comprehensive income (loss) (0/3 columns add up)
+  total does not add up: AMZN_10-K_2021_t042: Total dilutive effect of outstanding stock awards (0/3 columns add up)
+  total does not add up: AMZN_10-K_2021_t045: Total assets (0/2 columns add up)
+  total does not add up: AMZN_10-K_2021_t045: Total current liabilities (0/2 columns add up)
+  total does not add up: AMZN_10-K_2021_t045: Total liabilities (0/2 columns add up)
+  total does not add up: AMZN_10-K_2021_t046: Total cash, cash equivalents, and marketable securities (0/1 columns add up)
+  total does not add up: AMZN_10-K_2021_t047: Total cash, cash equivalents, and marketable securities (0/1 columns add up)
+  total does not add up: AMZN_10-K_2021_t051: Total accumulated depreciation and amortization (1) (0/2 columns add up)
+  total does not add up: AMZN_10-K_2021_t051: Total property and equipment, net (0/2 columns add up)
+  total does not add up: AMZN_10-K_2021_t052: Total lease cost (0/3 columns add up)
+  tables: 61 parsed, mean accuracy 0.982, completeness 0.992 (title from {'heading': 35, 'caption': 26}), low confidence: none
+
+--- AMZN_10-K_2022
+  words : 100.00% of content (98.52% of all visible text); 602 tokens excluded by design {'page_furniture_blocks': 75, 'toc_tables': 2, 'repeated_or_page_number_lines': 117}
+  facts : 1279 visible | linked ok 1018 | in text only 261 | value mismatch 0 | missing 0
+  struct: rows matched 569/569 | lost HTML rows 0 | column purity 100.00% (1329 values) | unaligned rows 0 | totals 73/101 | HTML tables 88 (unpaired 0, parsed unpaired 0)
+  sects : ok | 23 Items | unlabeled 0.00% | missing none | non-contiguous none
+  total does not add up: AMZN_10-K_2022_t038: Other comprehensive income (loss) > Total other comprehensive income (loss) (0/3 columns add up)
+  total does not add up: AMZN_10-K_2022_t042: Total dilutive effect of outstanding stock awards (0/3 columns add up)
+  total does not add up: AMZN_10-K_2022_t045: Total assets (0/2 columns add up)
+  total does not add up: AMZN_10-K_2022_t045: Total current liabilities (0/2 columns add up)
+  total does not add up: AMZN_10-K_2022_t045: Total liabilities (0/2 columns add up)
+  total does not add up: AMZN_10-K_2022_t046: Total cash, cash equivalents, and marketable securities (0/1 columns add up)
+  total does not add up: AMZN_10-K_2022_t047: Total cash, cash equivalents, and marketable securities (0/1 columns add up)
+  total does not add up: AMZN_10-K_2022_t051: Total accumulated depreciation and amortization (1) (0/2 columns add up)
+  total does not add up: AMZN_10-K_2022_t051: Total property and equipment, net (0/2 columns add up)
+  total does not add up: AMZN_10-K_2022_t052: Total lease cost (0/3 columns add up)
+  tables: 62 parsed, mean accuracy 0.983, completeness 0.992 (title from {'heading': 36, 'caption': 26}), low confidence: none
+
+--- AMZN_10-K_2023
+  words : 100.00% of content (98.55% of all visible text); 618 tokens excluded by design {'page_furniture_blocks': 78, 'toc_tables': 2, 'repeated_or_page_number_lines': 120}
+  facts : 1286 visible | linked ok 1016 | in text only 270 | value mismatch 0 | missing 0
+  struct: rows matched 572/572 | lost HTML rows 0 | column purity 100.00% (1325 values) | unaligned rows 0 | totals 73/101 | HTML tables 89 (unpaired 0, parsed unpaired 0)
+  sects : ok | 24 Items | unlabeled 0.00% | missing none | non-contiguous none
+  total does not add up: AMZN_10-K_2023_t039: Other comprehensive income (loss) > Total other comprehensive income (loss) (0/3 columns add up)
+  total does not add up: AMZN_10-K_2023_t043: Total dilutive effect of outstanding stock awards (0/3 columns add up)
+  total does not add up: AMZN_10-K_2023_t046: Total assets (0/2 columns add up)
+  total does not add up: AMZN_10-K_2023_t046: Total current liabilities (0/2 columns add up)
+  total does not add up: AMZN_10-K_2023_t046: Total liabilities (0/2 columns add up)
+  total does not add up: AMZN_10-K_2023_t047: Total cash, cash equivalents, and marketable securities (0/1 columns add up)
+  total does not add up: AMZN_10-K_2023_t048: Total cash, cash equivalents, and marketable securities (0/1 columns add up)
+  total does not add up: AMZN_10-K_2023_t052: Total accumulated depreciation and amortization (1) (0/2 columns add up)
+  total does not add up: AMZN_10-K_2023_t052: Total property and equipment, net (0/2 columns add up)
+  total does not add up: AMZN_10-K_2023_t053: Total lease cost (0/3 columns add up)
+  tables: 62 parsed, mean accuracy 0.983, completeness 0.992 (title from {'heading': 36, 'caption': 26}), low confidence: none
+
+--- AMZN_10-K_2024
+  words : 100.00% of content (98.54% of all visible text); 614 tokens excluded by design {'page_furniture_blocks': 77, 'toc_tables': 2, 'repeated_or_page_number_lines': 119}
+  facts : 1260 visible | linked ok 994 | in text only 266 | value mismatch 0 | missing 0
+  struct: rows matched 564/564 | lost HTML rows 0 | column purity 100.00% (1317 values) | unaligned rows 0 | totals 73/95 | HTML tables 87 (unpaired 0, parsed unpaired 0)
+  sects : ok | 24 Items | unlabeled 0.00% | missing none | non-contiguous none
+  total does not add up: AMZN_10-K_2024_t039: Other comprehensive income (loss) > Total other comprehensive income (loss) (0/3 columns add up)
+  total does not add up: AMZN_10-K_2024_t043: Total dilutive effect of outstanding stock awards (0/3 columns add up)
+  total does not add up: AMZN_10-K_2024_t045: Total cash, cash equivalents, and marketable securities (0/1 columns add up)
+  total does not add up: AMZN_10-K_2024_t046: Total cash, cash equivalents, and marketable securities (0/1 columns add up)
+  total does not add up: AMZN_10-K_2024_t050: Total accumulated depreciation and amortization (1) (0/2 columns add up)
+  total does not add up: AMZN_10-K_2024_t050: Total property and equipment, net (0/2 columns add up)
+  total does not add up: AMZN_10-K_2024_t051: Total lease cost (0/3 columns add up)
+  total does not add up: AMZN_10-K_2024_t056: Finite-lived intangible assets (2) > Total finite-lived intangible assets (6/7 columns add up)
+  total does not add up: AMZN_10-K_2024_t066: Effect of > Total (0/3 columns add up)
+  total does not add up: AMZN_10-K_2024_t069: Consolidated > Total non-operating income (expense) (0/3 columns add up)
+  tables: 60 parsed, mean accuracy 0.983, completeness 0.992 (title from {'heading': 34, 'caption': 26}), low confidence: none
+
+--- AMZN_10-K_2025
+  words : 100.00% of content (98.55% of all visible text); 621 tokens excluded by design {'page_furniture_blocks': 79, 'toc_tables': 2, 'repeated_or_page_number_lines': 121}
+  facts : 1375 visible | linked ok 1082 | in text only 293 | value mismatch 0 | missing 0
+  struct: rows matched 576/576 | lost HTML rows 0 | column purity 100.00% (1373 values) | unaligned rows 0 | totals 76/100 | HTML tables 88 (unpaired 0, parsed unpaired 0)
+  sects : ok | 24 Items | unlabeled 0.00% | missing none | non-contiguous none
+  total does not add up: AMZN_10-K_2025_t037: Other comprehensive income (loss) > Total other comprehensive income (loss) (0/3 columns add up)
+  total does not add up: AMZN_10-K_2025_t041: Total dilutive effect of outstanding stock awards (0/3 columns add up)
+  total does not add up: AMZN_10-K_2025_t044: Total cash, cash equivalents, and marketable securities (0/1 columns add up)
+  total does not add up: AMZN_10-K_2025_t045: Total cash, cash equivalents, and marketable securities (0/1 columns add up)
+  total does not add up: AMZN_10-K_2025_t049: Total accumulated depreciation and amortization (1) (0/2 columns add up)
+  total does not add up: AMZN_10-K_2025_t049: Total property and equipment, net (0/2 columns add up)
+  total does not add up: AMZN_10-K_2025_t050: Total lease cost (0/3 columns add up)
+  total does not add up: AMZN_10-K_2025_t055: Finite-lived intangible assets (2) > Total finite-lived intangible assets (6/7 columns add up)
+  total does not add up: AMZN_10-K_2025_t063: Other > Total ending accumulated other comprehensive income (loss), net of tax of $(1,762) and $(9,384) (0/2 columns add up)
+  total does not add up: AMZN_10-K_2025_t067: Federal > Total (0/3 columns add up)
+  tables: 61 parsed, mean accuracy 0.979, completeness 0.992 (title from {'heading': 32, 'caption': 29}), low confidence: none
+
+--- GOOGL_10-K_2020
+  words : 100.00% of content (98.47% of all visible text); 902 tokens excluded by design {'page_furniture_blocks': 100, 'toc_tables': 101, 'repeated_or_page_number_lines': 20}
+  facts : 1453 visible | linked ok 1267 | in text only 186 | value mismatch 0 | missing 0
+  struct: rows matched 709/709 | lost HTML rows 0 | column purity 99.95% (1903 values) | unaligned rows 0 | totals 127/161 | HTML tables 88 (unpaired 0, parsed unpaired 0)
+  sects : ok | 22 Items | unlabeled 0.00% | missing none | non-contiguous none
+  total does not add up: GOOGL_10-K_2020_t042: Consolidated Balance Sheet Data > Total assets (0/5 columns add up)
+  total does not add up: GOOGL_10-K_2020_t042: Consolidated Balance Sheet Data > Total long-term liabilities (0/5 columns add up)
+  total does not add up: GOOGL_10-K_2020_t042: Consolidated Balance Sheet Data > Total stockholders’ equity (0/5 columns add up)
+  total does not add up: GOOGL_10-K_2020_t056: Total revenues (0/2 columns add up)
+  total does not add up: GOOGL_10-K_2020_t056: Total constant currency revenues (0/2 columns add up)
+  total does not add up: GOOGL_10-K_2020_t117: Total initial cost (0/2 columns add up)
+  total does not add up: GOOGL_10-K_2020_t121: Total (0/4 columns add up)
+  total does not add up: GOOGL_10-K_2020_t131: Gains (Losses) on Derivatives Not Designated as Hedging Instruments > Total gains (losses) (0/6 columns add up)
+  total does not add up: GOOGL_10-K_2020_t147: Unrealized gains (losses) on cash flow hedges > Total amount reclassified, net of tax (0/3 columns add up)
+  table issue : {'table_id': 'GOOGL_10-K_2020_t133', 'title': 'Offsetting of Assets', 'unmatched_rows': [], 'lost_html_rows': [], 'column_purity': 0.958}
+  tables: 80 parsed, mean accuracy 0.989, completeness 0.994 (title from {'caption': 44, 'heading': 36}), low confidence: none
+  top missing words: u×1
+
+--- GOOGL_10-K_2021
+  words : 99.98% of content (98.42% of all visible text); 877 tokens excluded by design {'page_furniture_blocks': 95, 'toc_tables': 96, 'repeated_or_page_number_lines': 19}
+  facts : 1447 visible | linked ok 1236 | in text only 211 | value mismatch 0 | missing 0
+  struct: rows matched 655/655 | lost HTML rows 0 | column purity 99.94% (1666 values) | unaligned rows 0 | totals 122/138 | HTML tables 83 (unpaired 0, parsed unpaired 0)
+  sects : ok | 23 Items | unlabeled 0.00% | missing none | non-contiguous none
+  total does not add up: GOOGL_10-K_2021_t053: Total revenues (1/2 columns add up)
+  total does not add up: GOOGL_10-K_2021_t108: Total initial cost (0/2 columns add up)
+  total does not add up: GOOGL_10-K_2021_t111: Total (0/4 columns add up)
+  total does not add up: GOOGL_10-K_2021_t121: Gains (Losses) on Derivatives Not Designated as Hedging Instruments > Total gains (losses) (0/6 columns add up)
+  total does not add up: GOOGL_10-K_2021_t137: Unrealized gains (losses) on cash flow hedges > Total amount reclassified, net of income tax (0/3 columns add up)
+  table issue : {'table_id': 'GOOGL_10-K_2021_t123', 'title': 'Offsetting of Assets', 'unmatched_rows': [], 'lost_html_rows': [], 'column_purity': 0.958}
+  tables: 75 parsed, mean accuracy 0.987, completeness 0.993 (title from {'caption': 42, 'heading': 33}), low confidence: none
+  top missing words: form×1, 10×1, k×1, annual×1, report×1, file×1, 001×1, 37580×1, no×1, 4×1
+
+--- GOOGL_10-K_2022
+  words : 100.00% of content (98.38% of all visible text); 859 tokens excluded by design {'page_furniture_blocks': 92, 'toc_tables': 93, 'repeated_or_page_number_lines': 19}
+  facts : 1446 visible | linked ok 1271 | in text only 175 | value mismatch 0 | missing 0
+  struct: rows matched 645/645 | lost HTML rows 0 | column purity 99.94% (1720 values) | unaligned rows 0 | totals 134/157 | HTML tables 81 (unpaired 0, parsed unpaired 0)
+  sects : ok | 23 Items | unlabeled 0.00% | missing none | non-contiguous none
+  total does not add up: GOOGL_10-K_2022_t098: Fair value adjustments recorded in net income > Total (0/6 columns add up)
+  total does not add up: GOOGL_10-K_2022_t100: Fair value adjustments recorded in net income > Total (0/6 columns add up)
+  total does not add up: GOOGL_10-K_2022_t109: Total initial cost (0/2 columns add up)
+  total does not add up: GOOGL_10-K_2022_t116: Effect of non designated hedges > Total gains (losses) (0/6 columns add up)
+  total does not add up: GOOGL_10-K_2022_t131: Unrealized gains (losses) on cash flow hedges > Total amount reclassified, net of income tax (0/3 columns add up)
+  table issue : {'table_id': 'GOOGL_10-K_2022_t118', 'title': 'Offsetting of Derivatives', 'unmatched_rows': [], 'lost_html_rows': [], 'column_purity': 0.968}
+  tables: 73 parsed, mean accuracy 0.988, completeness 1.000 (title from {'caption': 40, 'heading': 33}), low confidence: none
+
+--- GOOGL_10-K_2023
+  words : 100.00% of content (98.39% of all visible text); 893 tokens excluded by design {'page_furniture_blocks': 97, 'toc_tables': 98, 'repeated_or_page_number_lines': 19}
+  facts : 1413 visible | linked ok 1240 | in text only 173 | value mismatch 0 | missing 0
+  struct: rows matched 647/647 | lost HTML rows 0 | column purity 99.94% (1722 values) | unaligned rows 0 | totals 128/151 | HTML tables 80 (unpaired 0, parsed unpaired 0)
+  sects : ok | 24 Items | unlabeled 0.00% | missing none | non-contiguous none
+  total does not add up: GOOGL_10-K_2023_t102: Fair value adjustments recorded in net income > Total (0/6 columns add up)
+  total does not add up: GOOGL_10-K_2023_t104: Fair value adjustments recorded in net income > Total (0/6 columns add up)
+  total does not add up: GOOGL_10-K_2023_t113: Total initial cost (0/2 columns add up)
+  total does not add up: GOOGL_10-K_2023_t120: Effect of non designated hedges > Total gains (losses) (0/6 columns add up)
+  total does not add up: GOOGL_10-K_2023_t135: Unrealized gains (losses) on cash flow hedges > Total amount reclassified, net of income tax (0/3 columns add up)
+  table issue : {'table_id': 'GOOGL_10-K_2023_t122', 'title': 'Offsetting of Derivatives', 'unmatched_rows': [], 'lost_html_rows': [], 'column_purity': 0.968}
+  tables: 72 parsed, mean accuracy 0.989, completeness 0.993 (title from {'caption': 36, 'heading': 36}), low confidence: none
+
+--- GOOGL_10-K_2024
+  words : 99.98% of content (98.37% of all visible text); 905 tokens excluded by design {'page_furniture_blocks': 99, 'toc_tables': 100, 'repeated_or_page_number_lines': 19}
+  facts : 1524 visible | linked ok 1344 | in text only 180 | value mismatch 0 | missing 0
+  struct: rows matched 676/676 | lost HTML rows 0 | column purity 99.95% (1839 values) | unaligned rows 0 | totals 133/159 | HTML tables 80 (unpaired 0, parsed unpaired 0)
+  sects : ok | 24 Items | unlabeled 0.00% | missing none | non-contiguous none
+  total does not add up: GOOGL_10-K_2024_t103: Fair value adjustments recorded in net income > Total (0/6 columns add up)
+  total does not add up: GOOGL_10-K_2024_t105: Fair value adjustments recorded in net income > Total (0/6 columns add up)
+  total does not add up: GOOGL_10-K_2024_t114: Total initial cost (0/2 columns add up)
+  total does not add up: GOOGL_10-K_2024_t121: Effect of non designated hedges > Total gains (losses) (0/6 columns add up)
+  total does not add up: GOOGL_10-K_2024_t124: Total lease cost (0/3 columns add up)
+  total does not add up: GOOGL_10-K_2024_t139: Unrealized gains (losses) on cash flow hedges > Total amount reclassified, net of income tax (0/3 columns add up)
+  table issue : {'table_id': 'GOOGL_10-K_2024_t123', 'title': 'Offsetting of Derivatives', 'unmatched_rows': [], 'lost_html_rows': [], 'column_purity': 0.968}
+  tables: 72 parsed, mean accuracy 0.987, completeness 0.993 (title from {'caption': 35, 'heading': 37}), low confidence: none
+  top missing words: u×2, form×1, 10×1, report×1, file×1, 001×1, 37580×1, no×1, on×1, quarterly×1
+
+--- GOOGL_10-K_2025
+  words : 100.00% of content (98.33% of all visible text); 915 tokens excluded by design {'page_furniture_blocks': 99, 'toc_tables': 100, 'repeated_or_page_number_lines': 24}
+  facts : 1632 visible | linked ok 1448 | in text only 184 | value mismatch 0 | missing 0
+  struct: rows matched 738/738 | lost HTML rows 0 | column purity 99.95% (1950 values) | unaligned rows 0 | totals 145/159 | HTML tables 81 (unpaired 0, parsed unpaired 0)
+  sects : ok | 24 Items | unlabeled 0.00% | missing none | non-contiguous none
+  total does not add up: GOOGL_10-K_2025_t098: Cash equivalents > Total cash and cash equivalents (2/3 columns add up)
+  total does not add up: GOOGL_10-K_2025_t100: Cash equivalents > Total cash and cash equivalents (2/3 columns add up)
+  total does not add up: GOOGL_10-K_2025_t117: Effect of non-designated hedges > Total gains (losses) (0/6 columns add up)
+  total does not add up: GOOGL_10-K_2025_t120: Total lease cost (0/3 columns add up)
+  total does not add up: GOOGL_10-K_2025_t136: Unrealized gains (losses) on cash flow hedges > Total amount reclassified, net of income tax (0/3 columns add up)
+  table issue : {'table_id': 'GOOGL_10-K_2025_t119', 'title': 'Offsetting of Derivatives', 'unmatched_rows': [], 'lost_html_rows': [], 'column_purity': 0.968}
+  tables: 73 parsed, mean accuracy 0.988, completeness 1.000 (title from {'caption': 36, 'heading': 37}), low confidence: none
+  top missing words: u×2
+
+--- MSFT_10-K_2020
+  words : 99.60% of content (98.23% of all visible text); 720 tokens excluded by design {'repeated_or_page_number_lines': 346}
+  facts : 1651 visible | linked ok 1503 | in text only 148 | value mismatch 0 | missing 0
+  struct: rows matched 726/726 | lost HTML rows 0 | column purity 100.00% (2138 values) | unaligned rows 1 | totals 158/173 | HTML tables 259 (unpaired 1, parsed unpaired 0)
+  sects : ok | 22 Items | unlabeled 0.00% | missing none | non-contiguous none
+  total does not add up: MSFT_10-K_2020_t073: Total assets (0/5 columns add up)
+  total does not add up: MSFT_10-K_2020_t157: Accumulated other comprehensive income (loss) > Total stockholders’ equity (0/3 columns add up)
+  total does not add up: MSFT_10-K_2020_t167: Changes in Fair Value Recorded in Net Income > Total (1/4 columns add up)
+  total does not add up: MSFT_10-K_2020_t168: Changes in Fair Value Recorded in Net Income > Total (1/4 columns add up)
+  total does not add up: MSFT_10-K_2020_t182: Total (6/7 columns add up)
+  tables: 84 parsed, mean accuracy 0.974, completeness 0.994 (title from {'heading': 53, 'caption': 31}), low confidence: none
+  top missing words: item×21, and×14, of×7, financial×6, 99×6, 32×4, accounting×3, executive×3, related×3, 97×3
+
+--- MSFT_10-K_2021
+  words : 99.62% of content (98.56% of all visible text); 551 tokens excluded by design {'repeated_or_page_number_lines': 325}
+  facts : 1592 visible | linked ok 1436 | in text only 156 | value mismatch 0 | missing 0
+  struct: rows matched 702/702 | lost HTML rows 0 | column purity 100.00% (1964 values) | unaligned rows 0 | totals 158/167 | HTML tables 244 (unpaired 1, parsed unpaired 0)
+  sects : ok | 22 Items | unlabeled 0.00% | missing none | non-contiguous none
+  total does not add up: MSFT_10-K_2021_t143: Accumulated other comprehensive income (loss) > Total stockholders’ equity (0/3 columns add up)
+  total does not add up: MSFT_10-K_2021_t153: Changes in Fair Value Recorded in Net Income > Total (1/4 columns add up)
+  total does not add up: MSFT_10-K_2021_t154: Changes in Fair Value Recorded in Net Income > Total (1/4 columns add up)
+  tables: 84 parsed, mean accuracy 0.979, completeness 0.994 (title from {'heading': 53, 'caption': 31}), low confidence: none
+  top missing words: item×21, and×14, of×6, 101×6, financial×5, 36×4, accounting×3, executive×3, related×3, 99×3
+
+--- MSFT_10-K_2022
+  words : 99.60% of content (98.54% of all visible text); 551 tokens excluded by design {'repeated_or_page_number_lines': 325}
+  facts : 1547 visible | linked ok 1399 | in text only 148 | value mismatch 0 | missing 0
+  struct: rows matched 699/699 | lost HTML rows 0 | column purity 100.00% (1909 values) | unaligned rows 0 | totals 156/165 | HTML tables 259 (unpaired 1, parsed unpaired 0)
+  sects : ok | 23 Items | unlabeled 0.00% | missing none | non-contiguous none
+  total does not add up: MSFT_10-K_2022_t154: Accumulated other comprehensive income (loss) > Total stockholders’ equity (0/3 columns add up)
+  total does not add up: MSFT_10-K_2022_t164: Changes in Fair Value Recorded in Net Income > Total (1/4 columns add up)
+  total does not add up: MSFT_10-K_2022_t165: Changes in Fair Value Recorded in Net Income > Total (1/4 columns add up)
+  tables: 84 parsed, mean accuracy 0.979, completeness 0.994 (title from {'heading': 53, 'caption': 31}), low confidence: none
+  top missing words: item×22, and×15, 101×7, of×6, financial×5, 37×4, executive×3, related×3, 99×3, 10×2
+
+--- MSFT_10-K_2023
+  words : 99.56% of content (98.40% of all visible text); 598 tokens excluded by design {'repeated_or_page_number_lines': 330}
+  facts : 1561 visible | linked ok 1413 | in text only 148 | value mismatch 0 | missing 0
+  struct: rows matched 732/732 | lost HTML rows 0 | column purity 100.00% (1954 values) | unaligned rows 0 | totals 156/165 | HTML tables 90 (unpaired 2, parsed unpaired 0)
+  sects : ok | 23 Items | unlabeled 0.00% | missing none | non-contiguous none
+  total does not add up: MSFT_10-K_2023_t029: Accumulated other comprehensive income (loss) > Total stockholders’ equity (0/3 columns add up)
+  total does not add up: MSFT_10-K_2023_t036: June 30, 2023 > Changes in Fair Value Recorded in Net Income > Total (1/4 columns add up)
+  total does not add up: MSFT_10-K_2023_t037: June 30, 2022 > Changes in Fair Value Recorded in Net Income > Total (1/4 columns add up)
+  tables: 84 parsed, mean accuracy 0.980, completeness 1.000 (title from {'caption': 34, 'heading': 50}), low confidence: none
+  top missing words: item×22, and×12, of×8, a×8, 101×7, 37×4, report×3, financial×3, related×3, 99×3
+
+--- MSFT_10-K_2024
+  words : 99.57% of content (98.45% of all visible text); 600 tokens excluded by design {'repeated_or_page_number_lines': 332}
+  facts : 1576 visible | linked ok 1428 | in text only 148 | value mismatch 0 | missing 0
+  struct: rows matched 738/738 | lost HTML rows 0 | column purity 100.00% (1979 values) | unaligned rows 1 | totals 153/164 | HTML tables 92 (unpaired 2, parsed unpaired 0)
+  sects : ok | 24 Items | unlabeled 0.00% | missing none | non-contiguous none
+  total does not add up: MSFT_10-K_2024_t029: Accumulated other comprehensive loss > Total stockholders’ equity (0/3 columns add up)
+  total does not add up: MSFT_10-K_2024_t036: June 30, 2024 > Changes in Fair Value Recorded in Net Income > Total (0/4 columns add up)
+  total does not add up: MSFT_10-K_2024_t037: June 30, 2023 > Changes in Fair Value Recorded in Net Income > Total (1/4 columns add up)
+  total does not add up: MSFT_10-K_2024_t054: Total (6/7 columns add up)
+  tables: 86 parsed, mean accuracy 0.980, completeness 1.000 (title from {'caption': 35, 'heading': 51}), low confidence: none
+  top missing words: item×23, and×12, a×10, of×8, 102×4, report×3, financial×3, 36×3, related×3, 98×3
+
+--- MSFT_10-K_2025
+  words : 99.51% of content (98.35% of all visible text); 552 tokens excluded by design {'repeated_or_page_number_lines': 303}
+  facts : 1549 visible | linked ok 1402 | in text only 147 | value mismatch 0 | missing 0
+  struct: rows matched 712/712 | lost HTML rows 0 | column purity 100.00% (1936 values) | unaligned rows 0 | totals 136/147 | HTML tables 85 (unpaired 2, parsed unpaired 0)
+  sects : ok | 24 Items | unlabeled 0.00% | missing none | non-contiguous none
+  total does not add up: MSFT_10-K_2025_t028: Accumulated other comprehensive loss > Total stockholders’ equity (0/3 columns add up)
+  total does not add up: MSFT_10-K_2025_t033: June 30, 2025 > Changes in Fair Value Recorded in Net Income > Total (0/4 columns add up)
+  total does not add up: MSFT_10-K_2025_t034: June 30, 2024 > Changes in Fair Value Recorded in Net Income > Total (0/4 columns add up)
+  tables: 79 parsed, mean accuracy 0.981, completeness 1.000 (title from {'caption': 34, 'heading': 45}), low confidence: none
+  top missing words: item×23, and×12, of×8, 91×6, a×6, report×3, financial×3, 32×3, related×3, 89×3
+
+--- NVDA_10-K_2020
+  words : 100.00% of content (97.70% of all visible text); 981 tokens excluded by design {'toc_tables': 2, 'repeated_or_page_number_lines': 235}
+  facts : 1086 visible | linked ok 959 | in text only 127 | value mismatch 0 | missing 0
+  struct: rows matched 570/570 | lost HTML rows 0 | column purity 99.86% (1389 values) | unaligned rows 0 | totals 87/102 | HTML tables 156 (unpaired 0, parsed unpaired 0)
+  sects : ok | 21 Items | unlabeled 0.17% | missing none | non-contiguous none
+  total does not add up: NVDA_10-K_2020_t081: Total assets (D) (0/5 columns add up)
+  total does not add up: NVDA_10-K_2020_t081: Total shareholders’ equity (0/5 columns add up)
+  total does not add up: NVDA_10-K_2020_t099: Total comprehensive income (0/3 columns add up)
+  total does not add up: NVDA_10-K_2020_t139: Total deferred tax assets (0/2 columns add up)
+  table issue : {'table_id': 'NVDA_10-K_2020_t156', 'title': 'EXHIBIT INDEX', 'unmatched_rows': [], 'lost_html_rows': [], 'column_purity': 0.917}
+  tables: 58 parsed, mean accuracy 0.986, completeness 0.974 (title from {'caption': 32, 'heading': 26}), low confidence: none
+
+--- NVDA_10-K_2021
+  words : 100.00% of content (97.91% of all visible text); 1032 tokens excluded by design {'page_furniture_blocks': 83, 'toc_tables': 2, 'repeated_or_page_number_lines': 172}
+  facts : 1156 visible | linked ok 957 | in text only 199 | value mismatch 0 | missing 0
+  struct: rows matched 549/549 | lost HTML rows 0 | column purity 99.85% (1292 values) | unaligned rows 0 | totals 86/89 | HTML tables 57 (unpaired 0, parsed unpaired 0)
+  sects : ok | 22 Items | unlabeled 0.16% | missing none | non-contiguous none
+  total does not add up: NVDA_10-K_2021_t017: Total comprehensive income (0/3 columns add up)
+  table issue : {'table_id': 'NVDA_10-K_2021_t057', 'title': 'EXHIBIT INDEX', 'unmatched_rows': [], 'lost_html_rows': [], 'column_purity': 0.917}
+  tables: 53 parsed, mean accuracy 0.986, completeness 0.991 (title from {'caption': 31, 'heading': 22}), low confidence: none
+
+--- NVDA_10-K_2022
+  words : 100.00% of content (97.75% of all visible text); 1115 tokens excluded by design {'page_furniture_blocks': 85, 'toc_tables': 2, 'repeated_or_page_number_lines': 187}
+  facts : 1153 visible | linked ok 957 | in text only 196 | value mismatch 0 | missing 0
+  struct: rows matched 548/548 | lost HTML rows 0 | column purity 99.92% (1305 values) | unaligned rows 0 | totals 93/96 | HTML tables 59 (unpaired 0, parsed unpaired 0)
+  sects : ok | 23 Items | unlabeled 0.15% | missing none | non-contiguous none
+  total does not add up: NVDA_10-K_2022_t017: Total comprehensive income (0/3 columns add up)
+  table issue : {'table_id': 'NVDA_10-K_2022_t059', 'title': 'EXHIBIT INDEX', 'unmatched_rows': [], 'lost_html_rows': [], 'column_purity': 0.947}
+  tables: 55 parsed, mean accuracy 0.986, completeness 0.991 (title from {'caption': 32, 'heading': 23}), low confidence: none
+
+--- NVDA_10-K_2023
+  words : 100.00% of content (97.90% of all visible text); 1084 tokens excluded by design {'page_furniture_blocks': 92, 'toc_tables': 2, 'repeated_or_page_number_lines': 181}
+  facts : 1235 visible | linked ok 1049 | in text only 186 | value mismatch 0 | missing 0
+  struct: rows matched 583/583 | lost HTML rows 0 | column purity 99.58% (1413 values) | unaligned rows 0 | totals 102/105 | HTML tables 64 (unpaired 0, parsed unpaired 0)
+  sects : ok | 23 Items | unlabeled 0.14% | missing none | non-contiguous none
+  total does not add up: NVDA_10-K_2023_t020: Total comprehensive income (0/3 columns add up)
+  table issue : {'table_id': 'NVDA_10-K_2023_t063', 'title': 'EXHIBIT INDEX', 'unmatched_rows': [], 'lost_html_rows': [], 'column_purity': 0.927}
+  tables: 60 parsed, mean accuracy 0.983, completeness 0.992 (title from {'caption': 36, 'heading': 24}), low confidence: none
+
+--- NVDA_10-K_2024
+  words : 100.00% of content (98.08% of all visible text); 1041 tokens excluded by design {'page_furniture_blocks': 85, 'toc_tables': 2, 'repeated_or_page_number_lines': 169}
+  facts : 1218 visible | linked ok 1044 | in text only 174 | value mismatch 0 | missing 0
+  struct: rows matched 568/568 | lost HTML rows 0 | column purity 99.49% (1377 values) | unaligned rows 0 | totals 102/105 | HTML tables 64 (unpaired 0, parsed unpaired 0)
+  sects : ok | 24 Items | unlabeled 0.15% | missing none | non-contiguous none
+  total does not add up: NVDA_10-K_2024_t021: Total comprehensive income (0/3 columns add up)
+  table issue : {'table_id': 'NVDA_10-K_2024_t064', 'title': 'Exhibit Index', 'unmatched_rows': [], 'lost_html_rows': [], 'column_purity': 0.837}
+  tables: 60 parsed, mean accuracy 0.983, completeness 0.992 (title from {'caption': 35, 'heading': 25}), low confidence: none
+
+--- NVDA_10-K_2025
+  words : 100.00% of content (98.13% of all visible text); 1035 tokens excluded by design {'page_furniture_blocks': 87, 'toc_tables': 2, 'repeated_or_page_number_lines': 167}
+  facts : 1229 visible | linked ok 1066 | in text only 163 | value mismatch 0 | missing 0
+  struct: rows matched 581/581 | lost HTML rows 0 | column purity 99.30% (1425 values) | unaligned rows 0 | totals 108/110 | HTML tables 66 (unpaired 0, parsed unpaired 0)
+  sects : ok | 24 Items | unlabeled 0.14% | missing none | non-contiguous none
+  total does not add up: NVDA_10-K_2025_t023: Total comprehensive income (1/3 columns add up)
+  table issue : {'table_id': 'NVDA_10-K_2025_t066', 'title': 'Exhibit Index', 'unmatched_rows': [], 'lost_html_rows': [], 'column_purity': 0.828}
+  tables: 62 parsed, mean accuracy 0.981, completeness 0.992 (title from {'caption': 37, 'heading': 25}), low confidence: none
+
+--- TSLA_10-K_2020
+  words : 99.79% of content (99.53% of all visible text); 210 tokens excluded by design {'repeated_or_page_number_lines': 158}
+  facts : 1745 visible | linked ok 1292 | in text only 453 | value mismatch 0 | missing 0
+  struct: rows matched 843/843 | lost HTML rows 1 | column purity 100.00% (2541 values) | unaligned rows 0 | totals 189/207 | HTML tables 163 (unpaired 2, parsed unpaired 0)
+  sects : ok | 22 Items | unlabeled 0.00% | missing none | non-contiguous none
+  total does not add up: TSLA_10-K_2020_t024: Consolidated Balance Sheet Data > Total assets (0/5 columns add up)
+  total does not add up: TSLA_10-K_2020_t024: Consolidated Balance Sheet Data > Total long-term liabilities (0/5 columns add up)
+  total does not add up: TSLA_10-K_2020_t064: Indefinite-lived intangible assets > Total intangible assets (0/8 columns add up)
+  table issue : {'table_id': 'TSLA_10-K_2020_t093', 'title': 'Note 14 – Equity Incentive Plans', 'unmatched_rows': [], 'lost_html_rows': ['in thousands price life years in billions in thousands value'], 'column_purity': 1.0}
+  tables: 94 parsed, mean accuracy 0.958, completeness 0.989 (title from {'caption': 42, 'heading': 52}), low confidence: none
+  top missing words: item×21, and×14, 108×6, financial×5, part×4, 107×3, executive×2, market×2, 4×2, risk×2
+
+--- TSLA_10-K_2021
+  words : 99.72% of content (99.48% of all visible text); 169 tokens excluded by design {'repeated_or_page_number_lines': 137}
+  facts : 1631 visible | linked ok 1294 | in text only 337 | value mismatch 0 | missing 0
+  struct: rows matched 785/785 | lost HTML rows 0 | column purity 100.00% (2377 values) | unaligned rows 0 | totals 172/180 | HTML tables 107 (unpaired 1, parsed unpaired 0)
+  sects : ok | 23 Items | unlabeled 0.00% | missing none | non-contiguous none
+  total does not add up: TSLA_10-K_2021_t038: Indefinite-lived intangible assets > Total intangible assets (0/8 columns add up)
+  tables: 84 parsed, mean accuracy 0.989, completeness 0.988 (title from {'heading': 45, 'caption': 39}), low confidence: none
+  top missing words: item×22, and×14, 1×11, 97×5, of×4, financial×4, part×4, 28×4, 96×4, 2×3
+
+--- TSLA_10-K_2022
+  words : 99.69% of content (99.43% of all visible text); 164 tokens excluded by design {'repeated_or_page_number_lines': 132}
+  facts : 1520 visible | linked ok 1241 | in text only 279 | value mismatch 0 | missing 0
+  struct: rows matched 739/739 | lost HTML rows 0 | column purity 100.00% (2179 values) | unaligned rows 0 | totals 175/175 | HTML tables 99 (unpaired 1, parsed unpaired 0)
+  sects : ok | 23 Items | unlabeled 0.00% | missing none | non-contiguous none
+  tables: 81 parsed, mean accuracy 0.990, completeness 0.982 (title from {'heading': 42, 'caption': 39}), low confidence: none
+  top missing words: item×22, and×14, 1×14, 91×5, of×4, 2×4, 90×4, financial×4, part×4, 29×4
+
+--- TSLA_10-K_2023
+  words : 100.00% of content (99.22% of all visible text); 487 tokens excluded by design {'page_furniture_blocks': 113, 'toc_tables': 2, 'repeated_or_page_number_lines': 54}
+  facts : 1459 visible | linked ok 1223 | in text only 236 | value mismatch 0 | missing 0
+  struct: rows matched 709/709 | lost HTML rows 0 | column purity 100.00% (2103 values) | unaligned rows 0 | totals 175/175 | HTML tables 84 (unpaired 0, parsed unpaired 0)
+  sects : ok | 24 Items | unlabeled 0.00% | missing none | non-contiguous none
+  tables: 78 parsed, mean accuracy 0.990, completeness 0.994 (title from {'heading': 42, 'caption': 36}), low confidence: none
+
+--- TSLA_10-K_2024
+  words : 100.00% of content (99.19% of all visible text); 486 tokens excluded by design {'page_furniture_blocks': 111, 'toc_tables': 2, 'repeated_or_page_number_lines': 50}
+  facts : 1460 visible | linked ok 1251 | in text only 209 | value mismatch 0 | missing 0
+  struct: rows matched 704/704 | lost HTML rows 0 | column purity 100.00% (2041 values) | unaligned rows 0 | totals 175/175 | HTML tables 82 (unpaired 0, parsed unpaired 0)
+  sects : ok | 24 Items | unlabeled 0.00% | missing none | non-contiguous none
+  tables: 77 parsed, mean accuracy 0.990, completeness 0.994 (title from {'heading': 43, 'caption': 34}), low confidence: none
+
+--- TSLA_10-K_2025
+  words : 100.00% of content (99.20% of all visible text); 485 tokens excluded by design {'page_furniture_blocks': 105, 'toc_tables': 2, 'repeated_or_page_number_lines': 55}
+  facts : 1477 visible | linked ok 1237 | in text only 240 | value mismatch 0 | missing 0
+  struct: rows matched 641/641 | lost HTML rows 0 | column purity 100.00% (1633 values) | unaligned rows 0 | totals 180/180 | HTML tables 75 (unpaired 0, parsed unpaired 0)
+  sects : ok | 24 Items | unlabeled 0.00% | missing none | non-contiguous none
+  tables: 70 parsed, mean accuracy 0.982, completeness 0.986 (title from {'heading': 38, 'caption': 32}), low confidence: none
+
+corpus validation passed: 36 filings (6 tickers × FY2020–FY2025)
+
+report written to C:\Users\Satyajit_Khot\Downloads\techfiling-copilot\data\parsed\coverage_report.json

@@ -1,0 +1,3402 @@
+[
+  {
+    "doc_id": "AAPL_10-K_2020",
+    "source_file": "AAPL_10-K_2020.html",
+    "verdict": "PASS",
+    "confidence": 0.9926,
+    "scores": {
+      "words": 1.0,
+      "blocks": 1.0,
+      "facts": 1.0,
+      "structure": 0.9735,
+      "tables": 0.9726
+    },
+    "words": {
+      "coverage_all_visible": 0.976,
+      "coverage_adjusted": 1.0,
+      "html_tokens_adjusted": 35744,
+      "covered": 35744,
+      "excluded_by_design_tokens": 938,
+      "excluded_by_design": {
+        "page_furniture_blocks": 69,
+        "toc_tables": 3,
+        "repeated_or_page_number_lines": 13
+      },
+      "top_missing": []
+    },
+    "blocks": {
+      "total": 631,
+      "missing_examples": []
+    },
+    "facts": {
+      "visible": 1219,
+      "in_text_only": 149,
+      "linked_value_ok": 1070,
+      "missing_examples": []
+    },
+    "structure": {
+      "rows": 1.0,
+      "lost": 1.0,
+      "columns": 1.0,
+      "totals": 0.8674,
+      "tables_paired": 1.0,
+      "parsed_rows": 590,
+      "matched_rows": 590,
+      "html_rows": 660,
+      "column_obs": 1509,
+      "column_pure": 1509,
+      "unaligned_rows": 1,
+      "inherited_label_rows": 5,
+      "lost_html_rows": 0,
+      "html_tables": 63,
+      "html_tables_unpaired": 0,
+      "totals_checked": 181,
+      "totals_passed": 157,
+      "totals_failed": [
+        "AAPL_10-K_2020_t013: Total (1/2 columns add up)",
+        "AAPL_10-K_2020_t015: Total cash, cash equivalents and marketable securities (0/5 columns add up)",
+        "AAPL_10-K_2020_t015: Total assets (0/5 columns add up)",
+        "AAPL_10-K_2020_t023: Total term debt (0/3 columns add up)",
+        "AAPL_10-K_2020_t029: Total shareholders’ equity, ending balances (0/3 columns add up)",
+        "AAPL_10-K_2020_t049: Maturities greater than 90 days > Total repayments of commercial paper, net (0/3 columns add up)",
+        "AAPL_10-K_2020_t050: Fourth quarter 2020 debt issuance of $5.5 billion > Total term debt (0/2 columns add up)",
+        "AAPL_10-K_2020_t053: Total amounts reclassified from AOCI (0/2 columns add up)"
+      ],
+      "problem_tables": []
+    },
+    "sections": {
+      "ok": true,
+      "items": 22,
+      "missing_required": [],
+      "non_contiguous": [],
+      "unlabeled_share": 0.0
+    },
+    "tables": {
+      "parsed": 61,
+      "mean_score": 0.9726,
+      "mean_completeness": 0.9918,
+      "title_source": {
+        "heading": 25,
+        "caption": 36
+      },
+      "low_confidence": []
+    }
+  },
+  {
+    "doc_id": "AAPL_10-K_2021",
+    "source_file": "AAPL_10-K_2021.html",
+    "verdict": "PASS",
+    "confidence": 0.9966,
+    "scores": {
+      "words": 1.0,
+      "blocks": 1.0,
+      "facts": 1.0,
+      "structure": 0.9876,
+      "tables": 0.9744
+    },
+    "words": {
+      "coverage_all_visible": 0.9753,
+      "coverage_adjusted": 1.0,
+      "html_tokens_adjusted": 32741,
+      "covered": 32741,
+      "excluded_by_design_tokens": 885,
+      "excluded_by_design": {
+        "page_furniture_blocks": 62,
+        "toc_tables": 3,
+        "repeated_or_page_number_lines": 13
+      },
+      "top_missing": []
+    },
+    "blocks": {
+      "total": 599,
+      "missing_examples": []
+    },
+    "facts": {
+      "visible": 1030,
+      "in_text_only": 125,
+      "linked_value_ok": 905,
+      "missing_examples": []
+    },
+    "structure": {
+      "rows": 1.0,
+      "lost": 1.0,
+      "columns": 1.0,
+      "totals": 0.9379,
+      "tables_paired": 1.0,
+      "parsed_rows": 497,
+      "matched_rows": 497,
+      "html_rows": 552,
+      "column_obs": 1259,
+      "column_pure": 1259,
+      "unaligned_rows": 1,
+      "inherited_label_rows": 2,
+      "lost_html_rows": 0,
+      "html_tables": 52,
+      "html_tables_unpaired": 0,
+      "totals_checked": 145,
+      "totals_passed": 136,
+      "totals_failed": [
+        "AAPL_10-K_2021_t013: Total (1/2 columns add up)",
+        "AAPL_10-K_2021_t026: Total shareholders’ equity, ending balances (0/3 columns add up)",
+        "AAPL_10-K_2021_t044: Maturities greater than 90 days > Total proceeds from/(repayments of) commercial paper, net (0/3 columns add up)",
+        "AAPL_10-K_2021_t045: Fourth quarter 2021 debt issuance > Total term debt (0/2 columns add up)"
+      ],
+      "problem_tables": []
+    },
+    "sections": {
+      "ok": true,
+      "items": 23,
+      "missing_required": [],
+      "non_contiguous": [],
+      "unlabeled_share": 0.0
+    },
+    "tables": {
+      "parsed": 50,
+      "mean_score": 0.9744,
+      "mean_completeness": 0.99,
+      "title_source": {
+        "heading": 19,
+        "caption": 31
+      },
+      "low_confidence": []
+    }
+  },
+  {
+    "doc_id": "AAPL_10-K_2022",
+    "source_file": "AAPL_10-K_2022.html",
+    "verdict": "PASS",
+    "confidence": 0.9967,
+    "scores": {
+      "words": 1.0,
+      "blocks": 1.0,
+      "facts": 1.0,
+      "structure": 0.9882,
+      "tables": 0.9783
+    },
+    "words": {
+      "coverage_all_visible": 0.9746,
+      "coverage_adjusted": 1.0,
+      "html_tokens_adjusted": 31529,
+      "covered": 31529,
+      "excluded_by_design_tokens": 871,
+      "excluded_by_design": {
+        "page_furniture_blocks": 60,
+        "toc_tables": 3,
+        "repeated_or_page_number_lines": 13
+      },
+      "top_missing": []
+    },
+    "blocks": {
+      "total": 599,
+      "missing_examples": []
+    },
+    "facts": {
+      "visible": 1016,
+      "in_text_only": 113,
+      "linked_value_ok": 903,
+      "missing_examples": []
+    },
+    "structure": {
+      "rows": 1.0,
+      "lost": 1.0,
+      "columns": 1.0,
+      "totals": 0.9408,
+      "tables_paired": 1.0,
+      "parsed_rows": 503,
+      "matched_rows": 503,
+      "html_rows": 560,
+      "column_obs": 1264,
+      "column_pure": 1264,
+      "unaligned_rows": 1,
+      "inherited_label_rows": 2,
+      "lost_html_rows": 0,
+      "html_tables": 52,
+      "html_tables_unpaired": 0,
+      "totals_checked": 152,
+      "totals_passed": 143,
+      "totals_failed": [
+        "AAPL_10-K_2022_t013: Total (1/2 columns add up)",
+        "AAPL_10-K_2022_t026: Total shareholders’ equity, ending balances (0/3 columns add up)",
+        "AAPL_10-K_2022_t045: Maturities greater than 90 days > Total proceeds from/(repayments of) commercial paper, net (0/3 columns add up)",
+        "AAPL_10-K_2022_t046: Fourth quarter 2022 debt issuance > Total term debt (0/2 columns add up)"
+      ],
+      "problem_tables": []
+    },
+    "sections": {
+      "ok": true,
+      "items": 23,
+      "missing_required": [],
+      "non_contiguous": [],
+      "unlabeled_share": 0.0
+    },
+    "tables": {
+      "parsed": 51,
+      "mean_score": 0.9783,
+      "mean_completeness": 0.9902,
+      "title_source": {
+        "heading": 19,
+        "caption": 32
+      },
+      "low_confidence": []
+    }
+  },
+  {
+    "doc_id": "AAPL_10-K_2023",
+    "source_file": "AAPL_10-K_2023.html",
+    "verdict": "PASS",
+    "confidence": 0.9968,
+    "scores": {
+      "words": 1.0,
+      "blocks": 1.0,
+      "facts": 1.0,
+      "structure": 0.9884,
+      "tables": 0.9801
+    },
+    "words": {
+      "coverage_all_visible": 0.9726,
+      "coverage_adjusted": 1.0,
+      "html_tokens_adjusted": 29249,
+      "covered": 29249,
+      "excluded_by_design_tokens": 875,
+      "excluded_by_design": {
+        "page_furniture_blocks": 60,
+        "toc_tables": 3,
+        "repeated_or_page_number_lines": 13
+      },
+      "top_missing": []
+    },
+    "blocks": {
+      "total": 573,
+      "missing_examples": []
+    },
+    "facts": {
+      "visible": 991,
+      "in_text_only": 100,
+      "linked_value_ok": 891,
+      "missing_examples": []
+    },
+    "structure": {
+      "rows": 1.0,
+      "lost": 1.0,
+      "columns": 1.0,
+      "totals": 0.9419,
+      "tables_paired": 1.0,
+      "parsed_rows": 503,
+      "matched_rows": 503,
+      "html_rows": 564,
+      "column_obs": 1260,
+      "column_pure": 1260,
+      "unaligned_rows": 1,
+      "inherited_label_rows": 2,
+      "lost_html_rows": 0,
+      "html_tables": 55,
+      "html_tables_unpaired": 0,
+      "totals_checked": 155,
+      "totals_passed": 146,
+      "totals_failed": [
+        "AAPL_10-K_2023_t013: Total (1/2 columns add up)",
+        "AAPL_10-K_2023_t026: Total shareholders’ equity, ending balances (0/3 columns add up)",
+        "AAPL_10-K_2023_t047: Maturities greater than 90 days > Total proceeds from/(repayments of) commercial paper, net (0/3 columns add up)",
+        "AAPL_10-K_2023_t048: Third quarter 2023 debt issuance > Total term debt principal (0/2 columns add up)"
+      ],
+      "problem_tables": []
+    },
+    "sections": {
+      "ok": true,
+      "items": 24,
+      "missing_required": [],
+      "non_contiguous": [],
+      "unlabeled_share": 0.0
+    },
+    "tables": {
+      "parsed": 54,
+      "mean_score": 0.9801,
+      "mean_completeness": 0.9907,
+      "title_source": {
+        "heading": 20,
+        "caption": 34
+      },
+      "low_confidence": []
+    }
+  },
+  {
+    "doc_id": "AAPL_10-K_2024",
+    "source_file": "AAPL_10-K_2024.html",
+    "verdict": "PASS",
+    "confidence": 0.9974,
+    "scores": {
+      "words": 1.0,
+      "blocks": 1.0,
+      "facts": 1.0,
+      "structure": 0.9907,
+      "tables": 0.9786
+    },
+    "words": {
+      "coverage_all_visible": 0.9732,
+      "coverage_adjusted": 1.0,
+      "html_tokens_adjusted": 29746,
+      "covered": 29746,
+      "excluded_by_design_tokens": 868,
+      "excluded_by_design": {
+        "page_furniture_blocks": 59,
+        "toc_tables": 3,
+        "repeated_or_page_number_lines": 13
+      },
+      "top_missing": []
+    },
+    "blocks": {
+      "total": 584,
+      "missing_examples": []
+    },
+    "facts": {
+      "visible": 963,
+      "in_text_only": 107,
+      "linked_value_ok": 856,
+      "missing_examples": []
+    },
+    "structure": {
+      "rows": 1.0,
+      "lost": 1.0,
+      "columns": 1.0,
+      "totals": 0.9536,
+      "tables_paired": 1.0,
+      "parsed_rows": 483,
+      "matched_rows": 483,
+      "html_rows": 540,
+      "column_obs": 1214,
+      "column_pure": 1214,
+      "unaligned_rows": 1,
+      "inherited_label_rows": 2,
+      "lost_html_rows": 0,
+      "html_tables": 52,
+      "html_tables_unpaired": 0,
+      "totals_checked": 151,
+      "totals_passed": 144,
+      "totals_failed": [
+        "AAPL_10-K_2024_t013: Total (1/2 columns add up)",
+        "AAPL_10-K_2024_t026: Total shareholders’ equity, ending balances (0/3 columns add up)",
+        "AAPL_10-K_2024_t044: Maturities greater than 90 days > Total proceeds from/(repayments of) commercial paper, net (0/3 columns add up)"
+      ],
+      "problem_tables": []
+    },
+    "sections": {
+      "ok": true,
+      "items": 24,
+      "missing_required": [],
+      "non_contiguous": [],
+      "unlabeled_share": 0.0
+    },
+    "tables": {
+      "parsed": 50,
+      "mean_score": 0.9786,
+      "mean_completeness": 0.99,
+      "title_source": {
+        "heading": 18,
+        "caption": 32
+      },
+      "low_confidence": []
+    }
+  },
+  {
+    "doc_id": "AAPL_10-K_2025",
+    "source_file": "AAPL_10-K_2025.html",
+    "verdict": "PASS",
+    "confidence": 0.9966,
+    "scores": {
+      "words": 1.0,
+      "blocks": 1.0,
+      "facts": 1.0,
+      "structure": 0.9877,
+      "tables": 0.9777
+    },
+    "words": {
+      "coverage_all_visible": 0.9737,
+      "coverage_adjusted": 1.0,
+      "html_tokens_adjusted": 30009,
+      "covered": 30009,
+      "excluded_by_design_tokens": 875,
+      "excluded_by_design": {
+        "page_furniture_blocks": 60,
+        "toc_tables": 3,
+        "repeated_or_page_number_lines": 13
+      },
+      "top_missing": []
+    },
+    "blocks": {
+      "total": 573,
+      "missing_examples": []
+    },
+    "facts": {
+      "visible": 969,
+      "in_text_only": 98,
+      "linked_value_ok": 871,
+      "missing_examples": []
+    },
+    "structure": {
+      "rows": 1.0,
+      "lost": 1.0,
+      "columns": 1.0,
+      "totals": 0.9384,
+      "tables_paired": 1.0,
+      "parsed_rows": 462,
+      "matched_rows": 462,
+      "html_rows": 521,
+      "column_obs": 1228,
+      "column_pure": 1228,
+      "unaligned_rows": 1,
+      "inherited_label_rows": 2,
+      "lost_html_rows": 0,
+      "html_tables": 51,
+      "html_tables_unpaired": 0,
+      "totals_checked": 146,
+      "totals_passed": 137,
+      "totals_failed": [
+        "AAPL_10-K_2025_t013: Total (1/2 columns add up)",
+        "AAPL_10-K_2025_t026: Total shareholders’ equity, ending balances (0/3 columns add up)",
+        "AAPL_10-K_2025_t042: Maturities greater than 90 days > Total proceeds from/(repayments of) commercial paper, net (0/3 columns add up)",
+        "AAPL_10-K_2025_t043: 2025 debt issuance > Total term debt principal (0/2 columns add up)"
+      ],
+      "problem_tables": []
+    },
+    "sections": {
+      "ok": true,
+      "items": 24,
+      "missing_required": [],
+      "non_contiguous": [],
+      "unlabeled_share": 0.0
+    },
+    "tables": {
+      "parsed": 49,
+      "mean_score": 0.9777,
+      "mean_completeness": 0.9898,
+      "title_source": {
+        "heading": 19,
+        "caption": 30
+      },
+      "low_confidence": []
+    }
+  },
+  {
+    "doc_id": "AMZN_10-K_2020",
+    "source_file": "AMZN_10-K_2020.html",
+    "verdict": "WARN",
+    "confidence": 0.985,
+    "scores": {
+      "words": 1.0,
+      "blocks": 1.0,
+      "facts": 1.0,
+      "structure": 0.9458,
+      "tables": 0.982
+    },
+    "words": {
+      "coverage_all_visible": 0.9848,
+      "coverage_adjusted": 1.0,
+      "html_tokens_adjusted": 37288,
+      "covered": 37288,
+      "excluded_by_design_tokens": 587,
+      "excluded_by_design": {
+        "page_furniture_blocks": 74,
+        "toc_tables": 2,
+        "repeated_or_page_number_lines": 118
+      },
+      "top_missing": []
+    },
+    "blocks": {
+      "total": 682,
+      "missing_examples": []
+    },
+    "facts": {
+      "visible": 1253,
+      "linked_value_ok": 1035,
+      "in_text_only": 218,
+      "missing_examples": []
+    },
+    "structure": {
+      "rows": 1.0,
+      "lost": 1.0,
+      "columns": 1.0,
+      "totals": 0.7292,
+      "tables_paired": 1.0,
+      "parsed_rows": 592,
+      "matched_rows": 592,
+      "html_rows": 689,
+      "column_obs": 1399,
+      "column_pure": 1399,
+      "unaligned_rows": 0,
+      "inherited_label_rows": 5,
+      "lost_html_rows": 0,
+      "html_tables": 79,
+      "html_tables_unpaired": 0,
+      "totals_checked": 96,
+      "totals_passed": 70,
+      "totals_failed": [
+        "AMZN_10-K_2020_t022: Balance Sheets > Total long-term obligations (0/5 columns add up)",
+        "AMZN_10-K_2020_t040: Total other comprehensive income (loss) (0/3 columns add up)",
+        "AMZN_10-K_2020_t044: Total dilutive effect of outstanding stock awards (0/3 columns add up)",
+        "AMZN_10-K_2020_t045: Total cash, cash equivalents, and marketable securities (0/1 columns add up)",
+        "AMZN_10-K_2020_t046: Total cash, cash equivalents, and marketable securities (0/1 columns add up)",
+        "AMZN_10-K_2020_t050: Total accumulated depreciation and amortization (1) (0/2 columns add up)",
+        "AMZN_10-K_2020_t050: Total property and equipment, net (0/2 columns add up)",
+        "AMZN_10-K_2020_t051: Total lease cost (0/2 columns add up)",
+        "AMZN_10-K_2020_t056: Finite-lived intangible assets (2) > Total finite-lived intangible assets (6/7 columns add up)",
+        "AMZN_10-K_2020_t066: Effect of > Total (0/3 columns add up)"
+      ],
+      "problem_tables": []
+    },
+    "sections": {
+      "ok": true,
+      "items": 22,
+      "missing_required": [],
+      "non_contiguous": [],
+      "unlabeled_share": 0.0
+    },
+    "tables": {
+      "parsed": 60,
+      "mean_score": 0.982,
+      "mean_completeness": 0.9917,
+      "title_source": {
+        "heading": 34,
+        "caption": 26
+      },
+      "low_confidence": []
+    }
+  },
+  {
+    "doc_id": "AMZN_10-K_2021",
+    "source_file": "AMZN_10-K_2021.html",
+    "verdict": "WARN",
+    "confidence": 0.9846,
+    "scores": {
+      "words": 1.0,
+      "blocks": 1.0,
+      "facts": 1.0,
+      "structure": 0.9446,
+      "tables": 0.9824
+    },
+    "words": {
+      "coverage_all_visible": 0.9844,
+      "coverage_adjusted": 1.0,
+      "html_tokens_adjusted": 37054,
+      "covered": 37054,
+      "excluded_by_design_tokens": 597,
+      "excluded_by_design": {
+        "page_furniture_blocks": 74,
+        "toc_tables": 2,
+        "repeated_or_page_number_lines": 116
+      },
+      "top_missing": []
+    },
+    "blocks": {
+      "total": 673,
+      "missing_examples": []
+    },
+    "facts": {
+      "visible": 1231,
+      "linked_value_ok": 1008,
+      "in_text_only": 223,
+      "missing_examples": []
+    },
+    "structure": {
+      "rows": 1.0,
+      "lost": 1.0,
+      "columns": 1.0,
+      "totals": 0.7228,
+      "tables_paired": 1.0,
+      "parsed_rows": 571,
+      "matched_rows": 571,
+      "html_rows": 666,
+      "column_obs": 1326,
+      "column_pure": 1326,
+      "unaligned_rows": 0,
+      "inherited_label_rows": 5,
+      "lost_html_rows": 0,
+      "html_tables": 88,
+      "html_tables_unpaired": 0,
+      "totals_checked": 101,
+      "totals_passed": 73,
+      "totals_failed": [
+        "AMZN_10-K_2021_t038: Total other comprehensive income (loss) (0/3 columns add up)",
+        "AMZN_10-K_2021_t042: Total dilutive effect of outstanding stock awards (0/3 columns add up)",
+        "AMZN_10-K_2021_t045: Total assets (0/2 columns add up)",
+        "AMZN_10-K_2021_t045: Total current liabilities (0/2 columns add up)",
+        "AMZN_10-K_2021_t045: Total liabilities (0/2 columns add up)",
+        "AMZN_10-K_2021_t046: Total cash, cash equivalents, and marketable securities (0/1 columns add up)",
+        "AMZN_10-K_2021_t047: Total cash, cash equivalents, and marketable securities (0/1 columns add up)",
+        "AMZN_10-K_2021_t051: Total accumulated depreciation and amortization (1) (0/2 columns add up)",
+        "AMZN_10-K_2021_t051: Total property and equipment, net (0/2 columns add up)",
+        "AMZN_10-K_2021_t052: Total lease cost (0/3 columns add up)"
+      ],
+      "problem_tables": []
+    },
+    "sections": {
+      "ok": true,
+      "items": 23,
+      "missing_required": [],
+      "non_contiguous": [],
+      "unlabeled_share": 0.0
+    },
+    "tables": {
+      "parsed": 61,
+      "mean_score": 0.9824,
+      "mean_completeness": 0.9918,
+      "title_source": {
+        "heading": 35,
+        "caption": 26
+      },
+      "low_confidence": []
+    }
+  },
+  {
+    "doc_id": "AMZN_10-K_2022",
+    "source_file": "AMZN_10-K_2022.html",
+    "verdict": "WARN",
+    "confidence": 0.9846,
+    "scores": {
+      "words": 1.0,
+      "blocks": 1.0,
+      "facts": 1.0,
+      "structure": 0.9446,
+      "tables": 0.9827
+    },
+    "words": {
+      "coverage_all_visible": 0.9852,
+      "coverage_adjusted": 1.0,
+      "html_tokens_adjusted": 39223,
+      "covered": 39223,
+      "excluded_by_design_tokens": 602,
+      "excluded_by_design": {
+        "page_furniture_blocks": 75,
+        "toc_tables": 2,
+        "repeated_or_page_number_lines": 117
+      },
+      "top_missing": []
+    },
+    "blocks": {
+      "total": 690,
+      "missing_examples": []
+    },
+    "facts": {
+      "visible": 1279,
+      "linked_value_ok": 1018,
+      "in_text_only": 261,
+      "missing_examples": []
+    },
+    "structure": {
+      "rows": 1.0,
+      "lost": 1.0,
+      "columns": 1.0,
+      "totals": 0.7228,
+      "tables_paired": 1.0,
+      "parsed_rows": 569,
+      "matched_rows": 569,
+      "html_rows": 664,
+      "column_obs": 1329,
+      "column_pure": 1329,
+      "unaligned_rows": 0,
+      "inherited_label_rows": 5,
+      "lost_html_rows": 0,
+      "html_tables": 88,
+      "html_tables_unpaired": 0,
+      "totals_checked": 101,
+      "totals_passed": 73,
+      "totals_failed": [
+        "AMZN_10-K_2022_t038: Other comprehensive income (loss) > Total other comprehensive income (loss) (0/3 columns add up)",
+        "AMZN_10-K_2022_t042: Total dilutive effect of outstanding stock awards (0/3 columns add up)",
+        "AMZN_10-K_2022_t045: Total assets (0/2 columns add up)",
+        "AMZN_10-K_2022_t045: Total current liabilities (0/2 columns add up)",
+        "AMZN_10-K_2022_t045: Total liabilities (0/2 columns add up)",
+        "AMZN_10-K_2022_t046: Total cash, cash equivalents, and marketable securities (0/1 columns add up)",
+        "AMZN_10-K_2022_t047: Total cash, cash equivalents, and marketable securities (0/1 columns add up)",
+        "AMZN_10-K_2022_t051: Total accumulated depreciation and amortization (1) (0/2 columns add up)",
+        "AMZN_10-K_2022_t051: Total property and equipment, net (0/2 columns add up)",
+        "AMZN_10-K_2022_t052: Total lease cost (0/3 columns add up)"
+      ],
+      "problem_tables": []
+    },
+    "sections": {
+      "ok": true,
+      "items": 23,
+      "missing_required": [],
+      "non_contiguous": [],
+      "unlabeled_share": 0.0
+    },
+    "tables": {
+      "parsed": 62,
+      "mean_score": 0.9827,
+      "mean_completeness": 0.9919,
+      "title_source": {
+        "heading": 36,
+        "caption": 26
+      },
+      "low_confidence": []
+    }
+  },
+  {
+    "doc_id": "AMZN_10-K_2023",
+    "source_file": "AMZN_10-K_2023.html",
+    "verdict": "WARN",
+    "confidence": 0.9846,
+    "scores": {
+      "words": 1.0,
+      "blocks": 1.0,
+      "facts": 1.0,
+      "structure": 0.9446,
+      "tables": 0.9829
+    },
+    "words": {
+      "coverage_all_visible": 0.9855,
+      "coverage_adjusted": 1.0,
+      "html_tokens_adjusted": 41434,
+      "covered": 41434,
+      "excluded_by_design_tokens": 618,
+      "excluded_by_design": {
+        "page_furniture_blocks": 78,
+        "toc_tables": 2,
+        "repeated_or_page_number_lines": 120
+      },
+      "top_missing": []
+    },
+    "blocks": {
+      "total": 717,
+      "missing_examples": []
+    },
+    "facts": {
+      "visible": 1286,
+      "linked_value_ok": 1016,
+      "in_text_only": 270,
+      "missing_examples": []
+    },
+    "structure": {
+      "rows": 1.0,
+      "lost": 1.0,
+      "columns": 1.0,
+      "totals": 0.7228,
+      "tables_paired": 1.0,
+      "parsed_rows": 572,
+      "matched_rows": 572,
+      "html_rows": 667,
+      "column_obs": 1325,
+      "column_pure": 1325,
+      "unaligned_rows": 0,
+      "inherited_label_rows": 5,
+      "lost_html_rows": 0,
+      "html_tables": 89,
+      "html_tables_unpaired": 0,
+      "totals_checked": 101,
+      "totals_passed": 73,
+      "totals_failed": [
+        "AMZN_10-K_2023_t039: Other comprehensive income (loss) > Total other comprehensive income (loss) (0/3 columns add up)",
+        "AMZN_10-K_2023_t043: Total dilutive effect of outstanding stock awards (0/3 columns add up)",
+        "AMZN_10-K_2023_t046: Total assets (0/2 columns add up)",
+        "AMZN_10-K_2023_t046: Total current liabilities (0/2 columns add up)",
+        "AMZN_10-K_2023_t046: Total liabilities (0/2 columns add up)",
+        "AMZN_10-K_2023_t047: Total cash, cash equivalents, and marketable securities (0/1 columns add up)",
+        "AMZN_10-K_2023_t048: Total cash, cash equivalents, and marketable securities (0/1 columns add up)",
+        "AMZN_10-K_2023_t052: Total accumulated depreciation and amortization (1) (0/2 columns add up)",
+        "AMZN_10-K_2023_t052: Total property and equipment, net (0/2 columns add up)",
+        "AMZN_10-K_2023_t053: Total lease cost (0/3 columns add up)"
+      ],
+      "problem_tables": []
+    },
+    "sections": {
+      "ok": true,
+      "items": 24,
+      "missing_required": [],
+      "non_contiguous": [],
+      "unlabeled_share": 0.0
+    },
+    "tables": {
+      "parsed": 62,
+      "mean_score": 0.9829,
+      "mean_completeness": 0.9919,
+      "title_source": {
+        "heading": 36,
+        "caption": 26
+      },
+      "low_confidence": []
+    }
+  },
+  {
+    "doc_id": "AMZN_10-K_2024",
+    "source_file": "AMZN_10-K_2024.html",
+    "verdict": "PASS",
+    "confidence": 0.9871,
+    "scores": {
+      "words": 1.0,
+      "blocks": 1.0,
+      "facts": 1.0,
+      "structure": 0.9537,
+      "tables": 0.9826
+    },
+    "words": {
+      "coverage_all_visible": 0.9854,
+      "coverage_adjusted": 1.0,
+      "html_tokens_adjusted": 40994,
+      "covered": 40994,
+      "excluded_by_design_tokens": 614,
+      "excluded_by_design": {
+        "page_furniture_blocks": 77,
+        "toc_tables": 2,
+        "repeated_or_page_number_lines": 119
+      },
+      "top_missing": []
+    },
+    "blocks": {
+      "total": 715,
+      "missing_examples": []
+    },
+    "facts": {
+      "visible": 1260,
+      "linked_value_ok": 994,
+      "in_text_only": 266,
+      "missing_examples": []
+    },
+    "structure": {
+      "rows": 1.0,
+      "lost": 1.0,
+      "columns": 1.0,
+      "totals": 0.7684,
+      "tables_paired": 1.0,
+      "parsed_rows": 564,
+      "matched_rows": 564,
+      "html_rows": 657,
+      "column_obs": 1317,
+      "column_pure": 1317,
+      "unaligned_rows": 0,
+      "inherited_label_rows": 5,
+      "lost_html_rows": 0,
+      "html_tables": 87,
+      "html_tables_unpaired": 0,
+      "totals_checked": 95,
+      "totals_passed": 73,
+      "totals_failed": [
+        "AMZN_10-K_2024_t039: Other comprehensive income (loss) > Total other comprehensive income (loss) (0/3 columns add up)",
+        "AMZN_10-K_2024_t043: Total dilutive effect of outstanding stock awards (0/3 columns add up)",
+        "AMZN_10-K_2024_t045: Total cash, cash equivalents, and marketable securities (0/1 columns add up)",
+        "AMZN_10-K_2024_t046: Total cash, cash equivalents, and marketable securities (0/1 columns add up)",
+        "AMZN_10-K_2024_t050: Total accumulated depreciation and amortization (1) (0/2 columns add up)",
+        "AMZN_10-K_2024_t050: Total property and equipment, net (0/2 columns add up)",
+        "AMZN_10-K_2024_t051: Total lease cost (0/3 columns add up)",
+        "AMZN_10-K_2024_t056: Finite-lived intangible assets (2) > Total finite-lived intangible assets (6/7 columns add up)",
+        "AMZN_10-K_2024_t066: Effect of > Total (0/3 columns add up)",
+        "AMZN_10-K_2024_t069: Consolidated > Total non-operating income (expense) (0/3 columns add up)"
+      ],
+      "problem_tables": []
+    },
+    "sections": {
+      "ok": true,
+      "items": 24,
+      "missing_required": [],
+      "non_contiguous": [],
+      "unlabeled_share": 0.0
+    },
+    "tables": {
+      "parsed": 60,
+      "mean_score": 0.9826,
+      "mean_completeness": 0.9917,
+      "title_source": {
+        "heading": 34,
+        "caption": 26
+      },
+      "low_confidence": []
+    }
+  },
+  {
+    "doc_id": "AMZN_10-K_2025",
+    "source_file": "AMZN_10-K_2025.html",
+    "verdict": "PASS",
+    "confidence": 0.9867,
+    "scores": {
+      "words": 1.0,
+      "blocks": 1.0,
+      "facts": 1.0,
+      "structure": 0.952,
+      "tables": 0.9785
+    },
+    "words": {
+      "coverage_all_visible": 0.9855,
+      "coverage_adjusted": 1.0,
+      "html_tokens_adjusted": 41497,
+      "covered": 41497,
+      "excluded_by_design_tokens": 621,
+      "excluded_by_design": {
+        "page_furniture_blocks": 79,
+        "toc_tables": 2,
+        "repeated_or_page_number_lines": 121
+      },
+      "top_missing": []
+    },
+    "blocks": {
+      "total": 723,
+      "missing_examples": []
+    },
+    "facts": {
+      "visible": 1375,
+      "linked_value_ok": 1082,
+      "in_text_only": 293,
+      "missing_examples": []
+    },
+    "structure": {
+      "rows": 1.0,
+      "lost": 1.0,
+      "columns": 1.0,
+      "totals": 0.76,
+      "tables_paired": 1.0,
+      "parsed_rows": 576,
+      "matched_rows": 576,
+      "html_rows": 670,
+      "column_obs": 1373,
+      "column_pure": 1373,
+      "unaligned_rows": 0,
+      "inherited_label_rows": 5,
+      "lost_html_rows": 0,
+      "html_tables": 88,
+      "html_tables_unpaired": 0,
+      "totals_checked": 100,
+      "totals_passed": 76,
+      "totals_failed": [
+        "AMZN_10-K_2025_t037: Other comprehensive income (loss) > Total other comprehensive income (loss) (0/3 columns add up)",
+        "AMZN_10-K_2025_t041: Total dilutive effect of outstanding stock awards (0/3 columns add up)",
+        "AMZN_10-K_2025_t044: Total cash, cash equivalents, and marketable securities (0/1 columns add up)",
+        "AMZN_10-K_2025_t045: Total cash, cash equivalents, and marketable securities (0/1 columns add up)",
+        "AMZN_10-K_2025_t049: Total accumulated depreciation and amortization (1) (0/2 columns add up)",
+        "AMZN_10-K_2025_t049: Total property and equipment, net (0/2 columns add up)",
+        "AMZN_10-K_2025_t050: Total lease cost (0/3 columns add up)",
+        "AMZN_10-K_2025_t055: Finite-lived intangible assets (2) > Total finite-lived intangible assets (6/7 columns add up)",
+        "AMZN_10-K_2025_t063: Other > Total ending accumulated other comprehensive income (loss), net of tax of $(1,762) and $(9,384) (0/2 columns add up)",
+        "AMZN_10-K_2025_t067: Federal > Total (0/3 columns add up)"
+      ],
+      "problem_tables": []
+    },
+    "sections": {
+      "ok": true,
+      "items": 24,
+      "missing_required": [],
+      "non_contiguous": [],
+      "unlabeled_share": 0.0
+    },
+    "tables": {
+      "parsed": 61,
+      "mean_score": 0.9785,
+      "mean_completeness": 0.9918,
+      "title_source": {
+        "heading": 32,
+        "caption": 29
+      },
+      "low_confidence": []
+    }
+  },
+  {
+    "doc_id": "GOOGL_10-K_2020",
+    "source_file": "GOOGL_10-K_2020.html",
+    "verdict": "PASS",
+    "confidence": 0.9882,
+    "scores": {
+      "words": 1.0,
+      "blocks": 1.0,
+      "facts": 1.0,
+      "structure": 0.9577,
+      "tables": 0.9887
+    },
+    "words": {
+      "coverage_all_visible": 0.9847,
+      "coverage_adjusted": 1.0,
+      "html_tokens_adjusted": 51935,
+      "covered": 51934,
+      "excluded_by_design_tokens": 902,
+      "excluded_by_design": {
+        "page_furniture_blocks": 100,
+        "toc_tables": 101,
+        "repeated_or_page_number_lines": 20
+      },
+      "top_missing": [
+        [
+          "u",
+          1
+        ]
+      ]
+    },
+    "blocks": {
+      "total": 1042,
+      "missing_examples": []
+    },
+    "facts": {
+      "visible": 1453,
+      "in_text_only": 186,
+      "linked_value_ok": 1267,
+      "missing_examples": []
+    },
+    "structure": {
+      "rows": 1.0,
+      "lost": 1.0,
+      "columns": 0.9995,
+      "totals": 0.7888,
+      "tables_paired": 1.0,
+      "parsed_rows": 709,
+      "matched_rows": 709,
+      "html_rows": 860,
+      "column_obs": 1903,
+      "column_pure": 1902,
+      "unaligned_rows": 0,
+      "inherited_label_rows": 4,
+      "lost_html_rows": 0,
+      "html_tables": 88,
+      "html_tables_unpaired": 0,
+      "totals_checked": 161,
+      "totals_passed": 127,
+      "totals_failed": [
+        "GOOGL_10-K_2020_t042: Consolidated Balance Sheet Data > Total assets (0/5 columns add up)",
+        "GOOGL_10-K_2020_t042: Consolidated Balance Sheet Data > Total long-term liabilities (0/5 columns add up)",
+        "GOOGL_10-K_2020_t042: Consolidated Balance Sheet Data > Total stockholders’ equity (0/5 columns add up)",
+        "GOOGL_10-K_2020_t056: Total revenues (0/2 columns add up)",
+        "GOOGL_10-K_2020_t056: Total constant currency revenues (0/2 columns add up)",
+        "GOOGL_10-K_2020_t117: Total initial cost (0/2 columns add up)",
+        "GOOGL_10-K_2020_t121: Total (0/4 columns add up)",
+        "GOOGL_10-K_2020_t131: Gains (Losses) on Derivatives Not Designated as Hedging Instruments > Total gains (losses) (0/6 columns add up)",
+        "GOOGL_10-K_2020_t147: Unrealized gains (losses) on cash flow hedges > Total amount reclassified, net of tax (0/3 columns add up)"
+      ],
+      "problem_tables": [
+        {
+          "table_id": "GOOGL_10-K_2020_t133",
+          "title": "Offsetting of Assets",
+          "unmatched_rows": [],
+          "lost_html_rows": [],
+          "column_purity": 0.958
+        }
+      ]
+    },
+    "sections": {
+      "ok": true,
+      "items": 22,
+      "missing_required": [],
+      "non_contiguous": [],
+      "unlabeled_share": 0.0
+    },
+    "tables": {
+      "parsed": 80,
+      "mean_score": 0.9887,
+      "mean_completeness": 0.9938,
+      "title_source": {
+        "caption": 44,
+        "heading": 36
+      },
+      "low_confidence": []
+    }
+  },
+  {
+    "doc_id": "GOOGL_10-K_2021",
+    "source_file": "GOOGL_10-K_2021.html",
+    "verdict": "PASS",
+    "confidence": 0.9935,
+    "scores": {
+      "words": 0.9998,
+      "blocks": 1.0,
+      "facts": 1.0,
+      "structure": 0.9767,
+      "tables": 0.9869
+    },
+    "words": {
+      "coverage_all_visible": 0.9842,
+      "coverage_adjusted": 0.9998,
+      "html_tokens_adjusted": 49592,
+      "covered": 49580,
+      "excluded_by_design_tokens": 877,
+      "excluded_by_design": {
+        "page_furniture_blocks": 95,
+        "toc_tables": 96,
+        "repeated_or_page_number_lines": 19
+      },
+      "top_missing": [
+        [
+          "form",
+          1
+        ],
+        [
+          "10",
+          1
+        ],
+        [
+          "k",
+          1
+        ],
+        [
+          "annual",
+          1
+        ],
+        [
+          "report",
+          1
+        ],
+        [
+          "file",
+          1
+        ],
+        [
+          "001",
+          1
+        ],
+        [
+          "37580",
+          1
+        ],
+        [
+          "no",
+          1
+        ],
+        [
+          "4",
+          1
+        ]
+      ]
+    },
+    "blocks": {
+      "total": 1015,
+      "missing_examples": []
+    },
+    "facts": {
+      "visible": 1447,
+      "in_text_only": 211,
+      "linked_value_ok": 1236,
+      "missing_examples": []
+    },
+    "structure": {
+      "rows": 1.0,
+      "lost": 1.0,
+      "columns": 0.9994,
+      "totals": 0.8841,
+      "tables_paired": 1.0,
+      "parsed_rows": 655,
+      "matched_rows": 655,
+      "html_rows": 799,
+      "column_obs": 1666,
+      "column_pure": 1665,
+      "unaligned_rows": 0,
+      "inherited_label_rows": 4,
+      "lost_html_rows": 0,
+      "html_tables": 83,
+      "html_tables_unpaired": 0,
+      "totals_checked": 138,
+      "totals_passed": 122,
+      "totals_failed": [
+        "GOOGL_10-K_2021_t053: Total revenues (1/2 columns add up)",
+        "GOOGL_10-K_2021_t108: Total initial cost (0/2 columns add up)",
+        "GOOGL_10-K_2021_t111: Total (0/4 columns add up)",
+        "GOOGL_10-K_2021_t121: Gains (Losses) on Derivatives Not Designated as Hedging Instruments > Total gains (losses) (0/6 columns add up)",
+        "GOOGL_10-K_2021_t137: Unrealized gains (losses) on cash flow hedges > Total amount reclassified, net of income tax (0/3 columns add up)"
+      ],
+      "problem_tables": [
+        {
+          "table_id": "GOOGL_10-K_2021_t123",
+          "title": "Offsetting of Assets",
+          "unmatched_rows": [],
+          "lost_html_rows": [],
+          "column_purity": 0.958
+        }
+      ]
+    },
+    "sections": {
+      "ok": true,
+      "items": 23,
+      "missing_required": [],
+      "non_contiguous": [],
+      "unlabeled_share": 0.0
+    },
+    "tables": {
+      "parsed": 75,
+      "mean_score": 0.9869,
+      "mean_completeness": 0.9933,
+      "title_source": {
+        "caption": 42,
+        "heading": 33
+      },
+      "low_confidence": []
+    }
+  },
+  {
+    "doc_id": "GOOGL_10-K_2022",
+    "source_file": "GOOGL_10-K_2022.html",
+    "verdict": "PASS",
+    "confidence": 0.9918,
+    "scores": {
+      "words": 1.0,
+      "blocks": 1.0,
+      "facts": 1.0,
+      "structure": 0.9706,
+      "tables": 0.9883
+    },
+    "words": {
+      "coverage_all_visible": 0.9838,
+      "coverage_adjusted": 1.0,
+      "html_tokens_adjusted": 47724,
+      "covered": 47724,
+      "excluded_by_design_tokens": 859,
+      "excluded_by_design": {
+        "page_furniture_blocks": 92,
+        "toc_tables": 93,
+        "repeated_or_page_number_lines": 19
+      },
+      "top_missing": []
+    },
+    "blocks": {
+      "total": 1016,
+      "missing_examples": []
+    },
+    "facts": {
+      "visible": 1446,
+      "in_text_only": 175,
+      "linked_value_ok": 1271,
+      "missing_examples": []
+    },
+    "structure": {
+      "rows": 1.0,
+      "lost": 1.0,
+      "columns": 0.9994,
+      "totals": 0.8535,
+      "tables_paired": 1.0,
+      "parsed_rows": 645,
+      "matched_rows": 645,
+      "html_rows": 777,
+      "column_obs": 1720,
+      "column_pure": 1719,
+      "unaligned_rows": 0,
+      "inherited_label_rows": 3,
+      "lost_html_rows": 0,
+      "html_tables": 81,
+      "html_tables_unpaired": 0,
+      "totals_checked": 157,
+      "totals_passed": 134,
+      "totals_failed": [
+        "GOOGL_10-K_2022_t098: Fair value adjustments recorded in net income > Total (0/6 columns add up)",
+        "GOOGL_10-K_2022_t100: Fair value adjustments recorded in net income > Total (0/6 columns add up)",
+        "GOOGL_10-K_2022_t109: Total initial cost (0/2 columns add up)",
+        "GOOGL_10-K_2022_t116: Effect of non designated hedges > Total gains (losses) (0/6 columns add up)",
+        "GOOGL_10-K_2022_t131: Unrealized gains (losses) on cash flow hedges > Total amount reclassified, net of income tax (0/3 columns add up)"
+      ],
+      "problem_tables": [
+        {
+          "table_id": "GOOGL_10-K_2022_t118",
+          "title": "Offsetting of Derivatives",
+          "unmatched_rows": [],
+          "lost_html_rows": [],
+          "column_purity": 0.968
+        }
+      ]
+    },
+    "sections": {
+      "ok": true,
+      "items": 23,
+      "missing_required": [],
+      "non_contiguous": [],
+      "unlabeled_share": 0.0
+    },
+    "tables": {
+      "parsed": 73,
+      "mean_score": 0.9883,
+      "mean_completeness": 1.0,
+      "title_source": {
+        "caption": 40,
+        "heading": 33
+      },
+      "low_confidence": []
+    }
+  },
+  {
+    "doc_id": "GOOGL_10-K_2023",
+    "source_file": "GOOGL_10-K_2023.html",
+    "verdict": "PASS",
+    "confidence": 0.9915,
+    "scores": {
+      "words": 1.0,
+      "blocks": 1.0,
+      "facts": 1.0,
+      "structure": 0.9694,
+      "tables": 0.989
+    },
+    "words": {
+      "coverage_all_visible": 0.9839,
+      "coverage_adjusted": 1.0,
+      "html_tokens_adjusted": 50875,
+      "covered": 50875,
+      "excluded_by_design_tokens": 893,
+      "excluded_by_design": {
+        "page_furniture_blocks": 97,
+        "toc_tables": 98,
+        "repeated_or_page_number_lines": 19
+      },
+      "top_missing": []
+    },
+    "blocks": {
+      "total": 1038,
+      "missing_examples": []
+    },
+    "facts": {
+      "visible": 1413,
+      "in_text_only": 173,
+      "linked_value_ok": 1240,
+      "missing_examples": []
+    },
+    "structure": {
+      "rows": 1.0,
+      "lost": 1.0,
+      "columns": 0.9994,
+      "totals": 0.8477,
+      "tables_paired": 1.0,
+      "parsed_rows": 647,
+      "matched_rows": 647,
+      "html_rows": 781,
+      "column_obs": 1722,
+      "column_pure": 1721,
+      "unaligned_rows": 0,
+      "inherited_label_rows": 2,
+      "lost_html_rows": 0,
+      "html_tables": 80,
+      "html_tables_unpaired": 0,
+      "totals_checked": 151,
+      "totals_passed": 128,
+      "totals_failed": [
+        "GOOGL_10-K_2023_t102: Fair value adjustments recorded in net income > Total (0/6 columns add up)",
+        "GOOGL_10-K_2023_t104: Fair value adjustments recorded in net income > Total (0/6 columns add up)",
+        "GOOGL_10-K_2023_t113: Total initial cost (0/2 columns add up)",
+        "GOOGL_10-K_2023_t120: Effect of non designated hedges > Total gains (losses) (0/6 columns add up)",
+        "GOOGL_10-K_2023_t135: Unrealized gains (losses) on cash flow hedges > Total amount reclassified, net of income tax (0/3 columns add up)"
+      ],
+      "problem_tables": [
+        {
+          "table_id": "GOOGL_10-K_2023_t122",
+          "title": "Offsetting of Derivatives",
+          "unmatched_rows": [],
+          "lost_html_rows": [],
+          "column_purity": 0.968
+        }
+      ]
+    },
+    "sections": {
+      "ok": true,
+      "items": 24,
+      "missing_required": [],
+      "non_contiguous": [],
+      "unlabeled_share": 0.0
+    },
+    "tables": {
+      "parsed": 72,
+      "mean_score": 0.989,
+      "mean_completeness": 0.9931,
+      "title_source": {
+        "caption": 36,
+        "heading": 36
+      },
+      "low_confidence": []
+    }
+  },
+  {
+    "doc_id": "GOOGL_10-K_2024",
+    "source_file": "GOOGL_10-K_2024.html",
+    "verdict": "PASS",
+    "confidence": 0.9908,
+    "scores": {
+      "words": 0.9998,
+      "blocks": 1.0,
+      "facts": 1.0,
+      "structure": 0.9672,
+      "tables": 0.9871
+    },
+    "words": {
+      "coverage_all_visible": 0.9837,
+      "coverage_adjusted": 0.9998,
+      "html_tokens_adjusted": 52295,
+      "covered": 52283,
+      "excluded_by_design_tokens": 905,
+      "excluded_by_design": {
+        "page_furniture_blocks": 99,
+        "toc_tables": 100,
+        "repeated_or_page_number_lines": 19
+      },
+      "top_missing": [
+        [
+          "u",
+          2
+        ],
+        [
+          "form",
+          1
+        ],
+        [
+          "10",
+          1
+        ],
+        [
+          "report",
+          1
+        ],
+        [
+          "file",
+          1
+        ],
+        [
+          "001",
+          1
+        ],
+        [
+          "37580",
+          1
+        ],
+        [
+          "no",
+          1
+        ],
+        [
+          "on",
+          1
+        ],
+        [
+          "quarterly",
+          1
+        ]
+      ]
+    },
+    "blocks": {
+      "total": 1062,
+      "missing_examples": []
+    },
+    "facts": {
+      "visible": 1524,
+      "in_text_only": 180,
+      "linked_value_ok": 1344,
+      "missing_examples": []
+    },
+    "structure": {
+      "rows": 1.0,
+      "lost": 1.0,
+      "columns": 0.9995,
+      "totals": 0.8365,
+      "tables_paired": 1.0,
+      "parsed_rows": 676,
+      "matched_rows": 676,
+      "html_rows": 809,
+      "column_obs": 1839,
+      "column_pure": 1838,
+      "unaligned_rows": 0,
+      "inherited_label_rows": 2,
+      "lost_html_rows": 0,
+      "html_tables": 80,
+      "html_tables_unpaired": 0,
+      "totals_checked": 159,
+      "totals_passed": 133,
+      "totals_failed": [
+        "GOOGL_10-K_2024_t103: Fair value adjustments recorded in net income > Total (0/6 columns add up)",
+        "GOOGL_10-K_2024_t105: Fair value adjustments recorded in net income > Total (0/6 columns add up)",
+        "GOOGL_10-K_2024_t114: Total initial cost (0/2 columns add up)",
+        "GOOGL_10-K_2024_t121: Effect of non designated hedges > Total gains (losses) (0/6 columns add up)",
+        "GOOGL_10-K_2024_t124: Total lease cost (0/3 columns add up)",
+        "GOOGL_10-K_2024_t139: Unrealized gains (losses) on cash flow hedges > Total amount reclassified, net of income tax (0/3 columns add up)"
+      ],
+      "problem_tables": [
+        {
+          "table_id": "GOOGL_10-K_2024_t123",
+          "title": "Offsetting of Derivatives",
+          "unmatched_rows": [],
+          "lost_html_rows": [],
+          "column_purity": 0.968
+        }
+      ]
+    },
+    "sections": {
+      "ok": true,
+      "items": 24,
+      "missing_required": [],
+      "non_contiguous": [],
+      "unlabeled_share": 0.0
+    },
+    "tables": {
+      "parsed": 72,
+      "mean_score": 0.9871,
+      "mean_completeness": 0.9931,
+      "title_source": {
+        "caption": 35,
+        "heading": 37
+      },
+      "low_confidence": []
+    }
+  },
+  {
+    "doc_id": "GOOGL_10-K_2025",
+    "source_file": "GOOGL_10-K_2025.html",
+    "verdict": "PASS",
+    "confidence": 0.9951,
+    "scores": {
+      "words": 1.0,
+      "blocks": 1.0,
+      "facts": 1.0,
+      "structure": 0.9823,
+      "tables": 0.9879
+    },
+    "words": {
+      "coverage_all_visible": 0.9833,
+      "coverage_adjusted": 1.0,
+      "html_tokens_adjusted": 51203,
+      "covered": 51201,
+      "excluded_by_design_tokens": 915,
+      "excluded_by_design": {
+        "page_furniture_blocks": 99,
+        "toc_tables": 100,
+        "repeated_or_page_number_lines": 24
+      },
+      "top_missing": [
+        [
+          "u",
+          2
+        ]
+      ]
+    },
+    "blocks": {
+      "total": 1011,
+      "missing_examples": []
+    },
+    "facts": {
+      "visible": 1632,
+      "in_text_only": 184,
+      "linked_value_ok": 1448,
+      "missing_examples": []
+    },
+    "structure": {
+      "rows": 1.0,
+      "lost": 1.0,
+      "columns": 0.9995,
+      "totals": 0.9119,
+      "tables_paired": 1.0,
+      "parsed_rows": 738,
+      "matched_rows": 738,
+      "html_rows": 873,
+      "column_obs": 1950,
+      "column_pure": 1949,
+      "unaligned_rows": 0,
+      "inherited_label_rows": 2,
+      "lost_html_rows": 0,
+      "html_tables": 81,
+      "html_tables_unpaired": 0,
+      "totals_checked": 159,
+      "totals_passed": 145,
+      "totals_failed": [
+        "GOOGL_10-K_2025_t098: Cash equivalents > Total cash and cash equivalents (2/3 columns add up)",
+        "GOOGL_10-K_2025_t100: Cash equivalents > Total cash and cash equivalents (2/3 columns add up)",
+        "GOOGL_10-K_2025_t117: Effect of non-designated hedges > Total gains (losses) (0/6 columns add up)",
+        "GOOGL_10-K_2025_t120: Total lease cost (0/3 columns add up)",
+        "GOOGL_10-K_2025_t136: Unrealized gains (losses) on cash flow hedges > Total amount reclassified, net of income tax (0/3 columns add up)"
+      ],
+      "problem_tables": [
+        {
+          "table_id": "GOOGL_10-K_2025_t119",
+          "title": "Offsetting of Derivatives",
+          "unmatched_rows": [],
+          "lost_html_rows": [],
+          "column_purity": 0.968
+        }
+      ]
+    },
+    "sections": {
+      "ok": true,
+      "items": 24,
+      "missing_required": [],
+      "non_contiguous": [],
+      "unlabeled_share": 0.0
+    },
+    "tables": {
+      "parsed": 73,
+      "mean_score": 0.9879,
+      "mean_completeness": 1.0,
+      "title_source": {
+        "caption": 36,
+        "heading": 37
+      },
+      "low_confidence": []
+    }
+  },
+  {
+    "doc_id": "MSFT_10-K_2020",
+    "source_file": "MSFT_10-K_2020.html",
+    "verdict": "PASS",
+    "confidence": 0.9939,
+    "scores": {
+      "words": 0.996,
+      "blocks": 1.0,
+      "facts": 1.0,
+      "structure": 0.9819,
+      "tables": 0.9744
+    },
+    "words": {
+      "coverage_all_visible": 0.9823,
+      "coverage_adjusted": 0.996,
+      "html_tokens_adjusted": 49565,
+      "covered": 49368,
+      "excluded_by_design_tokens": 720,
+      "excluded_by_design": {
+        "repeated_or_page_number_lines": 346
+      },
+      "top_missing": [
+        [
+          "item",
+          21
+        ],
+        [
+          "and",
+          14
+        ],
+        [
+          "of",
+          7
+        ],
+        [
+          "financial",
+          6
+        ],
+        [
+          "99",
+          6
+        ],
+        [
+          "32",
+          4
+        ],
+        [
+          "accounting",
+          3
+        ],
+        [
+          "executive",
+          3
+        ],
+        [
+          "related",
+          3
+        ],
+        [
+          "97",
+          3
+        ]
+      ]
+    },
+    "blocks": {
+      "total": 780,
+      "missing_examples": []
+    },
+    "facts": {
+      "visible": 1651,
+      "in_text_only": 148,
+      "linked_value_ok": 1503,
+      "missing_examples": []
+    },
+    "structure": {
+      "rows": 1.0,
+      "lost": 1.0,
+      "columns": 1.0,
+      "totals": 0.9133,
+      "tables_paired": 0.9961,
+      "parsed_rows": 726,
+      "matched_rows": 726,
+      "html_rows": 865,
+      "column_obs": 2138,
+      "column_pure": 2138,
+      "unaligned_rows": 1,
+      "inherited_label_rows": 1,
+      "lost_html_rows": 0,
+      "html_tables": 259,
+      "html_tables_unpaired": 1,
+      "totals_checked": 173,
+      "totals_passed": 158,
+      "totals_failed": [
+        "MSFT_10-K_2020_t073: Total assets (0/5 columns add up)",
+        "MSFT_10-K_2020_t157: Accumulated other comprehensive income (loss) > Total stockholders’ equity (0/3 columns add up)",
+        "MSFT_10-K_2020_t167: Changes in Fair Value Recorded in Net Income > Total (1/4 columns add up)",
+        "MSFT_10-K_2020_t168: Changes in Fair Value Recorded in Net Income > Total (1/4 columns add up)",
+        "MSFT_10-K_2020_t182: Total (6/7 columns add up)"
+      ],
+      "problem_tables": []
+    },
+    "sections": {
+      "ok": true,
+      "items": 22,
+      "missing_required": [],
+      "non_contiguous": [],
+      "unlabeled_share": 0.0
+    },
+    "tables": {
+      "parsed": 84,
+      "mean_score": 0.9744,
+      "mean_completeness": 0.994,
+      "title_source": {
+        "heading": 53,
+        "caption": 31
+      },
+      "low_confidence": []
+    }
+  },
+  {
+    "doc_id": "MSFT_10-K_2021",
+    "source_file": "MSFT_10-K_2021.html",
+    "verdict": "PASS",
+    "confidence": 0.9957,
+    "scores": {
+      "words": 0.9962,
+      "blocks": 1.0,
+      "facts": 1.0,
+      "structure": 0.9884,
+      "tables": 0.9792
+    },
+    "words": {
+      "coverage_all_visible": 0.9856,
+      "coverage_adjusted": 0.9962,
+      "html_tokens_adjusted": 50955,
+      "covered": 50761,
+      "excluded_by_design_tokens": 551,
+      "excluded_by_design": {
+        "repeated_or_page_number_lines": 325
+      },
+      "top_missing": [
+        [
+          "item",
+          21
+        ],
+        [
+          "and",
+          14
+        ],
+        [
+          "of",
+          6
+        ],
+        [
+          "101",
+          6
+        ],
+        [
+          "financial",
+          5
+        ],
+        [
+          "36",
+          4
+        ],
+        [
+          "accounting",
+          3
+        ],
+        [
+          "executive",
+          3
+        ],
+        [
+          "related",
+          3
+        ],
+        [
+          "99",
+          3
+        ]
+      ]
+    },
+    "blocks": {
+      "total": 819,
+      "missing_examples": []
+    },
+    "facts": {
+      "visible": 1592,
+      "in_text_only": 156,
+      "linked_value_ok": 1436,
+      "missing_examples": []
+    },
+    "structure": {
+      "rows": 1.0,
+      "lost": 1.0,
+      "columns": 1.0,
+      "totals": 0.9461,
+      "tables_paired": 0.9959,
+      "parsed_rows": 702,
+      "matched_rows": 702,
+      "html_rows": 839,
+      "column_obs": 1964,
+      "column_pure": 1964,
+      "unaligned_rows": 0,
+      "inherited_label_rows": 1,
+      "lost_html_rows": 0,
+      "html_tables": 244,
+      "html_tables_unpaired": 1,
+      "totals_checked": 167,
+      "totals_passed": 158,
+      "totals_failed": [
+        "MSFT_10-K_2021_t143: Accumulated other comprehensive income (loss) > Total stockholders’ equity (0/3 columns add up)",
+        "MSFT_10-K_2021_t153: Changes in Fair Value Recorded in Net Income > Total (1/4 columns add up)",
+        "MSFT_10-K_2021_t154: Changes in Fair Value Recorded in Net Income > Total (1/4 columns add up)"
+      ],
+      "problem_tables": []
+    },
+    "sections": {
+      "ok": true,
+      "items": 22,
+      "missing_required": [],
+      "non_contiguous": [],
+      "unlabeled_share": 0.0
+    },
+    "tables": {
+      "parsed": 84,
+      "mean_score": 0.9792,
+      "mean_completeness": 0.994,
+      "title_source": {
+        "heading": 53,
+        "caption": 31
+      },
+      "low_confidence": []
+    }
+  },
+  {
+    "doc_id": "MSFT_10-K_2022",
+    "source_file": "MSFT_10-K_2022.html",
+    "verdict": "PASS",
+    "confidence": 0.9956,
+    "scores": {
+      "words": 0.996,
+      "blocks": 1.0,
+      "facts": 1.0,
+      "structure": 0.9883,
+      "tables": 0.9792
+    },
+    "words": {
+      "coverage_all_visible": 0.9854,
+      "coverage_adjusted": 0.996,
+      "html_tokens_adjusted": 50869,
+      "covered": 50664,
+      "excluded_by_design_tokens": 551,
+      "excluded_by_design": {
+        "repeated_or_page_number_lines": 325
+      },
+      "top_missing": [
+        [
+          "item",
+          22
+        ],
+        [
+          "and",
+          15
+        ],
+        [
+          "101",
+          7
+        ],
+        [
+          "of",
+          6
+        ],
+        [
+          "financial",
+          5
+        ],
+        [
+          "37",
+          4
+        ],
+        [
+          "executive",
+          3
+        ],
+        [
+          "related",
+          3
+        ],
+        [
+          "99",
+          3
+        ],
+        [
+          "10",
+          2
+        ]
+      ]
+    },
+    "blocks": {
+      "total": 813,
+      "missing_examples": []
+    },
+    "facts": {
+      "visible": 1547,
+      "in_text_only": 148,
+      "linked_value_ok": 1399,
+      "missing_examples": []
+    },
+    "structure": {
+      "rows": 1.0,
+      "lost": 1.0,
+      "columns": 1.0,
+      "totals": 0.9455,
+      "tables_paired": 0.9961,
+      "parsed_rows": 699,
+      "matched_rows": 699,
+      "html_rows": 835,
+      "column_obs": 1909,
+      "column_pure": 1909,
+      "unaligned_rows": 0,
+      "inherited_label_rows": 1,
+      "lost_html_rows": 0,
+      "html_tables": 259,
+      "html_tables_unpaired": 1,
+      "totals_checked": 165,
+      "totals_passed": 156,
+      "totals_failed": [
+        "MSFT_10-K_2022_t154: Accumulated other comprehensive income (loss) > Total stockholders’ equity (0/3 columns add up)",
+        "MSFT_10-K_2022_t164: Changes in Fair Value Recorded in Net Income > Total (1/4 columns add up)",
+        "MSFT_10-K_2022_t165: Changes in Fair Value Recorded in Net Income > Total (1/4 columns add up)"
+      ],
+      "problem_tables": []
+    },
+    "sections": {
+      "ok": true,
+      "items": 23,
+      "missing_required": [],
+      "non_contiguous": [],
+      "unlabeled_share": 0.0
+    },
+    "tables": {
+      "parsed": 84,
+      "mean_score": 0.9792,
+      "mean_completeness": 0.994,
+      "title_source": {
+        "heading": 53,
+        "caption": 31
+      },
+      "low_confidence": []
+    }
+  },
+  {
+    "doc_id": "MSFT_10-K_2023",
+    "source_file": "MSFT_10-K_2023.html",
+    "verdict": "PASS",
+    "confidence": 0.9945,
+    "scores": {
+      "words": 0.9956,
+      "blocks": 1.0,
+      "facts": 1.0,
+      "structure": 0.9846,
+      "tables": 0.9798
+    },
+    "words": {
+      "coverage_all_visible": 0.984,
+      "coverage_adjusted": 0.9956,
+      "html_tokens_adjusted": 49898,
+      "covered": 49678,
+      "excluded_by_design_tokens": 598,
+      "excluded_by_design": {
+        "repeated_or_page_number_lines": 330
+      },
+      "top_missing": [
+        [
+          "item",
+          22
+        ],
+        [
+          "and",
+          12
+        ],
+        [
+          "of",
+          8
+        ],
+        [
+          "a",
+          8
+        ],
+        [
+          "101",
+          7
+        ],
+        [
+          "37",
+          4
+        ],
+        [
+          "report",
+          3
+        ],
+        [
+          "financial",
+          3
+        ],
+        [
+          "related",
+          3
+        ],
+        [
+          "99",
+          3
+        ]
+      ]
+    },
+    "blocks": {
+      "total": 942,
+      "missing_examples": []
+    },
+    "facts": {
+      "visible": 1561,
+      "in_text_only": 148,
+      "linked_value_ok": 1413,
+      "missing_examples": []
+    },
+    "structure": {
+      "rows": 1.0,
+      "lost": 1.0,
+      "columns": 1.0,
+      "totals": 0.9455,
+      "tables_paired": 0.9778,
+      "parsed_rows": 732,
+      "matched_rows": 732,
+      "html_rows": 865,
+      "column_obs": 1954,
+      "column_pure": 1954,
+      "unaligned_rows": 0,
+      "inherited_label_rows": 1,
+      "lost_html_rows": 0,
+      "html_tables": 90,
+      "html_tables_unpaired": 2,
+      "totals_checked": 165,
+      "totals_passed": 156,
+      "totals_failed": [
+        "MSFT_10-K_2023_t029: Accumulated other comprehensive income (loss) > Total stockholders’ equity (0/3 columns add up)",
+        "MSFT_10-K_2023_t036: June 30, 2023 > Changes in Fair Value Recorded in Net Income > Total (1/4 columns add up)",
+        "MSFT_10-K_2023_t037: June 30, 2022 > Changes in Fair Value Recorded in Net Income > Total (1/4 columns add up)"
+      ],
+      "problem_tables": []
+    },
+    "sections": {
+      "ok": true,
+      "items": 23,
+      "missing_required": [],
+      "non_contiguous": [],
+      "unlabeled_share": 0.0
+    },
+    "tables": {
+      "parsed": 84,
+      "mean_score": 0.9798,
+      "mean_completeness": 1.0,
+      "title_source": {
+        "caption": 34,
+        "heading": 50
+      },
+      "low_confidence": []
+    }
+  },
+  {
+    "doc_id": "MSFT_10-K_2024",
+    "source_file": "MSFT_10-K_2024.html",
+    "verdict": "PASS",
+    "confidence": 0.9939,
+    "scores": {
+      "words": 0.9957,
+      "blocks": 1.0,
+      "facts": 1.0,
+      "structure": 0.9822,
+      "tables": 0.98
+    },
+    "words": {
+      "coverage_all_visible": 0.9845,
+      "coverage_adjusted": 0.9957,
+      "html_tokens_adjusted": 52267,
+      "covered": 52041,
+      "excluded_by_design_tokens": 600,
+      "excluded_by_design": {
+        "repeated_or_page_number_lines": 332
+      },
+      "top_missing": [
+        [
+          "item",
+          23
+        ],
+        [
+          "and",
+          12
+        ],
+        [
+          "a",
+          10
+        ],
+        [
+          "of",
+          8
+        ],
+        [
+          "102",
+          4
+        ],
+        [
+          "report",
+          3
+        ],
+        [
+          "financial",
+          3
+        ],
+        [
+          "36",
+          3
+        ],
+        [
+          "related",
+          3
+        ],
+        [
+          "98",
+          3
+        ]
+      ]
+    },
+    "blocks": {
+      "total": 978,
+      "missing_examples": []
+    },
+    "facts": {
+      "visible": 1576,
+      "in_text_only": 148,
+      "linked_value_ok": 1428,
+      "missing_examples": []
+    },
+    "structure": {
+      "rows": 1.0,
+      "lost": 1.0,
+      "columns": 1.0,
+      "totals": 0.9329,
+      "tables_paired": 0.9783,
+      "parsed_rows": 738,
+      "matched_rows": 738,
+      "html_rows": 878,
+      "column_obs": 1979,
+      "column_pure": 1979,
+      "unaligned_rows": 1,
+      "inherited_label_rows": 1,
+      "lost_html_rows": 0,
+      "html_tables": 92,
+      "html_tables_unpaired": 2,
+      "totals_checked": 164,
+      "totals_passed": 153,
+      "totals_failed": [
+        "MSFT_10-K_2024_t029: Accumulated other comprehensive loss > Total stockholders’ equity (0/3 columns add up)",
+        "MSFT_10-K_2024_t036: June 30, 2024 > Changes in Fair Value Recorded in Net Income > Total (0/4 columns add up)",
+        "MSFT_10-K_2024_t037: June 30, 2023 > Changes in Fair Value Recorded in Net Income > Total (1/4 columns add up)",
+        "MSFT_10-K_2024_t054: Total (6/7 columns add up)"
+      ],
+      "problem_tables": []
+    },
+    "sections": {
+      "ok": true,
+      "items": 24,
+      "missing_required": [],
+      "non_contiguous": [],
+      "unlabeled_share": 0.0
+    },
+    "tables": {
+      "parsed": 86,
+      "mean_score": 0.98,
+      "mean_completeness": 1.0,
+      "title_source": {
+        "caption": 35,
+        "heading": 51
+      },
+      "low_confidence": []
+    }
+  },
+  {
+    "doc_id": "MSFT_10-K_2025",
+    "source_file": "MSFT_10-K_2025.html",
+    "verdict": "PASS",
+    "confidence": 0.9932,
+    "scores": {
+      "words": 0.9951,
+      "blocks": 1.0,
+      "facts": 1.0,
+      "structure": 0.9803,
+      "tables": 0.9809
+    },
+    "words": {
+      "coverage_all_visible": 0.9835,
+      "coverage_adjusted": 0.9951,
+      "html_tokens_adjusted": 46151,
+      "covered": 45926,
+      "excluded_by_design_tokens": 552,
+      "excluded_by_design": {
+        "repeated_or_page_number_lines": 303
+      },
+      "top_missing": [
+        [
+          "item",
+          23
+        ],
+        [
+          "and",
+          12
+        ],
+        [
+          "of",
+          8
+        ],
+        [
+          "91",
+          6
+        ],
+        [
+          "a",
+          6
+        ],
+        [
+          "report",
+          3
+        ],
+        [
+          "financial",
+          3
+        ],
+        [
+          "32",
+          3
+        ],
+        [
+          "related",
+          3
+        ],
+        [
+          "89",
+          3
+        ]
+      ]
+    },
+    "blocks": {
+      "total": 884,
+      "missing_examples": []
+    },
+    "facts": {
+      "visible": 1549,
+      "in_text_only": 147,
+      "linked_value_ok": 1402,
+      "missing_examples": []
+    },
+    "structure": {
+      "rows": 1.0,
+      "lost": 1.0,
+      "columns": 1.0,
+      "totals": 0.9252,
+      "tables_paired": 0.9765,
+      "parsed_rows": 712,
+      "matched_rows": 712,
+      "html_rows": 841,
+      "column_obs": 1936,
+      "column_pure": 1936,
+      "unaligned_rows": 0,
+      "inherited_label_rows": 1,
+      "lost_html_rows": 0,
+      "html_tables": 85,
+      "html_tables_unpaired": 2,
+      "totals_checked": 147,
+      "totals_passed": 136,
+      "totals_failed": [
+        "MSFT_10-K_2025_t028: Accumulated other comprehensive loss > Total stockholders’ equity (0/3 columns add up)",
+        "MSFT_10-K_2025_t033: June 30, 2025 > Changes in Fair Value Recorded in Net Income > Total (0/4 columns add up)",
+        "MSFT_10-K_2025_t034: June 30, 2024 > Changes in Fair Value Recorded in Net Income > Total (0/4 columns add up)"
+      ],
+      "problem_tables": []
+    },
+    "sections": {
+      "ok": true,
+      "items": 24,
+      "missing_required": [],
+      "non_contiguous": [],
+      "unlabeled_share": 0.0
+    },
+    "tables": {
+      "parsed": 79,
+      "mean_score": 0.9809,
+      "mean_completeness": 1.0,
+      "title_source": {
+        "caption": 34,
+        "heading": 45
+      },
+      "low_confidence": []
+    }
+  },
+  {
+    "doc_id": "NVDA_10-K_2020",
+    "source_file": "NVDA_10-K_2020.html",
+    "verdict": "PASS",
+    "confidence": 0.9918,
+    "scores": {
+      "words": 1.0,
+      "blocks": 1.0,
+      "facts": 1.0,
+      "structure": 0.9703,
+      "tables": 0.986
+    },
+    "words": {
+      "coverage_all_visible": 0.977,
+      "coverage_adjusted": 1.0,
+      "html_tokens_adjusted": 39126,
+      "covered": 39126,
+      "excluded_by_design_tokens": 981,
+      "excluded_by_design": {
+        "toc_tables": 2,
+        "repeated_or_page_number_lines": 235
+      },
+      "top_missing": []
+    },
+    "blocks": {
+      "total": 652,
+      "missing_examples": []
+    },
+    "facts": {
+      "visible": 1086,
+      "in_text_only": 127,
+      "linked_value_ok": 959,
+      "missing_examples": []
+    },
+    "structure": {
+      "rows": 1.0,
+      "lost": 1.0,
+      "columns": 0.9986,
+      "totals": 0.8529,
+      "tables_paired": 1.0,
+      "parsed_rows": 570,
+      "matched_rows": 570,
+      "html_rows": 697,
+      "column_obs": 1389,
+      "column_pure": 1387,
+      "unaligned_rows": 0,
+      "inherited_label_rows": 0,
+      "lost_html_rows": 0,
+      "html_tables": 156,
+      "html_tables_unpaired": 0,
+      "totals_checked": 102,
+      "totals_passed": 87,
+      "totals_failed": [
+        "NVDA_10-K_2020_t081: Total assets (D) (0/5 columns add up)",
+        "NVDA_10-K_2020_t081: Total shareholders’ equity (0/5 columns add up)",
+        "NVDA_10-K_2020_t099: Total comprehensive income (0/3 columns add up)",
+        "NVDA_10-K_2020_t139: Total deferred tax assets (0/2 columns add up)"
+      ],
+      "problem_tables": [
+        {
+          "table_id": "NVDA_10-K_2020_t156",
+          "title": "EXHIBIT INDEX",
+          "unmatched_rows": [],
+          "lost_html_rows": [],
+          "column_purity": 0.917
+        }
+      ]
+    },
+    "sections": {
+      "ok": true,
+      "items": 21,
+      "missing_required": [],
+      "non_contiguous": [],
+      "unlabeled_share": 0.0017
+    },
+    "tables": {
+      "parsed": 58,
+      "mean_score": 0.986,
+      "mean_completeness": 0.9741,
+      "title_source": {
+        "caption": 32,
+        "heading": 26
+      },
+      "low_confidence": []
+    }
+  },
+  {
+    "doc_id": "NVDA_10-K_2021",
+    "source_file": "NVDA_10-K_2021.html",
+    "verdict": "PASS",
+    "confidence": 0.998,
+    "scores": {
+      "words": 1.0,
+      "blocks": 1.0,
+      "facts": 1.0,
+      "structure": 0.9929,
+      "tables": 0.9855
+    },
+    "words": {
+      "coverage_all_visible": 0.9791,
+      "coverage_adjusted": 1.0,
+      "html_tokens_adjusted": 45299,
+      "covered": 45299,
+      "excluded_by_design_tokens": 1032,
+      "excluded_by_design": {
+        "page_furniture_blocks": 83,
+        "toc_tables": 2,
+        "repeated_or_page_number_lines": 172
+      },
+      "top_missing": []
+    },
+    "blocks": {
+      "total": 811,
+      "missing_examples": []
+    },
+    "facts": {
+      "visible": 1156,
+      "in_text_only": 199,
+      "linked_value_ok": 957,
+      "missing_examples": []
+    },
+    "structure": {
+      "rows": 1.0,
+      "lost": 1.0,
+      "columns": 0.9985,
+      "totals": 0.9663,
+      "tables_paired": 1.0,
+      "parsed_rows": 549,
+      "matched_rows": 549,
+      "html_rows": 663,
+      "column_obs": 1292,
+      "column_pure": 1290,
+      "unaligned_rows": 0,
+      "inherited_label_rows": 1,
+      "lost_html_rows": 0,
+      "html_tables": 57,
+      "html_tables_unpaired": 0,
+      "totals_checked": 89,
+      "totals_passed": 86,
+      "totals_failed": [
+        "NVDA_10-K_2021_t017: Total comprehensive income (0/3 columns add up)"
+      ],
+      "problem_tables": [
+        {
+          "table_id": "NVDA_10-K_2021_t057",
+          "title": "EXHIBIT INDEX",
+          "unmatched_rows": [],
+          "lost_html_rows": [],
+          "column_purity": 0.917
+        }
+      ]
+    },
+    "sections": {
+      "ok": true,
+      "items": 22,
+      "missing_required": [],
+      "non_contiguous": [],
+      "unlabeled_share": 0.0016
+    },
+    "tables": {
+      "parsed": 53,
+      "mean_score": 0.9855,
+      "mean_completeness": 0.9906,
+      "title_source": {
+        "caption": 31,
+        "heading": 22
+      },
+      "low_confidence": []
+    }
+  },
+  {
+    "doc_id": "NVDA_10-K_2022",
+    "source_file": "NVDA_10-K_2022.html",
+    "verdict": "PASS",
+    "confidence": 0.9982,
+    "scores": {
+      "words": 1.0,
+      "blocks": 1.0,
+      "facts": 1.0,
+      "structure": 0.9936,
+      "tables": 0.9862
+    },
+    "words": {
+      "coverage_all_visible": 0.9775,
+      "coverage_adjusted": 1.0,
+      "html_tokens_adjusted": 45516,
+      "covered": 45516,
+      "excluded_by_design_tokens": 1115,
+      "excluded_by_design": {
+        "page_furniture_blocks": 85,
+        "toc_tables": 2,
+        "repeated_or_page_number_lines": 187
+      },
+      "top_missing": []
+    },
+    "blocks": {
+      "total": 823,
+      "missing_examples": []
+    },
+    "facts": {
+      "visible": 1153,
+      "in_text_only": 196,
+      "linked_value_ok": 957,
+      "missing_examples": []
+    },
+    "structure": {
+      "rows": 1.0,
+      "lost": 1.0,
+      "columns": 0.9992,
+      "totals": 0.9688,
+      "tables_paired": 1.0,
+      "parsed_rows": 548,
+      "matched_rows": 548,
+      "html_rows": 667,
+      "column_obs": 1305,
+      "column_pure": 1304,
+      "unaligned_rows": 0,
+      "inherited_label_rows": 1,
+      "lost_html_rows": 0,
+      "html_tables": 59,
+      "html_tables_unpaired": 0,
+      "totals_checked": 96,
+      "totals_passed": 93,
+      "totals_failed": [
+        "NVDA_10-K_2022_t017: Total comprehensive income (0/3 columns add up)"
+      ],
+      "problem_tables": [
+        {
+          "table_id": "NVDA_10-K_2022_t059",
+          "title": "EXHIBIT INDEX",
+          "unmatched_rows": [],
+          "lost_html_rows": [],
+          "column_purity": 0.947
+        }
+      ]
+    },
+    "sections": {
+      "ok": true,
+      "items": 23,
+      "missing_required": [],
+      "non_contiguous": [],
+      "unlabeled_share": 0.0015
+    },
+    "tables": {
+      "parsed": 55,
+      "mean_score": 0.9862,
+      "mean_completeness": 0.9909,
+      "title_source": {
+        "caption": 32,
+        "heading": 23
+      },
+      "low_confidence": []
+    }
+  },
+  {
+    "doc_id": "NVDA_10-K_2023",
+    "source_file": "NVDA_10-K_2023.html",
+    "verdict": "PASS",
+    "confidence": 0.9982,
+    "scores": {
+      "words": 1.0,
+      "blocks": 1.0,
+      "facts": 1.0,
+      "structure": 0.9934,
+      "tables": 0.9831
+    },
+    "words": {
+      "coverage_all_visible": 0.979,
+      "coverage_adjusted": 1.0,
+      "html_tokens_adjusted": 47312,
+      "covered": 47312,
+      "excluded_by_design_tokens": 1084,
+      "excluded_by_design": {
+        "page_furniture_blocks": 92,
+        "toc_tables": 2,
+        "repeated_or_page_number_lines": 181
+      },
+      "top_missing": []
+    },
+    "blocks": {
+      "total": 879,
+      "missing_examples": []
+    },
+    "facts": {
+      "visible": 1235,
+      "in_text_only": 186,
+      "linked_value_ok": 1049,
+      "missing_examples": []
+    },
+    "structure": {
+      "rows": 1.0,
+      "lost": 1.0,
+      "columns": 0.9958,
+      "totals": 0.9714,
+      "tables_paired": 1.0,
+      "parsed_rows": 583,
+      "matched_rows": 583,
+      "html_rows": 717,
+      "column_obs": 1413,
+      "column_pure": 1407,
+      "unaligned_rows": 0,
+      "inherited_label_rows": 1,
+      "lost_html_rows": 0,
+      "html_tables": 64,
+      "html_tables_unpaired": 0,
+      "totals_checked": 105,
+      "totals_passed": 102,
+      "totals_failed": [
+        "NVDA_10-K_2023_t020: Total comprehensive income (0/3 columns add up)"
+      ],
+      "problem_tables": [
+        {
+          "table_id": "NVDA_10-K_2023_t063",
+          "title": "EXHIBIT INDEX",
+          "unmatched_rows": [],
+          "lost_html_rows": [],
+          "column_purity": 0.927
+        }
+      ]
+    },
+    "sections": {
+      "ok": true,
+      "items": 23,
+      "missing_required": [],
+      "non_contiguous": [],
+      "unlabeled_share": 0.0014
+    },
+    "tables": {
+      "parsed": 60,
+      "mean_score": 0.9831,
+      "mean_completeness": 0.9917,
+      "title_source": {
+        "caption": 36,
+        "heading": 24
+      },
+      "low_confidence": []
+    }
+  },
+  {
+    "doc_id": "NVDA_10-K_2024",
+    "source_file": "NVDA_10-K_2024.html",
+    "verdict": "PASS",
+    "confidence": 0.9981,
+    "scores": {
+      "words": 1.0,
+      "blocks": 1.0,
+      "facts": 1.0,
+      "structure": 0.9933,
+      "tables": 0.9826
+    },
+    "words": {
+      "coverage_all_visible": 0.9808,
+      "coverage_adjusted": 1.0,
+      "html_tokens_adjusted": 50512,
+      "covered": 50512,
+      "excluded_by_design_tokens": 1041,
+      "excluded_by_design": {
+        "page_furniture_blocks": 85,
+        "toc_tables": 2,
+        "repeated_or_page_number_lines": 169
+      },
+      "top_missing": []
+    },
+    "blocks": {
+      "total": 864,
+      "missing_examples": []
+    },
+    "facts": {
+      "visible": 1218,
+      "in_text_only": 174,
+      "linked_value_ok": 1044,
+      "missing_examples": []
+    },
+    "structure": {
+      "rows": 1.0,
+      "lost": 1.0,
+      "columns": 0.9949,
+      "totals": 0.9714,
+      "tables_paired": 1.0,
+      "parsed_rows": 568,
+      "matched_rows": 568,
+      "html_rows": 709,
+      "column_obs": 1377,
+      "column_pure": 1370,
+      "unaligned_rows": 0,
+      "inherited_label_rows": 0,
+      "lost_html_rows": 0,
+      "html_tables": 64,
+      "html_tables_unpaired": 0,
+      "totals_checked": 105,
+      "totals_passed": 102,
+      "totals_failed": [
+        "NVDA_10-K_2024_t021: Total comprehensive income (0/3 columns add up)"
+      ],
+      "problem_tables": [
+        {
+          "table_id": "NVDA_10-K_2024_t064",
+          "title": "Exhibit Index",
+          "unmatched_rows": [],
+          "lost_html_rows": [],
+          "column_purity": 0.837
+        }
+      ]
+    },
+    "sections": {
+      "ok": true,
+      "items": 24,
+      "missing_required": [],
+      "non_contiguous": [],
+      "unlabeled_share": 0.0015
+    },
+    "tables": {
+      "parsed": 60,
+      "mean_score": 0.9826,
+      "mean_completeness": 0.9917,
+      "title_source": {
+        "caption": 35,
+        "heading": 25
+      },
+      "low_confidence": []
+    }
+  },
+  {
+    "doc_id": "NVDA_10-K_2025",
+    "source_file": "NVDA_10-K_2025.html",
+    "verdict": "PASS",
+    "confidence": 0.9986,
+    "scores": {
+      "words": 1.0,
+      "blocks": 1.0,
+      "facts": 1.0,
+      "structure": 0.995,
+      "tables": 0.9808
+    },
+    "words": {
+      "coverage_all_visible": 0.9813,
+      "coverage_adjusted": 1.0,
+      "html_tokens_adjusted": 51717,
+      "covered": 51717,
+      "excluded_by_design_tokens": 1035,
+      "excluded_by_design": {
+        "page_furniture_blocks": 87,
+        "toc_tables": 2,
+        "repeated_or_page_number_lines": 167
+      },
+      "top_missing": []
+    },
+    "blocks": {
+      "total": 898,
+      "missing_examples": []
+    },
+    "facts": {
+      "visible": 1229,
+      "in_text_only": 163,
+      "linked_value_ok": 1066,
+      "missing_examples": []
+    },
+    "structure": {
+      "rows": 1.0,
+      "lost": 1.0,
+      "columns": 0.993,
+      "totals": 0.9818,
+      "tables_paired": 1.0,
+      "parsed_rows": 581,
+      "matched_rows": 581,
+      "html_rows": 720,
+      "column_obs": 1425,
+      "column_pure": 1415,
+      "unaligned_rows": 0,
+      "inherited_label_rows": 0,
+      "lost_html_rows": 0,
+      "html_tables": 66,
+      "html_tables_unpaired": 0,
+      "totals_checked": 110,
+      "totals_passed": 108,
+      "totals_failed": [
+        "NVDA_10-K_2025_t023: Total comprehensive income (1/3 columns add up)"
+      ],
+      "problem_tables": [
+        {
+          "table_id": "NVDA_10-K_2025_t066",
+          "title": "Exhibit Index",
+          "unmatched_rows": [],
+          "lost_html_rows": [],
+          "column_purity": 0.828
+        }
+      ]
+    },
+    "sections": {
+      "ok": true,
+      "items": 24,
+      "missing_required": [],
+      "non_contiguous": [],
+      "unlabeled_share": 0.0014
+    },
+    "tables": {
+      "parsed": 62,
+      "mean_score": 0.9808,
+      "mean_completeness": 0.9919,
+      "title_source": {
+        "caption": 37,
+        "heading": 25
+      },
+      "low_confidence": []
+    }
+  },
+  {
+    "doc_id": "TSLA_10-K_2020",
+    "source_file": "TSLA_10-K_2020.html",
+    "verdict": "PASS",
+    "confidence": 0.9938,
+    "scores": {
+      "words": 0.9979,
+      "blocks": 1.0,
+      "facts": 1.0,
+      "structure": 0.98,
+      "tables": 0.9575
+    },
+    "words": {
+      "coverage_all_visible": 0.9953,
+      "coverage_adjusted": 0.9979,
+      "html_tokens_adjusted": 80209,
+      "covered": 80037,
+      "excluded_by_design_tokens": 210,
+      "excluded_by_design": {
+        "repeated_or_page_number_lines": 158
+      },
+      "top_missing": [
+        [
+          "item",
+          21
+        ],
+        [
+          "and",
+          14
+        ],
+        [
+          "108",
+          6
+        ],
+        [
+          "financial",
+          5
+        ],
+        [
+          "part",
+          4
+        ],
+        [
+          "107",
+          3
+        ],
+        [
+          "executive",
+          2
+        ],
+        [
+          "market",
+          2
+        ],
+        [
+          "4",
+          2
+        ],
+        [
+          "risk",
+          2
+        ]
+      ]
+    },
+    "blocks": {
+      "total": 966,
+      "missing_examples": []
+    },
+    "facts": {
+      "visible": 1745,
+      "in_text_only": 453,
+      "linked_value_ok": 1292,
+      "missing_examples": []
+    },
+    "structure": {
+      "rows": 1.0,
+      "lost": 0.999,
+      "columns": 1.0,
+      "totals": 0.913,
+      "tables_paired": 0.9877,
+      "parsed_rows": 843,
+      "matched_rows": 843,
+      "html_rows": 1008,
+      "column_obs": 2541,
+      "column_pure": 2541,
+      "unaligned_rows": 0,
+      "inherited_label_rows": 3,
+      "lost_html_rows": 1,
+      "html_tables": 163,
+      "html_tables_unpaired": 2,
+      "totals_checked": 207,
+      "totals_passed": 189,
+      "totals_failed": [
+        "TSLA_10-K_2020_t024: Consolidated Balance Sheet Data > Total assets (0/5 columns add up)",
+        "TSLA_10-K_2020_t024: Consolidated Balance Sheet Data > Total long-term liabilities (0/5 columns add up)",
+        "TSLA_10-K_2020_t064: Indefinite-lived intangible assets > Total intangible assets (0/8 columns add up)"
+      ],
+      "problem_tables": [
+        {
+          "table_id": "TSLA_10-K_2020_t093",
+          "title": "Note 14 – Equity Incentive Plans",
+          "unmatched_rows": [],
+          "lost_html_rows": [
+            "in thousands price life years in billions in thousands value"
+          ],
+          "column_purity": 1.0
+        }
+      ]
+    },
+    "sections": {
+      "ok": true,
+      "items": 22,
+      "missing_required": [],
+      "non_contiguous": [],
+      "unlabeled_share": 0.0
+    },
+    "tables": {
+      "parsed": 94,
+      "mean_score": 0.9575,
+      "mean_completeness": 0.9894,
+      "title_source": {
+        "caption": 42,
+        "heading": 52
+      },
+      "low_confidence": []
+    }
+  },
+  {
+    "doc_id": "TSLA_10-K_2021",
+    "source_file": "TSLA_10-K_2021.html",
+    "verdict": "PASS",
+    "confidence": 0.9962,
+    "scores": {
+      "words": 0.9972,
+      "blocks": 1.0,
+      "facts": 1.0,
+      "structure": 0.9892,
+      "tables": 0.9894
+    },
+    "words": {
+      "coverage_all_visible": 0.9948,
+      "coverage_adjusted": 0.9972,
+      "html_tokens_adjusted": 69927,
+      "covered": 69731,
+      "excluded_by_design_tokens": 169,
+      "excluded_by_design": {
+        "repeated_or_page_number_lines": 137
+      },
+      "top_missing": [
+        [
+          "item",
+          22
+        ],
+        [
+          "and",
+          14
+        ],
+        [
+          "1",
+          11
+        ],
+        [
+          "97",
+          5
+        ],
+        [
+          "of",
+          4
+        ],
+        [
+          "financial",
+          4
+        ],
+        [
+          "part",
+          4
+        ],
+        [
+          "28",
+          4
+        ],
+        [
+          "96",
+          4
+        ],
+        [
+          "2",
+          3
+        ]
+      ]
+    },
+    "blocks": {
+      "total": 956,
+      "missing_examples": []
+    },
+    "facts": {
+      "visible": 1631,
+      "in_text_only": 337,
+      "linked_value_ok": 1294,
+      "missing_examples": []
+    },
+    "structure": {
+      "rows": 1.0,
+      "lost": 1.0,
+      "columns": 1.0,
+      "totals": 0.9556,
+      "tables_paired": 0.9907,
+      "parsed_rows": 785,
+      "matched_rows": 785,
+      "html_rows": 907,
+      "column_obs": 2377,
+      "column_pure": 2377,
+      "unaligned_rows": 0,
+      "inherited_label_rows": 3,
+      "lost_html_rows": 0,
+      "html_tables": 107,
+      "html_tables_unpaired": 1,
+      "totals_checked": 180,
+      "totals_passed": 172,
+      "totals_failed": [
+        "TSLA_10-K_2021_t038: Indefinite-lived intangible assets > Total intangible assets (0/8 columns add up)"
+      ],
+      "problem_tables": []
+    },
+    "sections": {
+      "ok": true,
+      "items": 23,
+      "missing_required": [],
+      "non_contiguous": [],
+      "unlabeled_share": 0.0
+    },
+    "tables": {
+      "parsed": 84,
+      "mean_score": 0.9894,
+      "mean_completeness": 0.9881,
+      "title_source": {
+        "heading": 45,
+        "caption": 39
+      },
+      "low_confidence": []
+    }
+  },
+  {
+    "doc_id": "TSLA_10-K_2022",
+    "source_file": "TSLA_10-K_2022.html",
+    "verdict": "PASS",
+    "confidence": 0.9986,
+    "scores": {
+      "words": 0.9969,
+      "blocks": 1.0,
+      "facts": 1.0,
+      "structure": 0.998,
+      "tables": 0.9896
+    },
+    "words": {
+      "coverage_all_visible": 0.9943,
+      "coverage_adjusted": 0.9969,
+      "html_tokens_adjusted": 63350,
+      "covered": 63151,
+      "excluded_by_design_tokens": 164,
+      "excluded_by_design": {
+        "repeated_or_page_number_lines": 132
+      },
+      "top_missing": [
+        [
+          "item",
+          22
+        ],
+        [
+          "and",
+          14
+        ],
+        [
+          "1",
+          14
+        ],
+        [
+          "91",
+          5
+        ],
+        [
+          "of",
+          4
+        ],
+        [
+          "2",
+          4
+        ],
+        [
+          "90",
+          4
+        ],
+        [
+          "financial",
+          4
+        ],
+        [
+          "part",
+          4
+        ],
+        [
+          "29",
+          4
+        ]
+      ]
+    },
+    "blocks": {
+      "total": 886,
+      "missing_examples": []
+    },
+    "facts": {
+      "visible": 1520,
+      "in_text_only": 279,
+      "linked_value_ok": 1241,
+      "missing_examples": []
+    },
+    "structure": {
+      "rows": 1.0,
+      "lost": 1.0,
+      "columns": 1.0,
+      "totals": 1.0,
+      "tables_paired": 0.9899,
+      "parsed_rows": 739,
+      "matched_rows": 739,
+      "html_rows": 865,
+      "column_obs": 2179,
+      "column_pure": 2179,
+      "unaligned_rows": 0,
+      "inherited_label_rows": 3,
+      "lost_html_rows": 0,
+      "html_tables": 99,
+      "html_tables_unpaired": 1,
+      "totals_checked": 175,
+      "totals_passed": 175,
+      "totals_failed": [],
+      "problem_tables": []
+    },
+    "sections": {
+      "ok": true,
+      "items": 23,
+      "missing_required": [],
+      "non_contiguous": [],
+      "unlabeled_share": 0.0
+    },
+    "tables": {
+      "parsed": 81,
+      "mean_score": 0.9896,
+      "mean_completeness": 0.9815,
+      "title_source": {
+        "heading": 42,
+        "caption": 39
+      },
+      "low_confidence": []
+    }
+  },
+  {
+    "doc_id": "TSLA_10-K_2023",
+    "source_file": "TSLA_10-K_2023.html",
+    "verdict": "PASS",
+    "confidence": 1.0,
+    "scores": {
+      "words": 1.0,
+      "blocks": 1.0,
+      "facts": 1.0,
+      "structure": 1.0,
+      "tables": 0.9901
+    },
+    "words": {
+      "coverage_all_visible": 0.9922,
+      "coverage_adjusted": 1.0,
+      "html_tokens_adjusted": 60549,
+      "covered": 60549,
+      "excluded_by_design_tokens": 487,
+      "excluded_by_design": {
+        "page_furniture_blocks": 113,
+        "toc_tables": 2,
+        "repeated_or_page_number_lines": 54
+      },
+      "top_missing": []
+    },
+    "blocks": {
+      "total": 870,
+      "missing_examples": []
+    },
+    "facts": {
+      "visible": 1459,
+      "in_text_only": 236,
+      "linked_value_ok": 1223,
+      "missing_examples": []
+    },
+    "structure": {
+      "rows": 1.0,
+      "lost": 1.0,
+      "columns": 1.0,
+      "totals": 1.0,
+      "tables_paired": 1.0,
+      "parsed_rows": 709,
+      "matched_rows": 709,
+      "html_rows": 833,
+      "column_obs": 2103,
+      "column_pure": 2103,
+      "unaligned_rows": 0,
+      "inherited_label_rows": 3,
+      "lost_html_rows": 0,
+      "html_tables": 84,
+      "html_tables_unpaired": 0,
+      "totals_checked": 175,
+      "totals_passed": 175,
+      "totals_failed": [],
+      "problem_tables": []
+    },
+    "sections": {
+      "ok": true,
+      "items": 24,
+      "missing_required": [],
+      "non_contiguous": [],
+      "unlabeled_share": 0.0
+    },
+    "tables": {
+      "parsed": 78,
+      "mean_score": 0.9901,
+      "mean_completeness": 0.9936,
+      "title_source": {
+        "heading": 42,
+        "caption": 36
+      },
+      "low_confidence": []
+    }
+  },
+  {
+    "doc_id": "TSLA_10-K_2024",
+    "source_file": "TSLA_10-K_2024.html",
+    "verdict": "PASS",
+    "confidence": 1.0,
+    "scores": {
+      "words": 1.0,
+      "blocks": 1.0,
+      "facts": 1.0,
+      "structure": 1.0,
+      "tables": 0.9904
+    },
+    "words": {
+      "coverage_all_visible": 0.9919,
+      "coverage_adjusted": 1.0,
+      "html_tokens_adjusted": 58460,
+      "covered": 58460,
+      "excluded_by_design_tokens": 486,
+      "excluded_by_design": {
+        "page_furniture_blocks": 111,
+        "toc_tables": 2,
+        "repeated_or_page_number_lines": 50
+      },
+      "top_missing": []
+    },
+    "blocks": {
+      "total": 865,
+      "missing_examples": []
+    },
+    "facts": {
+      "visible": 1460,
+      "in_text_only": 209,
+      "linked_value_ok": 1251,
+      "missing_examples": []
+    },
+    "structure": {
+      "rows": 1.0,
+      "lost": 1.0,
+      "columns": 1.0,
+      "totals": 1.0,
+      "tables_paired": 1.0,
+      "parsed_rows": 704,
+      "matched_rows": 704,
+      "html_rows": 828,
+      "column_obs": 2041,
+      "column_pure": 2041,
+      "unaligned_rows": 0,
+      "inherited_label_rows": 1,
+      "lost_html_rows": 0,
+      "html_tables": 82,
+      "html_tables_unpaired": 0,
+      "totals_checked": 175,
+      "totals_passed": 175,
+      "totals_failed": [],
+      "problem_tables": []
+    },
+    "sections": {
+      "ok": true,
+      "items": 24,
+      "missing_required": [],
+      "non_contiguous": [],
+      "unlabeled_share": 0.0
+    },
+    "tables": {
+      "parsed": 77,
+      "mean_score": 0.9904,
+      "mean_completeness": 0.9935,
+      "title_source": {
+        "heading": 43,
+        "caption": 34
+      },
+      "low_confidence": []
+    }
+  },
+  {
+    "doc_id": "TSLA_10-K_2025",
+    "source_file": "TSLA_10-K_2025.html",
+    "verdict": "PASS",
+    "confidence": 1.0,
+    "scores": {
+      "words": 1.0,
+      "blocks": 1.0,
+      "facts": 1.0,
+      "structure": 1.0,
+      "tables": 0.9819
+    },
+    "words": {
+      "coverage_all_visible": 0.992,
+      "coverage_adjusted": 1.0,
+      "html_tokens_adjusted": 59433,
+      "covered": 59433,
+      "excluded_by_design_tokens": 485,
+      "excluded_by_design": {
+        "page_furniture_blocks": 105,
+        "toc_tables": 2,
+        "repeated_or_page_number_lines": 55
+      },
+      "top_missing": []
+    },
+    "blocks": {
+      "total": 882,
+      "missing_examples": []
+    },
+    "facts": {
+      "visible": 1477,
+      "in_text_only": 240,
+      "linked_value_ok": 1237,
+      "missing_examples": []
+    },
+    "structure": {
+      "rows": 1.0,
+      "lost": 1.0,
+      "columns": 1.0,
+      "totals": 1.0,
+      "tables_paired": 1.0,
+      "parsed_rows": 641,
+      "matched_rows": 641,
+      "html_rows": 747,
+      "column_obs": 1633,
+      "column_pure": 1633,
+      "unaligned_rows": 0,
+      "inherited_label_rows": 0,
+      "lost_html_rows": 0,
+      "html_tables": 75,
+      "html_tables_unpaired": 0,
+      "totals_checked": 180,
+      "totals_passed": 180,
+      "totals_failed": [],
+      "problem_tables": []
+    },
+    "sections": {
+      "ok": true,
+      "items": 24,
+      "missing_required": [],
+      "non_contiguous": [],
+      "unlabeled_share": 0.0
+    },
+    "tables": {
+      "parsed": 70,
+      "mean_score": 0.9819,
+      "mean_completeness": 0.9857,
+      "title_source": {
+        "heading": 38,
+        "caption": 32
+      },
+      "low_confidence": []
+    }
+  }
+]

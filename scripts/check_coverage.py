@@ -3,7 +3,8 @@
 Deliberately independent of the parser (exploration/00_explore_src.py): it re-reads the HTML with its own
 minimal logic, so a parser bug cannot hide itself by passing its own test.
 
-Five checks per document, combined into one confidence score:
+Four independent checks per document are combined into one confidence score and verdict; a fifth
+value (tables) is the parser's own self-assessment and is reported for information only:
   words     - multiset recall of visible words (after removing content that is excluded *by design*)
   blocks    - share of HTML text blocks (paragraphs/headings) found verbatim in parsed paragraphs
   facts     - share of visible XBRL numeric facts present in the parsed output (linked to a cell, or in text)
@@ -12,7 +13,12 @@ Five checks per document, combined into one confidence score:
                 lost:    HTML rows not in the parsed table must be header rows (their words appear in the header)
                 columns: all values of one parsed column come from one physical HTML column (no shifted values)
                 totals:  every "Total ..." row equals the sum of the rows above it in its group (hierarchy check)
-  tables    - mean parser quality score of the parsed tables
+  sections  - (gate, not part of confidence) every body element carries a 10-K Item label, the core Items
+              (1, 1A, 7, 7A, 8) are present, and each Item appears as one contiguous run in filing order.
+              A failure forces FAIL because retrieval filters on `section`.
+  tables    - (informational, NOT part of confidence/verdict) mean parser self-reported accuracy score of
+              the parsed tables, plus title/units completeness. A parser bug could inflate these, so they
+              never influence the verdict.
 
 Usage:
     uv run python scripts/check_coverage.py              # report + exit code 1 on FAIL
@@ -29,7 +35,7 @@ import warnings
 from collections import Counter, defaultdict
 from pathlib import Path
 
-from bs4 import BeautifulSoup, XMLParsedAsHTMLWarning
+from bs4 import BeautifulSoup, Tag, XMLParsedAsHTMLWarning
 
 warnings.filterwarnings("ignore", category=XMLParsedAsHTMLWarning)
 
@@ -40,11 +46,17 @@ TOKEN_RE = re.compile(r"[a-z0-9]+(?:[.,'][a-z0-9]+)*")
 UNITS_RE = re.compile(r"\bin\s+(millions|thousands|billions)\b", re.I)
 PAGE_NUM_RE = re.compile(r"^(?:page\s*)?(?:\d{1,3}|[ivxlc]{1,6})$|^[-–—]\s*\d{1,3}\s*[-–—]$", re.I)
 
-WEIGHTS = {"words": 0.25, "blocks": 0.15, "facts": 0.25, "structure": 0.25, "tables": 0.10}
+WEIGHTS = {"words": 0.25, "blocks": 0.15, "facts": 0.25, "structure": 0.25}
+WEIGHTS = {k: v / sum(WEIGHTS.values()) for k, v in WEIGHTS.items()}  # independent checks only
 PASS = {"confidence": 0.95, "words": 0.97, "facts": 0.99, "structure": 0.95}
 TABLE_MATCH_MIN = 0.5  # Jaccard of row labels needed to pair an HTML table with a parsed table
 FAIL = {"confidence": 0.85, "facts": 0.95}
 REPEAT_MIN, REPEAT_MAX_LEN = 5, 80  # page header/footer lines: short and repeated
+REQUIRED_ITEMS = ("Item 1", "Item 1A", "Item 7", "Item 7A", "Item 8")
+MAX_UNLABELED = 0.01  # share of body elements (after the cover page) without an Item label
+EXPECTED_TICKERS = {"AAPL", "MSFT", "NVDA", "AMZN", "GOOGL", "TSLA"}
+EXPECTED_YEARS = set(range(2020, 2026))
+EXPECTED_FILINGS = {(ticker, year) for ticker in EXPECTED_TICKERS for year in EXPECTED_YEARS}
 
 
 def clean(s: str | None) -> str:
@@ -127,18 +139,22 @@ def load_parsed(parsed_dir: Path, doc_id: str):
         json.loads(line) for line in open(parsed_dir / f"{doc_id}.elements.jsonl", encoding="utf-8")
     ]
     strings, para_norms, label_norms, cell_facts, scores, tables = [], [], [], {}, [], []
+    title_sources: Counter = Counter()
     for e in elements:
         if e["text"]:
             strings.append(e["text"])
             para_norms.append(norm(e["text"]))
         if t := e["table"]:
             tables.append(t)
-            if t.get("quality", {}).get("score") is not None:
+            q = t.get("quality", {})
+            if q.get("score") is not None:
+                title_sources[q.get("title_source") or "none"] += 1
                 scores.append(
                     (
                         t["table_id"],
-                        t["quality"]["score"],
-                        t["quality"].get("low_confidence", False),
+                        q.get("accuracy_score", q["score"]),
+                        q.get("low_confidence", False),
+                        q.get("completeness_score", 1.0),
                     )
                 )
             strings += [c["name"] for c in t["columns"]] + [
@@ -157,6 +173,7 @@ def load_parsed(parsed_dir: Path, doc_id: str):
         "text_blob": " | ".join(para_norms + label_norms),
         "cell_facts": cell_facts,
         "table_scores": scores,
+        "title_sources": dict(title_sources),
         "tables": tables,
     }
 
@@ -181,6 +198,29 @@ def check_blocks(soup, parsed, top_n: int):
     )
 
 
+def inline_run_text(node, container) -> str:
+    """Text of the block holding ``node``; if that block also holds nested blocks/tables (loose
+    inline text beside a <div>), only the run of inline siblings around ``node``."""
+    if container.find(BLOCK_TAGS + ["table"]) is None:
+        return container.get_text("")
+    child = node  # climb to the first ancestor that mixes inline text with blocks
+    while child.parent is not container and child.parent.find(BLOCK_TAGS + ["table"]) is None:
+        child = child.parent
+    siblings = list(child.parent.children)
+    i = j = siblings.index(child)
+
+    def inline(n):
+        if not isinstance(n, Tag):
+            return True
+        return n.name not in BLOCK_TAGS + ["table"] and n.find(BLOCK_TAGS + ["table"]) is None
+
+    while i > 0 and inline(siblings[i - 1]):
+        i -= 1
+    while j + 1 < len(siblings) and inline(siblings[j + 1]):
+        j += 1
+    return "".join(s.get_text("") if hasattr(s, "get_text") else str(s) for s in siblings[i : j + 1])
+
+
 def check_facts(soup, parsed, top_n: int):
     status, lost = Counter(), []
     for f in soup.find_all("ix:nonfraction"):
@@ -191,7 +231,8 @@ def check_facts(soup, parsed, top_n: int):
             status["linked_value_ok" if ok else "linked_value_mismatch"] += 1
             continue
         container = f.find_parent("td") or f.find_parent(BLOCK_TAGS)
-        if container is not None and norm(container.get_text("")) in parsed["text_blob"]:
+        text = inline_run_text(f, container) if container is not None else ""
+        if container is not None and norm(text) in parsed["text_blob"]:
             status["in_text_only"] += (
                 1  # present (e.g. inside a row label) but not linked to a cell
             )
@@ -502,6 +543,26 @@ def check_structure(soup, parsed, top_n: int):
     return score, detail
 
 
+def check_sections(parsed_dir: Path, doc_id: str) -> dict:
+    elements = [
+        json.loads(line) for line in open(parsed_dir / f"{doc_id}.elements.jsonl", encoding="utf-8")
+    ]
+    body = [e for e in elements if e["part"] != "Front Matter" and e["type"] != "heading"]
+    unlabeled = sum(1 for e in body if not e["section"])
+    runs = [e["section"] for e in elements if e["section"]]
+    runs = [s for i, s in enumerate(runs) if i == 0 or s != runs[i - 1]]
+    repeated = sorted(s for s, n in Counter(runs).items() if n > 1)
+    missing = [s for s in REQUIRED_ITEMS if s not in runs]
+    share = unlabeled / len(body) if body else 1.0
+    return {
+        "ok": not missing and not repeated and share <= MAX_UNLABELED,
+        "items": len(set(runs)),
+        "missing_required": missing,
+        "non_contiguous": repeated,
+        "unlabeled_share": round(share, 4),
+    }
+
+
 def check_document(html_path: Path, parsed_dir: Path, doc_id: str, top_n: int) -> dict:
     soup, excluded, excl_stats, all_visible = load_html(html_path)
     parsed = load_parsed(parsed_dir, doc_id)
@@ -513,7 +574,8 @@ def check_document(html_path: Path, parsed_dir: Path, doc_id: str, top_n: int) -
     facts, f_total, f_status, f_lost = check_facts(soup, parsed, top_n)
     structure, s_detail = check_structure(soup, parsed, top_n)
     scores = parsed["table_scores"]
-    tables = sum(s for _, s, _ in scores) / len(scores) if scores else 1.0
+    tables = sum(s for _, s, _, _ in scores) / len(scores) if scores else 1.0
+    completeness = sum(c for *_, c in scores) / len(scores) if scores else 1.0
 
     parts = {
         "words": words,
@@ -522,8 +584,9 @@ def check_document(html_path: Path, parsed_dir: Path, doc_id: str, top_n: int) -
         "structure": structure,
         "tables": tables,
     }
-    confidence = sum(WEIGHTS[k] * v for k, v in parts.items())
-    if confidence < FAIL["confidence"] or facts < FAIL["facts"]:
+    confidence = sum(WEIGHTS[k] * parts[k] for k in WEIGHTS)
+    sections = check_sections(parsed_dir, doc_id)
+    if confidence < FAIL["confidence"] or facts < FAIL["facts"] or not sections["ok"]:
         verdict = "FAIL"
     elif confidence >= PASS["confidence"] and all(
         parts[k] >= PASS[k] for k in ("words", "facts", "structure")
@@ -549,12 +612,81 @@ def check_document(html_path: Path, parsed_dir: Path, doc_id: str, top_n: int) -
         "blocks": {"total": b_total, "missing_examples": b_missing},
         "facts": {"visible": f_total, **f_status, "missing_examples": f_lost},
         "structure": s_detail,
+        "sections": sections,
         "tables": {
             "parsed": len(scores),
             "mean_score": round(tables, 4),
-            "low_confidence": [tid for tid, _, low in scores if low],
+            "mean_completeness": round(completeness, 4),
+            "title_source": parsed["title_sources"],
+            "low_confidence": [tid for tid, _, low, _ in scores if low],
         },
     }
+
+
+def validate_corpus(raw_paths: list[Path], metadata: list[dict]) -> list[str]:
+    errors = []
+    expected_files = {
+        f"{ticker}_10-K_{year}.html" for ticker, year in EXPECTED_FILINGS
+    }
+    raw_files = {path.name for path in raw_paths}
+    missing_raw = sorted(expected_files - raw_files)
+    extra_raw = sorted(raw_files - expected_files)
+    if missing_raw:
+        errors.append(f"missing raw filings: {', '.join(missing_raw)}")
+    if extra_raw:
+        errors.append(f"unexpected raw filings: {', '.join(extra_raw)}")
+
+    parsed_filings = []
+    doc_ids = []
+    source_files = []
+    for meta in metadata:
+        ticker = meta.get("ticker")
+        fiscal_year = meta.get("fiscal_year")
+        form = meta.get("form")
+        period_end = meta.get("period_end")
+        doc_id = meta.get("doc_id")
+        source_file = meta.get("source_file")
+        if not all((ticker, fiscal_year, form, period_end, doc_id, source_file)):
+            errors.append(f"incomplete parsed metadata in {source_file or doc_id or '<unknown>'}")
+            continue
+        if form != "10-K":
+            errors.append(f"{doc_id}: expected form 10-K, got {form!r}")
+        if not isinstance(fiscal_year, int):
+            errors.append(f"{doc_id}: fiscal_year must be an integer")
+            continue
+        expected_doc_id = f"{ticker}_10-K_{fiscal_year}"
+        if doc_id != expected_doc_id:
+            errors.append(f"{doc_id}: expected doc_id {expected_doc_id}")
+        parsed_filings.append((ticker, fiscal_year))
+        doc_ids.append(doc_id)
+        source_files.append(source_file)
+
+    for label, values in (("document IDs", doc_ids), ("source files", source_files)):
+        duplicates = sorted(value for value, count in Counter(values).items() if count > 1)
+        if duplicates:
+            errors.append(f"duplicate parsed {label}: {', '.join(duplicates)}")
+
+    parsed_set = set(parsed_filings)
+    missing_parsed = sorted(EXPECTED_FILINGS - parsed_set)
+    extra_parsed = sorted(parsed_set - EXPECTED_FILINGS)
+    if missing_parsed:
+        errors.append(
+            "missing parsed filings: "
+            + ", ".join(f"{ticker} FY{year}" for ticker, year in missing_parsed)
+        )
+    if extra_parsed:
+        errors.append(
+            "unexpected parsed filings: "
+            + ", ".join(f"{ticker} FY{year}" for ticker, year in extra_parsed)
+        )
+    if set(source_files) != raw_files:
+        missing_sources = sorted(raw_files - set(source_files))
+        stale_sources = sorted(set(source_files) - raw_files)
+        if missing_sources:
+            errors.append(f"raw files without parsed metadata: {', '.join(missing_sources)}")
+        if stale_sources:
+            errors.append(f"stale parsed source files: {', '.join(stale_sources)}")
+    return errors
 
 
 # ---------------------------------------------------------------- CLI
@@ -576,14 +708,15 @@ def main() -> int:
     ap.add_argument("--strict", action="store_true", help="exit 1 on WARN as well as FAIL")
     args = ap.parse_args()
 
-    docs = {
-        json.loads(p.read_text(encoding="utf-8"))["source_file"]: json.loads(
-            p.read_text(encoding="utf-8")
-        )["doc_id"]
-        for p in args.parsed_dir.glob("*.document.json")
-    }
+    raw_paths = sorted(args.raw_dir.glob("*.html"))
+    metadata = [
+        json.loads(path.read_text(encoding="utf-8"))
+        for path in sorted(args.parsed_dir.glob("*.document.json"))
+    ]
+    corpus_errors = validate_corpus(raw_paths, metadata)
+    docs = {meta["source_file"]: meta["doc_id"] for meta in metadata}
     reports = []
-    for html_path in sorted(args.raw_dir.glob("*.htm*")):
+    for html_path in raw_paths:
         if html_path.name not in docs:
             reports.append(
                 {
@@ -600,9 +733,12 @@ def main() -> int:
     out.write_text(json.dumps(reports, indent=2, ensure_ascii=False), encoding="utf-8")
 
     cols = ["words", "blocks", "facts", "structure", "tables"]
+    labels = {"tables": "parser*"}
     print(
-        f"{'document':<18} {'verdict':<7} {'confidence':>10} " + " ".join(f"{c:>9}" for c in cols)
+        f"{'document':<18} {'verdict':<7} {'confidence':>10} "
+        + " ".join(f"{labels.get(c, c):>9}" for c in cols)
     )
+    print("* parser self-score: informational only, excluded from confidence and verdict")
     for r in reports:
         if "error" in r:
             print(f"{r['source_file']:<18} FAIL    {r['error']}")
@@ -631,12 +767,20 @@ def main() -> int:
             f"| totals {s['totals_passed']}/{s['totals_checked']} | HTML tables {s['html_tables']} "
             f"(unpaired {s['html_tables_unpaired']}, parsed unpaired {s.get('parsed_tables_unpaired', 0)})"
         )
+        sec = r["sections"]
+        print(
+            f"  sects : {'ok' if sec['ok'] else 'FAIL'} | {sec['items']} Items | unlabeled "
+            f"{sec['unlabeled_share']:.2%} | missing {sec['missing_required'] or 'none'} "
+            f"| non-contiguous {sec['non_contiguous'] or 'none'}"
+        )
         for t in s["totals_failed"]:
             print(f"  total does not add up: {t}")
         for p in s["problem_tables"]:
             print(f"  table issue : {p}")
         print(
-            f"  tables: {r['tables']['parsed']} parsed, mean score {r['tables']['mean_score']:.3f}, "
+            f"  tables: {r['tables']['parsed']} parsed, mean accuracy {r['tables']['mean_score']:.3f}, "
+            f"completeness {r['tables']['mean_completeness']:.3f} "
+            f"(title from {r['tables']['title_source']}), "
             f"low confidence: {r['tables']['low_confidence'] or 'none'}"
         )
         if w["top_missing"]:
@@ -645,10 +789,17 @@ def main() -> int:
             print(f"  missing block: {m}")
         for m in f["missing_examples"]:
             print(f"  missing fact : {m['id']} {m['concept']} = {m['shown']} | {m['context']}")
+    if corpus_errors:
+        print("\ncorpus validation failed:")
+        for error in corpus_errors:
+            print(f"  - {error}")
+    else:
+        print("\ncorpus validation passed: 36 filings (6 tickers × FY2020–FY2025)")
     print(f"\nreport written to {out}")
 
     bad = {"FAIL", "WARN"} if args.strict else {"FAIL"}
-    return 1 if any(r["verdict"] in bad for r in reports) else 0
+    coverage_failed = any(r["verdict"] in bad for r in reports)
+    return 1 if corpus_errors or coverage_failed else 0
 
 
 if __name__ == "__main__":

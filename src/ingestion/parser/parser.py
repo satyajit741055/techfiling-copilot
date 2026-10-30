@@ -7,6 +7,7 @@ Logic ported from exploration/00_explore_src.py. Writes, per document:
 from __future__ import annotations
 
 import argparse
+import copy
 import csv
 import json
 import math
@@ -14,9 +15,10 @@ import re
 import warnings
 from collections import Counter, defaultdict
 from dataclasses import asdict, dataclass, field
+from datetime import date, datetime
 from pathlib import Path
 
-from bs4 import BeautifulSoup, XMLParsedAsHTMLWarning
+from bs4 import BeautifulSoup, Comment, NavigableString, Tag, XMLParsedAsHTMLWarning
 
 from config.logging import get_logger
 
@@ -32,6 +34,7 @@ CONFIG = {
     "boilerplate_min_repeats": 5,
     "boilerplate_max_len": 80,
     "heading_max_len": 150,
+    "plain_heading_max_len": 90,
     "title_lookback": 4,
     "max_header_rows": 6,
     "nbsp_pt": 2.5,
@@ -65,6 +68,10 @@ UNITS_ONLY_RE = re.compile(
 MAGNITUDES = {"thousand": 1e3, "million": 1e6, "billion": 1e9, "trillion": 1e12}
 MAGNITUDE_RE = re.compile(r"(thousand|million|billion|trillion)s?$", re.I)
 PAGE_NUM_RE = re.compile(r"^(?:page\s*)?(?:\d{1,3}|[ivxlc]{1,6})$|^[-–—]\s*\d{1,3}\s*[-–—]$", re.I)
+FOOTNOTE_MARKER_RE = re.compile(r"^(?:\(\s*(?:[a-z]|\d{1,2}|[ivx]{1,4})\s*\)|[*†‡§]+|\d{1,2})$", re.I)
+FOOTNOTE_MIN_LEN = 40
+TOC_ROW_RE = re.compile(r"^(?:part\s+(?:iv|i{1,3})\b|item\s+\d{1,2}[a-c]?\b)", re.I)
+TOC_MIN_ROWS = 5
 
 
 @dataclass
@@ -202,25 +209,63 @@ def load(path: Path) -> BeautifulSoup:
     return BeautifulSoup(path.read_bytes(), "lxml")
 
 
+def normalize_dei_date(value: str, path: Path) -> str:
+    normalized = clean(value.replace("\ufffd", " "))
+    normalized = re.sub(r"\s+,", ",", normalized)
+    try:
+        return date.fromisoformat(normalized).isoformat()
+    except ValueError:
+        pass
+    for date_format in ("%B %d, %Y", "%b %d, %Y"):
+        try:
+            return datetime.strptime(normalized, date_format).date().isoformat()
+        except ValueError:
+            continue
+    raise ValueError(f"{path.name}: invalid DEI DocumentPeriodEndDate {value!r}")
+
+
 def doc_metadata(soup: BeautifulSoup, path: Path) -> dict:
-    """Extract document-level metadata (company, ticker, CIK, form, fiscal year, period end) from DEI tags."""
+    """Extract and validate authoritative document metadata from DEI tags."""
     dei = {}
     for t in soup.find_all("ix:nonnumeric"):
         name = str(t.get("name", ""))
         if name.startswith("dei:") and name not in dei:
             dei[name] = clean(t.get_text())
+
     company = dei.get("dei:EntityRegistrantName") or path.stem.split("__")[0].replace("_", " ")
-    ticker = dei.get("dei:TradingSymbol")
-    form = dei.get("dei:DocumentType", "10-K")
-    fy = dei.get("dei:DocumentFiscalYearFocus", "")
+    ticker = clean(dei.get("dei:TradingSymbol")).upper()
+    form = clean(dei.get("dei:DocumentType")).upper()
+    fiscal_year_text = clean(dei.get("dei:DocumentFiscalYearFocus"))
+    period_end = clean(dei.get("dei:DocumentPeriodEndDate"))
+
+    missing = [
+        field
+        for field, value in (
+            ("ticker", ticker),
+            ("form", form),
+            ("fiscal_year", fiscal_year_text),
+            ("period_end", period_end),
+        )
+        if not value
+    ]
+    if missing:
+        raise ValueError(f"{path.name}: missing required DEI metadata: {', '.join(missing)}")
+    if form != "10-K":
+        raise ValueError(f"{path.name}: expected DEI DocumentType '10-K', got {form!r}")
+    if not fiscal_year_text.isdigit():
+        raise ValueError(
+            f"{path.name}: invalid DEI DocumentFiscalYearFocus {fiscal_year_text!r}"
+        )
+    period_end = normalize_dei_date(period_end, path)
+    fiscal_year = int(fiscal_year_text)
     return {
-        "doc_id": f"{ticker or re.sub(r'\W+', '_', company)}_{form}_{fy}",
+        "doc_id": f"{ticker}_{form}_{fiscal_year}",
         "company": company,
         "ticker": ticker,
         "cik": dei.get("dei:EntityCentralIndexKey"),
         "form": form,
-        "fiscal_year": int(fy) if fy.isdigit() else None,
-        "period_end": dei.get("dei:DocumentPeriodEndDate"),
+        "fiscal_year": fiscal_year,
+        "period_end": period_end,
         "source_file": path.name,
     }
 
@@ -329,26 +374,78 @@ def is_boilerplate(text: str, boilerplate: set[str], bold: bool = False) -> bool
     return len(text) <= CONFIG["boilerplate_max_len"] and norm_key(text) in boilerplate
 
 
-def iter_blocks(body):
-    """Yield the leaf block elements (and top-level tables) of the document in reading order."""
-    for el in body.find_all(BLOCK_TAGS):
-        in_table = el.find_parent("table") is not None
-        if el.name == "table":
-            if not in_table:
-                yield el
-        elif not in_table and el.find(BLOCK_TAGS) is None and clean(el.get_text("")):
-            yield el
+def iter_blocks(node):
+    """Yield the leaf block elements (and top-level tables) of the document in reading order.
+
+    Inline text that sits directly beside block elements (e.g. a footnote made of loose
+    ``<span>``s next to a ``<div>`` inside an ``ix:continuation``) belongs to no leaf block, so
+    consecutive inline nodes are wrapped in a synthetic ``<div>`` and yielded as one block.
+    """
+    run: list = []
+
+    def flush():
+        if run and clean("".join(n.get_text("") if isinstance(n, Tag) else str(n) for n in run)):
+            wrapper = Tag(name="div")
+            for n in run:
+                wrapper.append(copy.copy(n) if isinstance(n, Tag) else NavigableString(str(n)))
+            yield wrapper
+        run.clear()
+
+    for child in node.children:
+        if isinstance(child, Tag):
+            if child.name == "table":
+                yield from flush()
+                yield child
+            elif child.find(BLOCK_TAGS) is not None:
+                yield from flush()
+                yield from iter_blocks(child)
+            elif child.name in BLOCK_TAGS:
+                yield from flush()
+                if clean(child.get_text("")):
+                    yield child
+            else:
+                run.append(child)
+        elif isinstance(child, NavigableString) and not isinstance(child, Comment):
+            run.append(child)
+    yield from flush()
 
 
-def detect_section(text: str, bold: bool):
-    """Detect whether a bold line starts a new ``Item`` or ``Part`` section and return its label/title."""
-    if not bold or len(text) > CONFIG["heading_max_len"]:
+def detect_section(text: str, bold: bool, allow_plain: bool = False):
+    """Detect whether a line starts a new ``Item`` or ``Part`` section and return its label/title.
+
+    Bold lines are accepted as before. With ``allow_plain`` a non-bold line is accepted only if
+    it looks like a heading rather than a cross-reference sentence: short, and either a bare
+    ``Item 1.`` or ``Item 1. Title`` with a capitalized title and no sentence punctuation.
+    Callers must additionally require plain matches to move forward in section order.
+    """
+    if len(text) > CONFIG["heading_max_len"]:
         return None
+    if not bold:
+        if not allow_plain or len(text) > CONFIG["plain_heading_max_len"]:
+            return None
+        m = ITEM_RE.match(text) or PART_RE.match(text)
+        title = clean(m.group(2)) if m else ""
+        if not m or (title and (not title[0].isupper() or title.endswith((".", ",", ";")))):
+            return None
     if m := ITEM_RE.match(text):
         return "item", f"Item {m.group(1).upper()}", clean(m.group(2)) or None
     if m := PART_RE.match(text):
         return "part", f"Part {m.group(1).upper()}", clean(m.group(2)) or None
     return None
+
+
+PART_ORDER = {"I": 1, "II": 2, "III": 3, "IV": 4}
+
+
+def section_order(kind: str, label: str | None) -> tuple:
+    """Sortable position of a Part/Item label, used to accept plain headings only going forward."""
+    if not label:
+        return (0,)
+    key = label.split(" ", 1)[1]
+    if kind == "part":
+        return (PART_ORDER.get(key, 0),)
+    m = re.match(r"(\d+)([A-C]?)", key)
+    return (int(m.group(1)), m.group(2)) if m else (0,)
 
 
 @dataclass
@@ -494,6 +591,10 @@ def classify(merged: list[list[RawCell]]) -> str:
         return "layout"
     if sum(c.has_link for c in cells) >= 0.5 * len(cells):
         return "toc"
+    rows = [r for r in merged if r]
+    toc_rows = sum(bool(TOC_ROW_RE.match(clean(" ".join(c.text for c in r)))) for r in rows)
+    if toc_rows >= TOC_MIN_ROWS and toc_rows >= 0.6 * len(rows):
+        return "toc"  # unlinked table of contents: rows of "Part I" / "Item 1. Business ... 4"
     if any(c.fact_ids for c in cells):
         return "financial"
     lstart = label_start(merged)  # ignore the label column: exhibit numbers like "3.1" are not data
@@ -505,6 +606,18 @@ def classify(merged: list[list[RawCell]]) -> str:
         "financial"
         if values and numeric / len(values) >= CONFIG["numeric_table_ratio"]
         else "textual"
+    )
+
+
+def is_footnote_table(merged: list[list[RawCell]]) -> bool:
+    """True if every row is a footnote: a marker like ``(a)``/``(1)``/``*`` followed by prose."""
+    rows = [r for r in merged if r]
+    return bool(rows) and all(
+        len(r) >= 2
+        and FOOTNOTE_MARKER_RE.match(r[0].text)
+        and len(" ".join(c.text for c in r[1:])) >= FOOTNOTE_MIN_LEN
+        and not any(c.ctype in ("NUMBER", "DASH") for c in r[1:])
+        for r in rows
     )
 
 
@@ -616,7 +729,15 @@ def project(cells, groups, is_header: bool):
             ]
             conflicts += 1
         if not is_header and len(hits) > 1:
-            conflicts += 1
+            # a wide text cell left-aligned with its column and spilling over columns that are
+            # empty in this row (e.g. "Filed herewith" exhibit rows) is unambiguous
+            spill = any(
+                o is not c and o.start < groups[j][1] and groups[j][0] < o.start + o.span
+                for o in cells
+                for j in hits[1:]
+            )
+            if s != groups[hits[0]][0] or spill:
+                conflicts += 1
         for j in hits if is_header else hits[:1]:
             if out[j] and not is_header:
                 conflicts += 1
@@ -654,6 +775,8 @@ def to_cell(cs: list[RawCell]) -> Cell:
 
 
 TOTAL_RE = re.compile(r"^(sub)?total\b", re.I)
+NET_RE = re.compile(r"^net\b", re.I)
+NET_PREFIX_RE = re.compile(r"^net\s+(?:change\s+in\s+|increase\s+decrease\s+in\s+)?")
 FOOTNOTE_RE = re.compile(r"\((?:\d{1,2}|[a-z])\)|\*+$", re.I)
 
 
@@ -668,6 +791,12 @@ def closes_group(total_label: str, heading: str) -> bool:
     return rest == "" or rest == norm_label(heading)
 
 
+def net_closes_group(net_label: str, heading: str) -> bool:
+    """True if a ``Net X`` row closes heading ``Net change in X`` / ``X`` (e.g. OCI statements)."""
+    key = NET_PREFIX_RE.sub("", norm_label(net_label))
+    return bool(key) and key == NET_PREFIX_RE.sub("", norm_label(heading))
+
+
 @dataclass
 class OpenGroup:
     indent: float
@@ -679,6 +808,18 @@ class OpenGroup:
         0.0  # indent of the first child; a flat group closes on a row shallower than this
     )
     n_data: int = 0
+
+
+def is_header_value(v: Cell) -> bool:
+    """True for cells that only label periods/units: empty, a year, a date, or ``(in millions)``."""
+    if v.fact_ids or v.ctype not in ("EMPTY", "YEAR", "DATE", "TEXT"):
+        return False
+    if v.ctype != "TEXT":
+        return True
+    # "2019 (4)": a year carrying a footnote marker
+    return bool(UNITS_ONLY_RE.match(v.text)) or cell_type(
+        FOOTNOTE_RE.sub("", v.text).strip()
+    ) in ("YEAR", "DATE")
 
 
 def build_rows(data_rows, groups):
@@ -721,6 +862,11 @@ def build_rows(data_rows, groups):
         if not has_values and len(label) >= CONFIG["note_min_len"]:
             rows.append(Row(label, 0, [label], "note", False, values))
             continue
+        if not label and has_values and all(is_header_value(v) for v in values):
+            # repeated period header inside the table ("December 31," / "2016 2017" / "(in millions)")
+            text = clean(" ".join(v.text for v in values if v.text))
+            rows.append(Row(text, 0, [text], "note", False, [Cell("", "EMPTY") for _ in values]))
+            continue
         if (
             not label
             and any(v.ctype in ("NUMBER", "DASH") for v in values)
@@ -743,6 +889,15 @@ def build_rows(data_rows, groups):
                     i
                     for i in range(len(stack) - 1, -1, -1)
                     if closes_group(label, stack[i].label) and (not bare or stack[i].n_data >= 2)
+                ),
+                None,
+            )
+        elif row_type == "data" and NET_RE.match(label):  # "Net X" closes "Net change in X:"
+            owner = next(
+                (
+                    i
+                    for i in range(len(stack) - 1, -1, -1)
+                    if stack[i].n_data >= 1 and net_closes_group(label, stack[i].label)
                 ),
                 None,
             )
@@ -814,6 +969,10 @@ def table_context(
     if not units:
         scales = Counter(f.scale for f in fact_list if f.unit and f.unit.lower() == "usd")
         units = SCALE_TO_UNITS.get(scales.most_common(1)[0][0]) if scales else None
+    if not units:
+        scales = Counter(f.scale for f in fact_list if f.unit and f.unit.lower() == "shares")
+        scale = SCALE_TO_UNITS.get(scales.most_common(1)[0][0]) if scales else None
+        units = f"shares {scale}" if scale else None
     usable = [
         (t, b) for t, b in cands if not is_units_line(t) and norm_label(t) != norm_label(company)
     ]
@@ -905,7 +1064,7 @@ def validate(rows: list[Row], columns: list[Column], facts: dict, contexts: dict
     }
 
 
-def score(kind, n_header, title, units, conflicts, n_cells, v) -> dict:
+def score(kind, n_header, title, units, conflicts, n_cells, v, units_expected=True) -> dict:
     """Compute a 0-1 confidence score for a parsed table, with human-readable reasons.
 
     Starts at 1.0 and subtracts penalties: a financial table missing a header (-0.3) or units
@@ -920,23 +1079,20 @@ def score(kind, n_header, title, units, conflicts, n_cells, v) -> dict:
         conflicts: Alignment conflict count from row/column projection.
         n_cells: Total data cells (denominator for the conflict penalty).
         v: Validation metrics dict from ``validate``.
+        units_expected: Whether units apply (monetary tables); share counts and percentages
+            are not penalized for lacking an ``(in millions)`` line.
 
     Returns:
-        ``v`` merged with ``score`` (rounded, floored at 0), a ``low_confidence`` flag, and a
-        ``reasons`` list naming each penalty applied.
+        ``v`` merged with ``score`` (rounded, floored at 0), ``accuracy_score`` (structure and
+        XBRL agreement only), ``completeness_score`` (share of expected title/units present),
+        a ``low_confidence`` flag, and a ``reasons`` list naming each penalty applied.
     """
-    s, reasons = 1.0, []
+    accuracy, missing, reasons = 1.0, 0.0, []
     if kind == "financial" and n_header == 0:
-        s -= 0.3
+        accuracy -= 0.3
         reasons.append("no_header")
-    if kind == "financial" and not units:
-        s -= 0.1
-        reasons.append("no_units")
-    if not title:
-        s -= 0.1
-        reasons.append("no_title")
     if conflicts:
-        s -= min(0.4, 2 * conflicts / max(1, n_cells))
+        accuracy -= min(0.4, 2 * conflicts / max(1, n_cells))
         reasons.append(f"conflicts={conflicts}")
     if v.get("n_fact_cells"):
         for key, w in (
@@ -946,10 +1102,24 @@ def score(kind, n_header, title, units, conflicts, n_cells, v) -> dict:
             ("header_period_agreement", 0.2),
         ):
             if v.get(key) is not None and v[key] < 1:
-                s -= w * (1 - v[key])
+                accuracy -= w * (1 - v[key])
                 reasons.append(f"{key}={v[key]}")
-    s = round(max(0.0, s), 3)
-    return {**v, "score": s, "low_confidence": s < CONFIG["low_confidence"], "reasons": reasons}
+    expected = {"title": title}
+    if kind == "financial" and units_expected:
+        expected["units"] = units
+    for name, value in expected.items():
+        if not value:
+            missing += 0.1
+            reasons.append(f"no_{name}")
+    s = round(max(0.0, accuracy - missing), 3)
+    return {
+        **v,
+        "score": s,
+        "accuracy_score": round(max(0.0, accuracy), 3),
+        "completeness_score": round(sum(map(bool, expected.values())) / len(expected), 3),
+        "low_confidence": s < CONFIG["low_confidence"],
+        "reasons": reasons,
+    }
 
 
 def fmt_value(c: Cell) -> str:
@@ -989,7 +1159,7 @@ def to_markdown(t: Table) -> str:
     return "\n".join(lines + ([""] + [f"_Note: {n}_" for n in notes] if notes else []))
 
 
-def parse_table(tag, table_id, prev_text, meta, facts, contexts) -> Table:
+def parse_table(tag, table_id, prev_text, meta, facts, contexts, heading=None) -> Table:
     """Run the full parsing pipeline for a single HTML table.
 
     Flattens the table (``raw_rows`` + ``merge_fragments``) and classifies it; layout/toc
@@ -1005,6 +1175,8 @@ def parse_table(tag, table_id, prev_text, meta, facts, contexts) -> Table:
         meta: Document metadata (uses ``company``).
         facts: Mapping of fact id → XbrlFact.
         contexts: Mapping of context id → period/dimension info.
+        heading: Most recent heading line in the document, used as a fallback title when no
+            caption sits directly above the table (recorded as ``title_source="heading"``).
 
     Returns:
         A Table whose ``kind`` reflects how it was handled (layout/toc/text_block/financial/
@@ -1014,6 +1186,11 @@ def parse_table(tag, table_id, prev_text, meta, facts, contexts) -> Table:
     kind = classify(merged)
     if kind in ("layout", "toc"):
         return Table(table_id, kind)
+    if is_footnote_table(merged) or (kind == "textual" and sum(1 for r in merged if r) <= 2):
+        # footnotes, and tiny text-only grids such as the exhibit-index header repeated on every
+        # page, carry no tabular structure: keep them as plain text
+        text = "\n".join(" ".join(c.text for c in r) for r in merged if r)
+        return Table(table_id, "text_block", markdown=text)
     lstart = label_start(merged)
     n_header = header_row_count(merged, lstart)
     if not any(
@@ -1032,6 +1209,12 @@ def parse_table(tag, table_id, prev_text, meta, facts, contexts) -> Table:
     fact_list = [facts[f] for r in rows for c in r.cells for f in c.fact_ids if f in facts]
     header_text = " ".join(c.text for r in header_rows for c in r)
     title, units, intro = table_context(prev_text, header_text, fact_list, meta["company"])
+    title_source = "caption" if title else None
+    if not title and heading and norm_label(heading) != norm_label(meta["company"]):
+        title, title_source = heading, "heading"
+    monetary = any(c.currency for r in rows for c in r.cells) or any(
+        f.unit and f.unit.lower() == "usd" for f in fact_list
+    )
     n_cells = sum(len(r) for r in data_rows)
     t = Table(
         table_id,
@@ -1042,8 +1225,9 @@ def parse_table(tag, table_id, prev_text, meta, facts, contexts) -> Table:
         columns,
         rows,
         v.get("period_axis"),
-        score(kind, n_header, title, units, conflicts, n_cells, v),
+        score(kind, n_header, title, units, conflicts, n_cells, v, units_expected=monetary),
     )
+    t.quality["title_source"] = title_source
     t.markdown = to_markdown(t)
     return t
 
@@ -1077,6 +1261,8 @@ def parse_document(path: Path):
     part, section, section_title = "Front Matter", "Cover Page", "Cover Page"
     pending_title, n_tables = False, 0
     prev_text: list = []
+    last_heading: str | None = None
+    part_order, item_order, just_opened = (0,), (0,), False
 
     def add(etype, text=None, table=None):
         doc.elements.append(
@@ -1089,33 +1275,67 @@ def parse_document(path: Path):
         if b.name == "table":
             n_tables += 1
             t = parse_table(
-                b, f"{meta['doc_id']}_t{n_tables:03d}", prev_text, meta, facts, contexts
+                b,
+                f"{meta['doc_id']}_t{n_tables:03d}",
+                prev_text,
+                meta,
+                facts,
+                contexts,
+                heading=last_heading,
             )
             prev_text = []
-            if t.kind in ("layout", "toc"):
-                removed[f"{t.kind}_tables"] += 1
-            elif t.kind == "text_block":
-                add("paragraph", text=t.markdown)
-            else:
-                add("table", table=t)
-            continue
-        text = clean(b.get_text(""))
-        bold = is_bold(b)
+            # some filers (e.g. Amazon, Tesla) lay out "Item 1. | Business" headings as a small
+            # table; try with and without a cell separator (drop caps split "I" + "TEM 4.")
+            table_text = next(
+                (
+                    tt
+                    for sep in (" ", "")
+                    if t.kind in ("layout", "text_block")
+                    and detect_section(tt := clean(b.get_text(sep)), is_bold(b), allow_plain=True)
+                ),
+                "",
+            )
+            if not table_text:
+                if t.kind in ("layout", "toc"):
+                    removed[f"{t.kind}_tables"] += 1
+                elif t.kind == "text_block":
+                    add("paragraph", text=t.markdown)
+                else:
+                    add("table", table=t)
+                just_opened = False
+                continue
+            text, bold = table_text, is_bold(b)
+        else:
+            text = clean(b.get_text(""))
+            bold = is_bold(b)
         if is_boilerplate(text, boilerplate, bold):
             removed["boilerplate_lines"] += 1
             continue
-        sec = detect_section(text, bold)
+        sec = detect_section(text, bold, allow_plain=True)
+        if sec and not bold:  # plain-text headings must move forward, so cross-references can't
+            last = part_order if sec[0] == "part" else item_order
+            if section_order(sec[0], sec[1]) <= last:
+                sec = None
         if sec and sec[0] == "part":
             part, section, section_title, etype = sec[1], None, sec[1], "heading"
+            part_order = max(part_order, section_order("part", sec[1]))
         elif sec:
             section, section_title, pending_title = sec[1], sec[2], sec[2] is None
+            item_order = max(item_order, section_order("item", sec[1]))
             etype = "heading"
-        elif pending_title and bold and len(text) <= CONFIG["heading_max_len"]:
+        elif (
+            pending_title
+            and len(text) <= CONFIG["heading_max_len"]
+            and (bold or (just_opened and not text.endswith(".")))
+        ):
             section_title, pending_title, etype = text, False, "heading"
         else:
             etype = "heading" if bold and len(text) <= CONFIG["heading_max_len"] else "paragraph"
         add(etype, text=text)
         prev_text.append((text, bold))
+        just_opened = bool(sec and sec[0] == "item" and sec[2] is None)
+        if etype == "heading":
+            last_heading = text
     return doc, facts, contexts, removed
 
 
@@ -1143,6 +1363,8 @@ QUALITY_COLUMNS = [
     "rows",
     "cols",
     "score",
+    "accuracy_score",
+    "completeness_score",
     "n_fact_cells",
     "value_match",
     "period_purity",
@@ -1164,7 +1386,7 @@ def quality_rows(doc: Document) -> list[dict]:
             "units": e.table.units,
             "rows": len(e.table.rows),
             "cols": len(e.table.columns),
-            **{k: e.table.quality.get(k) for k in QUALITY_COLUMNS[8:14]},
+            **{k: e.table.quality.get(k) for k in QUALITY_COLUMNS[8:16]},
             "reasons": ";".join(e.table.quality.get("reasons", [])),
         }
         for e in doc.elements
@@ -1176,9 +1398,19 @@ def parse_all(
     raw_dir: Path = RAW_DIR, out_dir: Path = OUT_DIR, files: list[Path] | None = None
 ) -> list[Document]:
     """Parse and save every filing (or the given files), write the combined quality_report.csv, and return the documents."""
+    paths = sorted(files) if files is not None else sorted(raw_dir.glob("*.html"))
+    if not paths:
+        raise FileNotFoundError(f"No .html filings found in {raw_dir}")
+
+    metadata = [doc_metadata(load(path), path) for path in paths]
+    doc_ids = [meta["doc_id"] for meta in metadata]
+    duplicates = sorted(doc_id for doc_id, count in Counter(doc_ids).items() if count > 1)
+    if duplicates:
+        raise ValueError(f"Duplicate document IDs in raw corpus: {', '.join(duplicates)}")
+
     out_dir.mkdir(parents=True, exist_ok=True)
     docs, rows = [], []
-    for path in files or sorted(raw_dir.glob("*.html")):
+    for path in paths:
         doc, facts, contexts, removed = parse_document(path)
         save(doc, facts, contexts, out_dir)
         docs.append(doc)
