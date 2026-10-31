@@ -158,6 +158,17 @@ def test_tracker_records_components_and_writes_jsonl(tmp_path):
     assert (first.prompt_tokens, first.completion_tokens) == (50, 5)
     lines = next(tmp_path.glob("queries-*.jsonl")).read_text().splitlines()
     assert len(lines) == 2 and json.loads(lines[0])["status"] == "success"
+    assert first.retrieval_scope is None
+
+
+def test_tracker_records_retrieval_scope():
+    class _Filtered(_Retriever):
+        def search(self, question, k, doc_id=None, filters=None):
+            return super().search(question, k, doc_id)
+
+    generator = AnswerGenerator(retriever=_Filtered(), llm_client=_LLM(), system_prompt="sys")
+    _, record = QueryTracker(None).run(generator, "Q?", doc_id=None, filters={"ticker": "AAPL"})
+    assert record.retrieval_scope == {"filters": {"ticker": "AAPL"}}
 
 
 def test_retries_are_counted(tmp_path, monkeypatch):

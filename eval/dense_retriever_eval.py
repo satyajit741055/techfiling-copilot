@@ -2,9 +2,12 @@
 Retrieval Evaluation Module for SEC 10-K RAG System
 ====================================================
 
-This module provides comprehensive evaluation of the dense retriever against
-a golden dataset. It computes standard IR metrics and logs results for
-comparison across different configurations.
+This module provides comprehensive evaluation of dense-only retrieval over a Qdrant
+collection (``QdrantRetriever(mode="dense")``) against a golden dataset. It computes
+standard IR metrics and logs results for comparison across collections (index versions).
+
+Flat queries only (``doc_id`` and/or ``filters`` scope); grouped goldens are skipped. Use
+``eval/hybrid_rerank_eval.py --mode qdrant_dense`` for grouped dense evaluation.
 
 METRICS COMPUTED
 ----------------
@@ -60,16 +63,17 @@ USAGE
 -----
 
 Command line:
-    uv run python eval/dense_retriever_eval.py
-    uv run python eval/dense_retriever_eval.py --k 10 --run-directory data/chunks/2026-10-14_15-50-05
+    uv run python eval/dense_retriever_eval.py --golden goldens/<set>.jsonl
+    uv run python eval/dense_retriever_eval.py --golden goldens/<set>.jsonl \\
+        --collection techfiling_20261031T083307Z techfiling_20261031T083714Z
     uv run python eval/dense_retriever_eval.py --compare  # Compare all logged runs
 
 
 OUTPUT
 ------
 
-Results are saved to `eval/results/<run_timestamp>_eval_results.json` with:
-- Configuration (k values, run directory, model, chunking params)
+Results are saved to `eval/results/<timestamp>_dense_<collection>_eval_results.json` with:
+- Configuration (k values, collection, chunk run, model, chunking params)
 - Per-query results (for debugging retrieval failures)
 - Aggregate metrics (for comparison)
 - Category breakdowns (to identify weak areas)
@@ -92,10 +96,14 @@ import numpy as np
 
 # Add parent to path for imports
 sys.path.insert(0, str(Path(__file__).resolve().parents[1] / "src"))
-from retriever.retriever import DenseRetriever
+from hybrid_rerank_eval import find_chunk_run, open_store
+
+from model_runtime import Embedder
+from retriever.qdrant_retriever import QdrantRetriever
+from vector_store.filters import matches as matches_filters
+from vector_store.filters import merge_filters
 
 ROOT = Path(__file__).resolve().parents[1]
-DEFAULT_GOLDEN_PATH = ROOT / "goldens" / "golden_retriever_dataset_v2.jsonl"
 DEFAULT_RESULTS_DIR = ROOT / "eval" / "results"
 
 # =============================================================================
@@ -140,6 +148,10 @@ class QueryResult:
     # Details for debugging
     matches: list[RelevanceMatch] = field(default_factory=list)
     top_chunks: list[dict[str, Any]] = field(default_factory=list)
+
+    # Scope sanity check: retrieved chunks outside the query's doc_id/filters (should be 0)
+    scope: dict[str, Any] = field(default_factory=dict)
+    filter_violations: int = 0
 
 
 @dataclass
@@ -350,6 +362,12 @@ class GoldenQuery:
     difficulty: str
     expected_answer: str
     relevant: list[dict[str, Any]]
+    filters: dict[str, Any] | None = None
+
+    @property
+    def scope(self) -> dict[str, Any]:
+        """Merged, validated metadata filters (``doc_id`` plus ``filters``)."""
+        return merge_filters(self.filters, doc_id=self.doc_id)
 
     def get_relevant_orders(self, doc_id: str | None = None) -> set[int]:
         """
@@ -423,23 +441,30 @@ class GoldenQuery:
 
 
 def load_golden_dataset(path: Path) -> list[GoldenQuery]:
-    """Load golden evaluation dataset from JSONL file."""
+    """Load flat golden queries from a JSONL file; grouped ones (``group_by``) are skipped."""
     queries = []
+    skipped = 0
     with path.open(encoding="utf-8") as f:
         for line in f:
             if line.strip():
                 data = json.loads(line)
-                queries.append(
-                    GoldenQuery(
-                        id=data["id"],
-                        query=data["query"],
-                        doc_id=data.get("doc_id"),
-                        category=data["category"],
-                        difficulty=data["difficulty"],
-                        expected_answer=data["expected_answer"],
-                        relevant=data.get("relevant", []),
-                    )
+                if data.get("group_by"):
+                    skipped += 1
+                    continue
+                golden = GoldenQuery(
+                    id=data["id"],
+                    query=data["query"],
+                    doc_id=data.get("doc_id"),
+                    category=data["category"],
+                    difficulty=data["difficulty"],
+                    expected_answer=data["expected_answer"],
+                    relevant=data.get("relevant", []),
+                    filters=data.get("filters"),
                 )
+                merge_filters(golden.filters)  # raises on invalid filters
+                queries.append(golden)
+    if skipped:
+        print(f"Skipped {skipped} grouped queries (use hybrid_rerank_eval.py --mode qdrant_dense)")
     return queries
 
 
@@ -450,7 +475,7 @@ def load_golden_dataset(path: Path) -> list[GoldenQuery]:
 
 class RetrieverEvaluator:
     """
-    Evaluates a dense retriever against a golden dataset.
+    Evaluates dense-only Qdrant retrieval on one collection against a golden dataset.
 
     This class orchestrates the evaluation process:
     1. Loads the golden dataset
@@ -460,31 +485,46 @@ class RetrieverEvaluator:
     5. Aggregates and logs results
 
     Attributes:
-        retriever: The DenseRetriever instance to evaluate
+        retriever: The QdrantRetriever (mode="dense") instance to evaluate
         golden_queries: List of golden evaluation queries
         golden_path: Path to the golden dataset file
     """
 
     def __init__(
         self,
-        golden_path: str | Path = DEFAULT_GOLDEN_PATH,
-        run_directory: str | Path | None = None,
+        golden_path: str | Path,
+        collection: str | None = None,
         device: str | None = None,
+        *,
+        client: Any = None,
+        embedder: Embedder | None = None,
+        retriever: Any = None,
     ):
         """
         Initialize the evaluator.
 
         Args:
             golden_path: Path to golden evaluation dataset (JSONL)
-            run_directory: Path to chunking run directory (uses latest if None)
+            collection: Qdrant collection (index version); None uses QDRANT_COLLECTION
             device: Device for embedding model ("cuda", "cpu", etc.)
+            client: Existing Qdrant client to share across collections
+            embedder: Already-loaded query embedder to share across collections
+            retriever: Pre-built retriever (tests); skips store and model setup
         """
         self.golden_path = Path(golden_path)
         self.golden_queries = load_golden_dataset(self.golden_path)
 
-        print(f"Loading retriever from: {run_directory or 'latest run'}")
-        self.retriever = DenseRetriever(run_directory, device=device)
-        print(f"  Loaded {len(self.retriever.chunks)} chunks")
+        if retriever is None:
+            store = open_store(collection, client)
+            print(f"Loading dense retriever on collection: {store.collection}")
+            retriever = QdrantRetriever(store, mode="dense", embedder=embedder, device=device)
+        self.retriever = retriever
+        self.store = retriever.store
+        self.collection = self.store.collection
+        self.chunk_run, run_manifest = find_chunk_run(self.collection)
+        self.manifest = {**run_manifest, **self.store.index_metadata()}
+        self.chunk_count = self.store.count()
+        print(f"  Loaded {self.chunk_count} chunks (chunk run: {self.chunk_run or 'not found'})")
         print(f"  Model: {self.retriever.model_name} ({self.retriever.embedder.backend})")
         print(f"Loaded {len(self.golden_queries)} golden queries")
 
@@ -503,12 +543,9 @@ class RetrieverEvaluator:
         Returns:
             QueryResult with all metrics and match details
         """
-        # Run retrieval
-        results = self.retriever.search(
-            golden.query,
-            k=k,
-            doc_id=golden.doc_id,  # Filter by doc if specified
-        )
+        # Run retrieval, scoped by doc_id and/or metadata filters
+        scope = golden.scope
+        results = self.retriever.search(golden.query, k=k, filters=scope)
 
         # Match results to golden answers
         matches = []
@@ -571,6 +608,8 @@ class RetrieverEvaluator:
                 }
                 for score, chunk in results[:5]  # Keep top 5 for debugging
             ],
+            scope=scope,
+            filter_violations=sum(not matches_filters(chunk, scope) for _, chunk in results),
         )
 
     def evaluate(
@@ -593,8 +632,8 @@ class RetrieverEvaluator:
 
         timestamp = datetime.now().strftime("%Y-%m-%d_%H-%M-%S")
 
-        # Get config from retriever manifest
-        manifest = self.retriever.manifest
+        # Config from the collection metadata and its chunking run manifest
+        manifest = self.manifest
         chunking_config = manifest.get("chunking_config", {})
         embedding_model = {
             **manifest.get("embedding_model", {}),
@@ -654,17 +693,18 @@ class RetrieverEvaluator:
             "ndcg": primary_metrics.get("ndcg", 0.0),
             "positive_queries": primary_metrics.get("positive_queries", 0),
             "negative_queries": primary_metrics.get("negative_queries", 0),
+            "filter_violations": primary_metrics.get("filter_violations", 0),
         }
 
         return EvalResults(
             timestamp=timestamp,
-            run_directory=str(self.retriever.run_directory),
+            run_directory=f"qdrant:{self.collection}",
             golden_path=str(self.golden_path),
             k_values=k_values,
             primary_k=primary_k,
             chunking_config=chunking_config,
             embedding_model=embedding_model,
-            total_chunks=len(self.retriever.chunks),
+            total_chunks=self.chunk_count,
             total_queries=len(self.golden_queries),
             overall=overall,
             metrics_by_k=metrics_by_k,
@@ -688,6 +728,7 @@ class RetrieverEvaluator:
             "total_queries": len(results),
             "positive_queries": len(positive_results),
             "negative_queries": len(negative_results),
+            "filter_violations": sum(r.filter_violations for r in results),
         }
 
         if positive_results:
@@ -770,11 +811,12 @@ class RetrieverEvaluator:
         output_dir = Path(output_dir)
         output_dir.mkdir(parents=True, exist_ok=True)
 
-        run_timestamp = Path(results.run_directory).name
-        output_path = output_dir / f"{run_timestamp}_eval_results.json"
+        # run_directory is "qdrant:<collection>"; ":" is not allowed in Windows filenames
+        stem = f"{results.timestamp}_dense_{results.run_directory.removeprefix('qdrant:')}"
+        output_path = output_dir / f"{stem}_eval_results.json"
         version = 2
         while output_path.exists():
-            output_path = output_dir / f"{run_timestamp}_v{version}_eval_results.json"
+            output_path = output_dir / f"{stem}_v{version}_eval_results.json"
             version += 1
 
         with output_path.open("w", encoding="utf-8") as f:
@@ -790,13 +832,16 @@ class RetrieverEvaluator:
         print("=" * 80)
 
         print("\nConfiguration:")
-        print(f"  Run directory: {results.run_directory}")
+        print(f"  Collection: {results.run_directory.removeprefix('qdrant:')}")
         print(f"  Total chunks: {results.total_chunks}")
         print(
             f"  Total queries: {results.total_queries} "
             f"({results.overall.get('positive_queries', 0)} positive, "
             f"{results.overall.get('negative_queries', 0)} negative)"
         )
+        violations = results.overall.get("filter_violations", 0)
+        if violations:
+            print(f"  WARNING: {violations} retrieved chunks fall outside their query's filters")
         print(
             f"  Chunking: MAX_CHARS={results.chunking_config.get('max_chars')}, "
             f"TABLE_MAX_CHARS={results.chunking_config.get('table_max_chars')}"
@@ -903,21 +948,22 @@ def compare_runs(results_dir: Path | None = None) -> None:
         print(f"No evaluation results found in {results_dir}")
         return
 
-    print("\n" + "=" * 100)
+    print("\n" + "=" * 130)
     print("EVALUATION RUN COMPARISON")
-    print("=" * 100)
+    print("=" * 130)
 
     # Header
     print(
-        f"\n{'Timestamp':<20} | {'MAX_CHARS':>9} | {'TBL_CHARS':>9} | "
+        f"\n{'Timestamp':<20} | {'Collection / run':<27} | {'MAX_CHARS':>9} | {'TBL_CHARS':>9} | "
         f"{'Hit@5':>6} | {'MRR@5':>6} | {'Recall@5':>8} | {'Prec@5':>6} | {'nDCG@5':>7} | {'Chunks':>7}"
     )
-    print("-" * 100)
+    print("-" * 130)
 
     for path in result_files:
         try:
             data = load_eval_results(path)
             ts = data["timestamp"][:16]  # Truncate for display
+            source = Path(str(data.get("run_directory", "?")).removeprefix("qdrant:")).name
             config = data.get("chunking_config", {})
             max_chars = config.get("max_chars", "?")
             tbl_chars = config.get("table_max_chars", "?")
@@ -946,14 +992,14 @@ def compare_runs(results_dir: Path | None = None) -> None:
                     hit = mrr = recall = precision = ndcg = 0
 
             print(
-                f"{ts:<20} | {max_chars:>9} | {tbl_chars:>9} | "
+                f"{ts:<20} | {source:<27} | {max_chars:>9} | {tbl_chars:>9} | "
                 f"{hit:>6.3f} | {mrr:>6.3f} | {recall:>8.3f} | {precision:>6.3f} | {ndcg:>7.3f} | {chunks:>7}"
             )
 
         except Exception as e:
             print(f"Error loading {path.name}: {e}")
 
-    print("\n" + "=" * 100)
+    print("\n" + "=" * 130)
 
 
 # =============================================================================
@@ -1033,30 +1079,30 @@ def main() -> None:
         formatter_class=argparse.RawDescriptionHelpFormatter,
         epilog="""
 Examples:
-  # Run evaluation with default settings
-  uv run python eval/dense_retriever_eval.py
+  # Evaluate the configured collection (QDRANT_COLLECTION)
+  uv run python eval/dense_retriever_eval.py --golden goldens/<set>.jsonl
 
-  # Evaluate specific run at multiple k values
-  uv run python eval/dense_retriever_eval.py --run-directory data/chunks/2026-10-14_15-50-05 -k 1 3 5 10 20
+  # Compare two index versions at multiple k values
+  uv run python eval/dense_retriever_eval.py --golden goldens/<set>.jsonl \\
+      --collection techfiling_20261031T083307Z techfiling_20261031T083714Z -k 1 3 5 10 20
 
   # Compare all previous runs
   uv run python eval/dense_retriever_eval.py --compare
 
-  # Analyze failures from last run
-  uv run python eval/dense_retriever_eval.py --analyze-failures
+  # Analyze failures
+  uv run python eval/dense_retriever_eval.py --golden goldens/<set>.jsonl --analyze-failures
         """,
     )
 
     parser.add_argument(
         "--golden",
         type=Path,
-        default=DEFAULT_GOLDEN_PATH,
-        help="Path to golden evaluation dataset (JSONL)",
+        help="Path to golden evaluation dataset (JSONL); required to evaluate",
     )
     parser.add_argument(
-        "--run-directory",
-        type=Path,
-        help="Path to chunking run directory (uses latest if not specified)",
+        "--collection",
+        nargs="+",
+        help="Qdrant collection(s) to evaluate and compare (default: QDRANT_COLLECTION)",
     )
     parser.add_argument(
         "-k",
@@ -1096,23 +1142,29 @@ Examples:
     if args.compare:
         compare_runs(args.output_dir)
         return
+    if args.golden is None:
+        parser.error("--golden is required unless --compare is given")
 
-    # Run evaluation
-    evaluator = RetrieverEvaluator(
-        golden_path=args.golden,
-        run_directory=args.run_directory,
-        device=args.device,
-    )
+    # One evaluation per collection; the Qdrant client and embedder are shared
+    shared: dict[str, Any] = {}
+    for collection in args.collection or [None]:
+        evaluator = RetrieverEvaluator(
+            golden_path=args.golden,
+            collection=collection,
+            device=args.device,
+            **shared,
+        )
+        shared = {"client": evaluator.store.client, "embedder": evaluator.retriever.embedder}
 
-    results = evaluator.evaluate(k_values=sorted(args.k))
-    evaluator.print_summary(results)
+        results = evaluator.evaluate(k_values=sorted(args.k))
+        evaluator.print_summary(results)
 
-    if args.analyze_failures:
-        k = 5 if 5 in args.k else args.k[-1]
-        analyze_failures(results, k=k)
+        if args.analyze_failures:
+            k = 5 if 5 in args.k else args.k[-1]
+            analyze_failures(results, k=k)
 
-    if not args.no_save:
-        evaluator.save_results(results, args.output_dir)
+        if not args.no_save:
+            evaluator.save_results(results, args.output_dir)
 
 
 if __name__ == "__main__":

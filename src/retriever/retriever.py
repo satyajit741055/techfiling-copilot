@@ -11,6 +11,7 @@ from typing import Any, NamedTuple
 import numpy as np
 
 from model_runtime import Embedder, check_index_compatibility, create_embedder
+from vector_store.filters import matching_indices, merge_filters
 
 ROOT = Path(__file__).resolve().parents[2]
 DEFAULT_RUNS_DIRECTORY = ROOT / "data" / "chunks"
@@ -211,19 +212,9 @@ class DenseRetriever:
         type_: str | None,
         filters: Mapping[str, Any] | None,
     ) -> list[int]:
-        """Return indices of chunks satisfying all requested metadata filters."""
-        requested = dict(filters or {})
-        if doc_id is not None:
-            requested["doc_id"] = doc_id
-        if section is not None:
-            requested["section"] = section
-        if type_ is not None:
-            requested["type"] = type_
-        return [
-            index
-            for index, chunk in enumerate(self.chunks)
-            if all(chunk.get(key) == value for key, value in requested.items())
-        ]
+        """Return indices of chunks satisfying all filters (scalars, value lists, numeric ranges)."""
+        requested = merge_filters(filters, doc_id=doc_id, section=section, type=type_)
+        return matching_indices(self.chunks, requested)
 
     def iter_chunks(self) -> Iterator[dict[str, Any]]:
         """Iterate over all loaded chunks in embedding-row order."""

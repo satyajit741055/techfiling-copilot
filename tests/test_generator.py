@@ -231,6 +231,46 @@ class TestRetrieverSelection:
         assert isinstance(generator.retriever, Stub) and built["rerank_k"] == 2
 
 
+class TestScopedRetrieval:
+    def test_filters_are_passed_only_when_given(self):
+        retriever = FakeRetriever([SearchResult(0.9, _chunk(0))])
+        calls = []
+        retriever.search = lambda q, k=None, **kw: calls.append(kw) or retriever.results[:k]
+        generator = _generator(FakeLLM(GOOD), retriever)
+        generator.retrieve("q", doc_id="AAPL_10-K_2025")
+        generator.retrieve("q", filters={"ticker": ["AAPL"], "fiscal_year": {"gte": 2024}})
+        assert calls == [
+            {"doc_id": "AAPL_10-K_2025"},
+            {"doc_id": None, "filters": {"ticker": ["AAPL"], "fiscal_year": {"gte": 2024}}},
+        ]
+
+    def test_grouped_results_are_concatenated_in_group_order(self):
+        class Grouped(FakeRetriever):
+            def search_grouped(self, query, group_by, **kwargs):
+                self.calls.append({"group_by": group_by, **kwargs})
+                return {
+                    "MSFT": [SearchResult(0.8, _chunk(1, doc_id="MSFT_10-K_2024"))],
+                    "AAPL": [SearchResult(0.9, _chunk(0))],
+                }
+
+        retriever = Grouped([])
+        generator = _generator(FakeLLM(GOOD), retriever)
+        result = generator.answer(
+            "compare R&D", group_by="ticker", groups=["MSFT", "AAPL"], filters={"fiscal_year": 2024}
+        )
+        assert [s["doc_id"] for s in result.sources] == ["MSFT_10-K_2024", "AAPL_10-K_2025"]
+        assert retriever.calls == [
+            {
+                "group_by": "ticker",
+                "groups": ["MSFT", "AAPL"],
+                "k": 2,
+                "group_limit": 3,
+                "doc_id": None,
+                "filters": {"fiscal_year": 2024},
+            }
+        ]
+
+
 class TestAnswerBatch:
     def test_success_and_error_rows(self):
         class Flaky(FakeRetriever):

@@ -394,6 +394,47 @@ class TestErrorSanitization:
         assert response.headers["X-Correlation-ID"] in detail
 
 
+class TestScopedQuestions:
+    def test_unknown_filing_in_groups_is_404(self, client, monkeypatch):
+        monkeypatch.setattr(api_settings, "API_ACCESS_KEY", None)
+        body = {
+            "question": "Compare net income",
+            "group_by": "doc_id",
+            "groups": ["AAPL_10-K_2025", "NVDA_10-K_2025"],
+        }
+        response = client.post("/questions", json=body)
+        assert response.status_code == 404
+        assert "NVDA_10-K_2025" in response.json()["detail"]
+
+    def test_rag_service_forwards_retrieval_options(self):
+        from api.schemas import QuestionRequest
+        from api.services import RAGService
+
+        captured = {}
+
+        class _Tracker:
+            def run(self, generator, question, **kwargs):
+                captured.update(kwargs)
+                raise RuntimeError("stop")
+
+        request = QuestionRequest(
+            question="Compare R&D",
+            filters={"fiscal_year": 2024},
+            group_by="ticker",
+            groups=["aapl"],
+        )
+        with pytest.raises(RuntimeError):
+            RAGService(object(), tracker=_Tracker()).answer(request)
+        assert captured == {
+            "doc_id": None,
+            "context_k": None,
+            "filters": {"fiscal_year": 2024},
+            "group_by": "ticker",
+            "groups": ["AAPL"],
+            "group_limit": 3,
+        }
+
+
 class TestSupabaseAuth:
     def test_jwt_secret_configurable(self):
         """Test that JWT secret can be configured."""

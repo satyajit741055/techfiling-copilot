@@ -6,13 +6,14 @@ Drop-in replacement for ``HybridRetrieverWithReranker`` (same ``search`` signatu
 
 from __future__ import annotations
 
-from collections.abc import Mapping
+from collections.abc import Mapping, Sequence
 from typing import Any
 
 from config.logging import get_logger
 from model_runtime import Embedder, check_index_compatibility, create_embedder
 from retriever.hybrid_retriever import Reranker, SearchResult
 from vector_store import QdrantChunkStore
+from vector_store.filters import merge_filters
 
 logger = get_logger(__name__)
 
@@ -82,27 +83,70 @@ class QdrantRetriever:
         filters: Mapping[str, Any] | None = None,
         **_: Any,
     ) -> list[SearchResult]:
+        """``filters`` accepts scalars, value lists and numeric ranges (``vector_store.filters``)."""
         if not query.strip():
             raise ValueError("Query must not be empty")
         if k < 1:
             raise ValueError("k must be at least 1")
-        requested = dict(filters or {})
-        for key, value in (("doc_id", doc_id), ("section", section), ("type", type_)):
-            if value is not None:
-                requested[key] = value
         hits = self.store.search(
             query,
             self.embedder.encode_query(query),
             k,
-            filters=requested,
-            mode=self.mode,
-            dense_k=self.dense_k,
-            sparse_k=self.sparse_k,
-            rrf_k=self.rrf_k,
-            dense_weight=self.dense_weight,
-            sparse_weight=self.sparse_weight,
+            filters=merge_filters(filters, doc_id=doc_id, section=section, type=type_),
+            **self._tuning,
         )
         return [SearchResult(score, chunk) for score, chunk in hits]
+
+    @property
+    def _tuning(self) -> dict[str, Any]:
+        return {
+            "mode": self.mode,
+            "dense_k": self.dense_k,
+            "sparse_k": self.sparse_k,
+            "rrf_k": self.rrf_k,
+            "dense_weight": self.dense_weight,
+            "sparse_weight": self.sparse_weight,
+        }
+
+    def get_chunks(self, chunk_ids: Sequence[str]) -> list[dict[str, Any]]:
+        """Chunks by ``chunk_id`` in request order; duplicates collapsed, unknown ids skipped."""
+        return self.store.get_chunks(chunk_ids)
+
+    def search_grouped(
+        self,
+        query: str,
+        group_by: str,
+        *,
+        groups: Sequence[Any] | None = None,
+        k: int = 5,
+        group_limit: int = 10,
+        doc_id: str | None = None,
+        section: str | None = None,
+        type_: str | None = None,
+        filters: Mapping[str, Any] | None = None,
+        **_: Any,
+    ) -> dict[Any, list[SearchResult]]:
+        """Top ``k`` results per ``group_by`` value; see ``QdrantChunkStore.search_grouped``.
+
+        Pass ``groups`` when the values are known (one search per group, full recall per
+        group); omit it to let Qdrant pick the best ``group_limit`` groups in one call.
+        """
+        if not query.strip():
+            raise ValueError("Query must not be empty")
+        grouped = self.store.search_grouped(
+            query,
+            self.embedder.encode_query(query),
+            group_by,
+            groups=groups,
+            group_size=k,
+            group_limit=group_limit,
+            filters=merge_filters(filters, doc_id=doc_id, section=section, type=type_),
+            **self._tuning,
+        )
+        return {
+            group: [SearchResult(score, chunk) for score, chunk in hits]
+            for group, hits in grouped.items()
+        }
 
 
 class QdrantRetrieverWithReranker:
@@ -115,17 +159,19 @@ class QdrantRetrieverWithReranker:
         retrieve_k: int = 50,
         rerank_k: int = 5,
         reranker_model: str | None = None,
+        reranker: Reranker | None = None,
         device: str | None = None,
         model_cache_directory: Any = None,
         **retriever_kwargs: Any,
     ) -> None:
+        """``reranker`` reuses an already-loaded cross-encoder (``reranker_model`` is then ignored)."""
         if retrieve_k < 1 or rerank_k < 1:
             raise ValueError("retrieve_k and rerank_k must be at least 1")
         self.retrieve_k, self.rerank_k = retrieve_k, rerank_k
         self.retriever = QdrantRetriever(
             store, device=device, model_cache_directory=model_cache_directory, **retriever_kwargs
         )
-        self.reranker = Reranker(
+        self.reranker = reranker or Reranker(
             reranker_model, device=device, model_cache_directory=model_cache_directory
         )
 
@@ -158,3 +204,34 @@ class QdrantRetrieverWithReranker:
             filters=filters,
         )
         return self.reranker.rerank(query, candidates, k=k)
+
+    def get_chunks(self, chunk_ids: Sequence[str]) -> list[dict[str, Any]]:
+        """Chunks by ``chunk_id`` in request order (no scoring)."""
+        return self.retriever.get_chunks(chunk_ids)
+
+    def search_grouped(
+        self,
+        query: str,
+        group_by: str,
+        *,
+        groups: Sequence[Any] | None = None,
+        k: int | None = None,
+        group_limit: int = 10,
+        retrieve_k: int | None = None,
+        **filter_kwargs: Any,
+    ) -> dict[Any, list[SearchResult]]:
+        """Grouped hybrid retrieval, then cross-encoder reranking within each group.
+
+        ``k`` (default ``rerank_k``) results per group; ``retrieve_k`` (default the
+        pipeline's) candidates per group are reranked, all groups in one reranker call.
+        """
+        k = k if k is not None else self.rerank_k
+        candidates = self.retriever.search_grouped(
+            query,
+            group_by,
+            groups=groups,
+            k=max(k, retrieve_k or self.retrieve_k),
+            group_limit=group_limit,
+            **filter_kwargs,
+        )
+        return self.reranker.rerank_groups(query, candidates, k=k)

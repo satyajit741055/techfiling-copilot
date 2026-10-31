@@ -29,6 +29,7 @@ import numpy as np
 
 from config.logging import get_logger
 from model_runtime import Embedder, check_index_compatibility, create_embedder, create_reranker
+from vector_store.filters import check_group_by, check_sequence, matching_indices, merge_filters
 
 logger = get_logger(__name__)
 
@@ -277,19 +278,9 @@ class BM25Retriever:
         type_: str | None,
         filters: Mapping[str, Any] | None,
     ) -> list[int]:
-        """Return chunk indices satisfying all requested metadata filters."""
-        requested = dict(filters or {})
-        if doc_id is not None:
-            requested["doc_id"] = doc_id
-        if section is not None:
-            requested["section"] = section
-        if type_ is not None:
-            requested["type"] = type_
-        return [
-            index
-            for index, chunk in enumerate(self.chunks)
-            if all(chunk.get(key) == value for key, value in requested.items())
-        ]
+        """Return chunk indices satisfying all filters (scalars, value lists, numeric ranges)."""
+        requested = merge_filters(filters, doc_id=doc_id, section=section, type=type_)
+        return matching_indices(self.chunks, requested)
 
     def search(
         self,
@@ -413,8 +404,66 @@ class HybridRetriever:
         logger.info(f"Hybrid alpha: {self.alpha} (dense weight)")
 
     def _encode_query(self, query: str) -> np.ndarray:
-        """Embed a query with the BGE retrieval prefix."""
-        return self.embedder.encode_query(query)
+        """Embed a query with the BGE retrieval prefix (last query cached for grouped search)."""
+        cached = getattr(self, "_last_query", None)
+        if cached is not None and cached[0] == query:
+            return cached[1]
+        vector = self.embedder.encode_query(query)
+        self._last_query = (query, vector)
+        return vector
+
+    def get_chunks(self, chunk_ids: list[str] | tuple[str, ...]) -> list[dict[str, Any]]:
+        """Chunks by ``chunk_id`` in request order; duplicates collapsed, unknown ids skipped."""
+        check_sequence("chunk_ids", chunk_ids)
+        positions = getattr(self, "_chunk_positions", None)
+        if positions is None:
+            positions = self._chunk_positions = {
+                c["chunk_id"]: i for i, c in enumerate(self.chunks)
+            }
+        return [self.chunks[positions[c]] for c in dict.fromkeys(chunk_ids) if c in positions]
+
+    def search_grouped(
+        self,
+        query: str,
+        group_by: str,
+        *,
+        groups: list[Any] | tuple[Any, ...] | None = None,
+        k: int = 5,
+        group_limit: int = 10,
+        doc_id: str | None = None,
+        section: str | None = None,
+        type_: str | None = None,
+        filters: Mapping[str, Any] | None = None,
+        alpha: float | None = None,
+    ) -> dict[Any, list[SearchResult]]:
+        """Top ``k`` results per value of ``group_by``; same semantics as the Qdrant store.
+
+        With ``groups``, one filtered search per group (every requested group is returned,
+        possibly empty). Without, the whole filtered corpus is ranked once and the best
+        ``group_limit`` groups (by their best hit) are returned; like Qdrant, chunks
+        without a ``group_by`` value are skipped.
+        """
+        requested = merge_filters(filters, doc_id=doc_id, section=section, type=type_)
+        check_group_by(group_by, requested, groups)
+        if k < 1 or group_limit < 1:
+            raise ValueError("k and group_limit must be at least 1")
+        if groups is not None:
+            return {
+                group: self.search(query, k, filters={**requested, group_by: group}, alpha=alpha)
+                for group in dict.fromkeys(groups)
+            }
+        grouped: dict[Any, list[SearchResult]] = {}
+        if not self.chunks:
+            return grouped
+        # k = corpus size ranks every chunk that passes the filters (search() filters once)
+        for result in self.search(query, len(self.chunks), filters=requested, alpha=alpha):
+            group = result.chunk.get(group_by)
+            if group is None or (group not in grouped and len(grouped) == group_limit):
+                continue
+            hits = grouped.setdefault(group, [])
+            if len(hits) < k:
+                hits.append(result)
+        return grouped
 
     @staticmethod
     def _resolve_run_directory(run_directory: str | Path | None) -> Path:
@@ -475,19 +524,9 @@ class HybridRetriever:
         type_: str | None,
         filters: Mapping[str, Any] | None,
     ) -> list[int]:
-        """Return chunk indices satisfying all requested metadata filters."""
-        requested = dict(filters or {})
-        if doc_id is not None:
-            requested["doc_id"] = doc_id
-        if section is not None:
-            requested["section"] = section
-        if type_ is not None:
-            requested["type"] = type_
-        return [
-            index
-            for index, chunk in enumerate(self.chunks)
-            if all(chunk.get(key) == value for key, value in requested.items())
-        ]
+        """Return chunk indices satisfying all filters (scalars, value lists, numeric ranges)."""
+        requested = merge_filters(filters, doc_id=doc_id, section=section, type=type_)
+        return matching_indices(self.chunks, requested)
 
     @staticmethod
     def _normalize_scores(scores: np.ndarray) -> np.ndarray:
@@ -738,6 +777,25 @@ class Reranker:
 
         return [SearchResult(float(scores[idx]), chunks[idx]) for idx in ranked_indices]
 
+    def rerank_groups(
+        self,
+        query: str,
+        groups: Mapping[Any, list[SearchResult]],
+        k: int | None = None,
+    ) -> dict[Any, list[SearchResult]]:
+        """Rerank each group independently, scoring all groups in one cross-encoder call."""
+        flat = [(group, r.chunk) for group, results in groups.items() for r in results]
+        if not flat:
+            return {group: [] for group in groups}
+        texts = [chunk.get("embed_text", chunk.get("text", "")) for _, chunk in flat]
+        scores = self.backend.score(query, texts)
+        ranked: dict[Any, list[SearchResult]] = {group: [] for group in groups}
+        for position in np.argsort(-scores, kind="stable"):
+            group, chunk = flat[position]
+            if k is None or len(ranked[group]) < k:
+                ranked[group].append(SearchResult(float(scores[position]), chunk))
+        return ranked
+
 
 # =============================================================================
 # Combined Pipeline
@@ -842,6 +900,38 @@ class HybridRetrieverWithReranker:
 
         # Stage 2: Reranking
         return self.reranker.rerank(query, candidates, k=k)
+
+    def get_chunks(self, chunk_ids: list[str] | tuple[str, ...]) -> list[dict[str, Any]]:
+        """Chunks by ``chunk_id`` in request order (no scoring)."""
+        return self.retriever.get_chunks(chunk_ids)
+
+    def search_grouped(
+        self,
+        query: str,
+        group_by: str,
+        *,
+        groups: list[Any] | tuple[Any, ...] | None = None,
+        k: int | None = None,
+        group_limit: int = 10,
+        retrieve_k: int | None = None,
+        **filter_kwargs: Any,
+    ) -> dict[Any, list[SearchResult]]:
+        """Grouped hybrid retrieval, then cross-encoder reranking within each group.
+
+        ``k`` (default ``rerank_k``) results per group; ``retrieve_k`` (default the
+        pipeline's) candidates per group are reranked. ``filter_kwargs`` are ``doc_id``,
+        ``section``, ``type_``, ``filters`` and ``alpha``.
+        """
+        k = k if k is not None else self.rerank_k
+        candidates = self.retriever.search_grouped(
+            query,
+            group_by,
+            groups=groups,
+            k=max(k, retrieve_k or self.retrieve_k),
+            group_limit=group_limit,
+            **filter_kwargs,
+        )
+        return self.reranker.rerank_groups(query, candidates, k=k)
 
     @property
     def chunks(self) -> list[dict[str, Any]]:

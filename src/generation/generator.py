@@ -144,6 +144,7 @@ class AnswerGenerator:
         doc_id: str | None = None,
         context_k: int | None = None,
         verbose: bool = False,
+        **retrieval: Any,
     ) -> GenerationResult:
         """
         Answer a question using the full RAG pipeline: retrieve() then generate().
@@ -153,11 +154,14 @@ class AnswerGenerator:
             doc_id: Optional document filter (e.g., "AAPL_10-K_2025")
             context_k: Number of chunks to use (default: config.context_k)
             verbose: Print debug info
+            **retrieval: ``filters``, ``group_by``, ``groups``, ``group_limit`` (see retrieve())
 
         Returns:
             GenerationResult with answer, sources, and metadata
         """
-        results = self.retrieve(question, doc_id=doc_id, context_k=context_k, verbose=verbose)
+        results = self.retrieve(
+            question, doc_id=doc_id, context_k=context_k, verbose=verbose, **retrieval
+        )
         return self.generate(question, results, doc_id=doc_id, verbose=verbose)
 
     def retrieve(
@@ -167,6 +171,10 @@ class AnswerGenerator:
         doc_id: str | None = None,
         context_k: int | None = None,
         verbose: bool = False,
+        filters: dict[str, Any] | None = None,
+        group_by: str | None = None,
+        groups: list[Any] | None = None,
+        group_limit: int = 3,
     ) -> list:
         """
         Retrieve the top context_k reranked chunks for a question.
@@ -174,18 +182,44 @@ class AnswerGenerator:
         Args:
             question: The question to retrieve evidence for
             doc_id: Optional document filter (e.g., "AAPL_10-K_2025")
-            context_k: Override for config.context_k (default: None uses config value)
+            context_k: Override for config.context_k (default: None uses config value).
+                With ``group_by`` this is the number of chunks per group.
             verbose: Print retrieval progress
+            filters: Metadata filters: scalar, value list or ``{"gte": .., "lte": ..}`` range,
+                e.g. ``{"ticker": ["AAPL", "MSFT"], "fiscal_year": {"gte": 2023}}``
+            group_by: ``doc_id``, ``ticker`` or ``fiscal_year``; reranks within each group
+            groups: Known group values (one search per group). Without them the retriever
+                picks the best ``group_limit`` groups.
+            group_limit: Maximum groups when ``groups`` is not given
 
         Returns:
-            List of SearchResult objects from the hybrid retriever
+            List of SearchResult objects from the hybrid retriever (grouped results are
+            concatenated in group order)
         """
         context_k = context_k or self.config.context_k
         logger.info("=== RETRIEVAL ===")
         logger.debug(f"Question: {question}")
-        logger.info(f"Document filter: {doc_id or 'none'} | context_k={context_k}")
+        logger.info(
+            f"Document filter: {doc_id or 'none'} | filters={filters or 'none'} | "
+            f"group_by={group_by or 'none'} | context_k={context_k}"
+        )
         start = time.perf_counter()
-        results = self.retriever.search(question, k=context_k, doc_id=doc_id)
+        scope: dict[str, Any] = {"doc_id": doc_id}
+        if filters:
+            scope["filters"] = filters
+        if group_by:
+            grouped = self.retriever.search_grouped(
+                question,
+                group_by,
+                groups=groups,
+                k=context_k,
+                group_limit=group_limit,
+                **scope,
+            )
+            logger.info(f"Groups: { {g: len(hits) for g, hits in grouped.items()} }")
+            results = [result for hits in grouped.values() for result in hits]
+        else:
+            results = self.retriever.search(question, k=context_k, **scope)
         logger.info(f"Retrieved {len(results)} chunks in {time.perf_counter() - start:.2f}s")
         for i, result in enumerate(results, start=1):
             chunk = result.chunk

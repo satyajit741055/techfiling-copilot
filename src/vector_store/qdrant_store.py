@@ -11,13 +11,21 @@ import numpy as np
 from qdrant_client import QdrantClient, models
 
 from config.logging import get_logger
-from vector_store.sparse import AVG_DOC_TOKENS, B, K1, encode_document, encode_query
+from vector_store.filters import check_group_by, check_sequence, merge_filters, to_qdrant_filter
+from vector_store.sparse import AVG_DOC_TOKENS, K1, B, encode_document, encode_query
 
 logger = get_logger(__name__)
 
 DENSE = "dense"
 SPARSE = "bm25"
-FILTER_FIELDS = ("doc_id", "section", "type")
+PAYLOAD_INDEXES = {
+    "doc_id": models.PayloadSchemaType.KEYWORD,
+    "ticker": models.PayloadSchemaType.KEYWORD,
+    "form": models.PayloadSchemaType.KEYWORD,
+    "section": models.PayloadSchemaType.KEYWORD,
+    "type": models.PayloadSchemaType.KEYWORD,
+    "fiscal_year": models.PayloadSchemaType.INTEGER,
+}
 FILING_KEY = "filing"
 _ID_NAMESPACE = uuid.UUID("5b1f1c1e-8a58-4d6b-9d46-0c7c4f7d2a10")
 
@@ -119,6 +127,7 @@ class QdrantChunkStore:
                     f"Collection {self.collection!r} holds {stored!r} embeddings, not {incoming!r}; "
                     "use a new collection per embedding model"
                 )
+            self.ensure_payload_indexes()
             return
         self.client.create_collection(
             self.collection,
@@ -131,13 +140,22 @@ class QdrantChunkStore:
                 "bm25": {"avg_doc_tokens": round(avg_doc_tokens, 2), "k1": K1, "b": B},
             },
         )
-        # Embedded Qdrant ignores payload indexes (filters still work by scanning)
-        if not self.local:
-            for field in FILTER_FIELDS:
-                self.client.create_payload_index(
-                    self.collection, field, models.PayloadSchemaType.KEYWORD
-                )
+        self.ensure_payload_indexes()
         logger.info(f"Created Qdrant collection {self.collection!r} (dim={dimension})")
+
+    def ensure_payload_indexes(self) -> list[str]:
+        """Create any missing filter/group-by payload indexes; return the fields created.
+
+        Embedded Qdrant ignores payload indexes (filters still work by scanning), so this
+        is a no-op there. On a server, older collections gain new indexes without a rebuild.
+        """
+        if self.local:
+            return []
+        existing = self.client.get_collection(self.collection).payload_schema or {}
+        created = [field for field in PAYLOAD_INDEXES if field not in existing]
+        for field in created:
+            self.client.create_payload_index(self.collection, field, PAYLOAD_INDEXES[field])
+        return created
 
     def upsert_chunks(
         self,
@@ -281,14 +299,57 @@ class QdrantChunkStore:
 
     @staticmethod
     def _filter(filters: Mapping[str, Any] | None) -> models.Filter | None:
-        if not filters:
-            return None
-        return models.Filter(
-            must=[
-                models.FieldCondition(key=key, match=models.MatchValue(value=value))
-                for key, value in filters.items()
-            ]
+        return to_qdrant_filter(merge_filters(filters))
+
+    def get_chunks(self, chunk_ids: Sequence[str]) -> list[dict[str, Any]]:
+        """Chunks by ``chunk_id`` in request order; duplicates collapsed, unknown ids skipped."""
+        check_sequence("chunk_ids", chunk_ids)
+        wanted = list(dict.fromkeys(chunk_ids))
+        if not wanted:
+            return []
+        points = self.client.retrieve(
+            self.collection, [point_id(c) for c in wanted], with_payload=True, with_vectors=False
         )
+        found = {p.payload["chunk_id"]: self._chunk(p.payload) for p in points if p.payload}
+        return [found[c] for c in wanted if c in found]
+
+    @staticmethod
+    def _query_args(
+        query_text: str,
+        query_vector: np.ndarray,
+        limit: int,
+        query_filter: models.Filter | None,
+        *,
+        mode: str,
+        dense_k: int,
+        sparse_k: int,
+        rrf_k: int,
+        dense_weight: float,
+        sparse_weight: float,
+    ) -> dict[str, Any]:
+        """``query_points``/``query_points_groups`` arguments for one search ``mode``."""
+        dense_vec = np.asarray(query_vector, dtype=np.float32).tolist()
+        indices, values = encode_query(query_text)
+        sparse_vec = models.SparseVector(indices=indices, values=values)
+        if mode not in ("dense", "sparse", "hybrid"):
+            raise ValueError(f"Unknown search mode: {mode}")
+        if mode == "dense" or not indices:
+            return {"query": dense_vec, "using": DENSE, "query_filter": query_filter}
+        if mode == "sparse":
+            return {"query": sparse_vec, "using": SPARSE, "query_filter": query_filter}
+        return {
+            "prefetch": [
+                models.Prefetch(
+                    query=dense_vec, using=DENSE, filter=query_filter, limit=max(limit, dense_k)
+                ),
+                models.Prefetch(
+                    query=sparse_vec, using=SPARSE, filter=query_filter, limit=max(limit, sparse_k)
+                ),
+            ],
+            "query": models.RrfQuery(
+                rrf=models.Rrf(k=rrf_k, weights=[dense_weight, sparse_weight])
+            ),
+        }
 
     def search(
         self,
@@ -304,47 +365,84 @@ class QdrantChunkStore:
         dense_weight: float = 1.0,
         sparse_weight: float = 1.0,
     ) -> list[tuple[float, dict[str, Any]]]:
-        """Return ``(score, chunk)`` pairs. ``hybrid`` fuses dense and sparse with weighted RRF."""
-        query_filter = self._filter(filters)
-        dense_vec = np.asarray(query_vector, dtype=np.float32).tolist()
-        indices, values = encode_query(query_text)
-        sparse_vec = models.SparseVector(indices=indices, values=values)
+        """Return ``(score, chunk)`` pairs. ``hybrid`` fuses dense and sparse with weighted RRF.
 
-        if mode == "dense" or not indices:
-            response = self.client.query_points(
-                self.collection,
-                query=dense_vec,
-                using=DENSE,
-                query_filter=query_filter,
-                limit=k,
-                with_payload=True,
-            )
-        elif mode == "sparse":
-            response = self.client.query_points(
-                self.collection,
-                query=sparse_vec,
-                using=SPARSE,
-                query_filter=query_filter,
-                limit=k,
-                with_payload=True,
-            )
-        elif mode == "hybrid":
-            response = self.client.query_points(
-                self.collection,
-                prefetch=[
-                    models.Prefetch(
-                        query=dense_vec, using=DENSE, filter=query_filter, limit=max(k, dense_k)
-                    ),
-                    models.Prefetch(
-                        query=sparse_vec, using=SPARSE, filter=query_filter, limit=max(k, sparse_k)
-                    ),
-                ],
-                query=models.RrfQuery(
-                    rrf=models.Rrf(k=rrf_k, weights=[dense_weight, sparse_weight])
-                ),
-                limit=k,
-                with_payload=True,
-            )
-        else:
-            raise ValueError(f"Unknown search mode: {mode}")
+        ``filters`` accepts scalars, value lists and numeric ranges (see ``vector_store.filters``).
+        """
+        args = self._query_args(
+            query_text,
+            query_vector,
+            k,
+            self._filter(filters),
+            mode=mode,
+            dense_k=dense_k,
+            sparse_k=sparse_k,
+            rrf_k=rrf_k,
+            dense_weight=dense_weight,
+            sparse_weight=sparse_weight,
+        )
+        response = self.client.query_points(self.collection, limit=k, with_payload=True, **args)
         return [(float(p.score), self._chunk(p.payload)) for p in response.points]
+
+    def search_grouped(
+        self,
+        query_text: str,
+        query_vector: np.ndarray,
+        group_by: str,
+        *,
+        groups: Sequence[Any] | None = None,
+        group_size: int = 5,
+        group_limit: int = 10,
+        filters: Mapping[str, Any] | None = None,
+        mode: str = "hybrid",
+        dense_k: int = 50,
+        sparse_k: int = 50,
+        rrf_k: int = 60,
+        dense_weight: float = 1.0,
+        sparse_weight: float = 1.0,
+    ) -> dict[Any, list[tuple[float, dict[str, Any]]]]:
+        """Top ``group_size`` hits per value of ``group_by`` (``doc_id``, ``ticker``, ``fiscal_year``).
+
+        With ``groups`` (known values), runs one filtered search per group so every group
+        gets its own full candidate pool; every requested group is returned, possibly empty.
+        Without ``groups``, one ``query_points_groups`` call finds the best ``group_limit``
+        groups, ranked by their best hit. That is a single round trip, but hybrid fusion
+        happens across all groups first, so a weaker group may get fewer hits.
+        """
+        merged = merge_filters(filters)
+        check_group_by(group_by, merged, groups)
+        if group_size < 1 or group_limit < 1:
+            raise ValueError("group_size and group_limit must be at least 1")
+        tuning = {
+            "mode": mode,
+            "dense_k": dense_k,
+            "sparse_k": sparse_k,
+            "rrf_k": rrf_k,
+            "dense_weight": dense_weight,
+            "sparse_weight": sparse_weight,
+        }
+        if groups is not None:
+            return {
+                group: self.search(
+                    query_text,
+                    query_vector,
+                    group_size,
+                    filters={**merged, group_by: group},
+                    **tuning,
+                )
+                for group in dict.fromkeys(groups)
+            }
+        limit = group_size * group_limit
+        args = self._query_args(query_text, query_vector, limit, to_qdrant_filter(merged), **tuning)
+        response = self.client.query_points_groups(
+            self.collection,
+            group_by=group_by,
+            group_size=group_size,
+            limit=group_limit,
+            with_payload=True,
+            **args,
+        )
+        return {
+            group.id: [(float(p.score), self._chunk(p.payload)) for p in group.hits]
+            for group in response.groups
+        }

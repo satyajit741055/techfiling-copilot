@@ -55,6 +55,7 @@ class RAGService:
             request.question,
             doc_id=request.doc_id,
             context_k=request.context_k,
+            **request.retrieval_options(),
         )
         return QuestionResponse.from_generation_result(result)
 

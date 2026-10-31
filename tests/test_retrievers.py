@@ -60,6 +60,8 @@ def run_dir(tmp_path):
         {
             "chunk_id": f"c{i}",
             "doc_id": doc,
+            "ticker": doc[0],
+            "fiscal_year": int(doc[-4:]),
             "type": type_,
             "section": section,
             "text": text,
@@ -157,6 +159,60 @@ class TestHybridRetriever:
 
     def test_unmatched_filter_returns_empty(self, run_dir):
         assert self._retriever(run_dir).search("x", doc_id="NOPE") == []
+
+    def test_list_and_range_filters(self, run_dir):
+        retriever = self._retriever(run_dir)
+        assert _ids(retriever.search("x", k=10, filters={"type": ["table"], "ticker": "B"})) == [
+            "c4"
+        ]
+        newer = retriever.search("x", k=10, filters={"fiscal_year": {"gte": 2026}})
+        assert {r.chunk["doc_id"] for r in newer} == {"B_10-K_2026"}
+        with pytest.raises(ValueError, match="empty"):
+            retriever.search("x", filters={"ticker": []})
+
+    def test_get_chunks(self, run_dir):
+        retriever = self._retriever(run_dir)
+        assert [c["chunk_id"] for c in retriever.get_chunks(["c3", "nope", "c0", "c3"])] == [
+            "c3",
+            "c0",
+        ]
+
+    def test_grouped_with_known_groups(self, run_dir):
+        grouped = self._retriever(run_dir).search_grouped(
+            "assets", "ticker", groups=["B", "A", "Z"], k=1
+        )
+        assert list(grouped) == ["B", "A", "Z"] and grouped["Z"] == []
+        assert grouped["A"][0].chunk["ticker"] == "A" and grouped["B"][0].chunk["ticker"] == "B"
+
+    def test_grouped_discovery_respects_limits(self, run_dir):
+        retriever = self._retriever(run_dir)
+        grouped = retriever.search_grouped("assets", "doc_id", k=2)
+        assert set(grouped) == {"A_10-K_2025", "B_10-K_2026"}
+        assert all(len(hits) == 2 for hits in grouped.values())
+        assert len(retriever.search_grouped("assets", "doc_id", k=1, group_limit=1)) == 1
+        assert retriever.search_grouped("x", "doc_id", doc_id="NOPE") == {}
+
+    def test_grouped_discovery_skips_chunks_without_group_value(self, run_dir):
+        retriever = self._retriever(run_dir)
+        del retriever.chunks[3]["ticker"]
+        grouped = retriever.search_grouped("cloud revenue", "ticker", k=5)
+        assert None not in grouped
+        assert "c3" not in {r.chunk["chunk_id"] for hits in grouped.values() for r in hits}
+
+    def test_bare_string_groups_and_chunk_ids_rejected(self, run_dir):
+        retriever = self._retriever(run_dir)
+        with pytest.raises(TypeError):
+            retriever.search_grouped("x", "ticker", groups="AB")
+        with pytest.raises(TypeError):
+            retriever.get_chunks("c0")
+
+    def test_grouped_embeds_query_once(self, run_dir):
+        retriever = self._retriever(run_dir)
+        calls = []
+        original = retriever.embedder.encode_query
+        retriever.embedder.encode_query = lambda q: calls.append(q) or original(q)
+        retriever.search_grouped("assets", "ticker", groups=["A", "B"], k=1)
+        assert calls == ["assets"]
 
     def test_k_larger_than_corpus(self, run_dir):
         assert len(self._retriever(run_dir).search("x", k=100)) == 5
@@ -280,6 +336,20 @@ class TestReranker:
     def test_empty_input(self, monkeypatch):
         assert self._reranker(monkeypatch).rerank("q", []) == []
 
+    def test_rerank_groups_ranks_within_each_group(self, monkeypatch):
+        groups = {
+            "A": [SearchResult(0.9, {"text": "aa"}), SearchResult(0.1, {"text": "aaaa"})],
+            "B": [SearchResult(0.5, {"text": "b"}), SearchResult(0.4, {"text": "bbb"})],
+            "C": [],
+        }
+        ranked = self._reranker(monkeypatch).rerank_groups("q", groups, k=1)
+        assert {g: [r.chunk["text"] for r in hits] for g, hits in ranked.items()} == {
+            "A": ["aaaa"],
+            "B": ["bbb"],
+            "C": [],
+        }
+        assert self._reranker(monkeypatch).rerank_groups("q", {"X": []}) == {"X": []}
+
 
 class TestHybridRetrieverWithReranker:
     def _pipeline(self, run_dir, monkeypatch, **kwargs):
@@ -301,6 +371,13 @@ class TestHybridRetrieverWithReranker:
     def test_k_overrides_rerank_k(self, run_dir, monkeypatch):
         pipeline = self._pipeline(run_dir, monkeypatch, retrieve_k=10, rerank_k=2)
         assert len(pipeline.search("assets", k=4)) == 4
+
+    def test_grouped_rerank_and_get_chunks(self, run_dir, monkeypatch):
+        pipeline = self._pipeline(run_dir, monkeypatch, retrieve_k=10, rerank_k=1)
+        grouped = pipeline.search_grouped("assets", "ticker", groups=["A", "B"])
+        assert {g: len(hits) for g, hits in grouped.items()} == {"A": 1, "B": 1}
+        assert grouped["B"][0].chunk["chunk_id"] == "c4"  # longest B text wins the fake reranker
+        assert [c["chunk_id"] for c in pipeline.get_chunks(["c1"])] == ["c1"]
 
     def test_no_candidates_skips_reranking(self, run_dir, monkeypatch):
         assert self._pipeline(run_dir, monkeypatch).search("x", doc_id="NOPE") == []

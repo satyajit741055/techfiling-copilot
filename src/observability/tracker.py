@@ -58,8 +58,11 @@ class QueryTracker:
         doc_id: str | None,
         context_k: int | None = None,
         request_id: str | None = None,
+        **retrieval: Any,
     ) -> tuple[Any, QueryRecord]:
         """Run the pipeline and return (GenerationResult, record).
+
+        ``retrieval`` (filters, group_by, groups, group_limit) is passed to ``retrieve()``.
 
         On failure the record is persisted, attached as `error.query_record`, and the error
         is re-raised so callers keep their existing error handling.
@@ -71,6 +74,7 @@ class QueryTracker:
             timestamp=utc_now_iso(),
             request_id=request_id or get_request_id(),
             doc_id=doc_id,
+            retrieval_scope=dict(retrieval) or None,
             status="success",
             process_seq=seq,
             provider=generator.llm_client.provider,
@@ -86,7 +90,7 @@ class QueryTracker:
             record.is_cold = seq <= self.cold_requests or record.retriever_init_seconds > 0
 
             retrieval_start = time.perf_counter()
-            chunks = generator.retrieve(question, doc_id=doc_id, context_k=context_k)
+            chunks = generator.retrieve(question, doc_id=doc_id, context_k=context_k, **retrieval)
             record.retrieval_seconds = time.perf_counter() - retrieval_start
 
             stage = "generation"

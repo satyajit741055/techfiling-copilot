@@ -48,6 +48,7 @@ class QueryRecord:
     validation_passed: bool | None = None
     insufficient_context: bool | None = None
     context_k: int | None = None
+    retrieval_scope: dict[str, Any] | None = None  # filters / group_by / groups, if any
     schema_version: int = SCHEMA_VERSION
 
     def to_dict(self) -> dict[str, Any]:

@@ -25,7 +25,11 @@ router = APIRouter()
     "/questions",
     response_model=QuestionResponse,
     summary="Ask a question",
-    description="Ask a question about a specific SEC 10-K filing and get a grounded answer with citations",
+    description=(
+        "Ask a question about SEC 10-K filings and get a grounded answer with citations. "
+        "Scope it to one filing (doc_id), metadata filters (ticker, fiscal_year, ...), "
+        "or compare groups (group_by + groups)."
+    ),
     responses={
         200: {"description": "Successful response with answer and citations"},
         404: {"description": "Filing not found"},
@@ -64,11 +68,15 @@ def ask_question(
 
     Returns the answer with full citation metadata for verification.
     """
-    # Validate doc_id exists
-    if request.doc_id not in valid_doc_ids:
+    # Validate requested filing IDs exist
+    requested_doc_ids = [request.doc_id] if request.doc_id else []
+    if request.group_by == "doc_id" and request.groups:
+        requested_doc_ids += [str(g) for g in request.groups]
+    unknown = [d for d in requested_doc_ids if d not in valid_doc_ids]
+    if unknown:
         raise HTTPException(
             status_code=404,
-            detail=f"Filing not found: {request.doc_id}. Available filings: {sorted(valid_doc_ids)}",
+            detail=f"Filing not found: {', '.join(unknown)}. Available filings: {sorted(valid_doc_ids)}",
         )
 
     try:

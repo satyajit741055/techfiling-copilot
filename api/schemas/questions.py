@@ -6,34 +6,148 @@ Pydantic models for the /questions, /filings, and /health endpoints.
 
 from __future__ import annotations
 
-from typing import Any
+from typing import Any, Literal
 
-from pydantic import BaseModel, ConfigDict, Field
+from pydantic import BaseModel, ConfigDict, Field, model_validator
 
 # =============================================================================
 # REQUEST MODELS
 # =============================================================================
 
+MAX_GROUPS = 6
+MAX_GROUPED_CONTEXT = 30  # chunks per group x groups; default CONTEXT_K=5 x 6 groups fits
+
+
+class YearRange(BaseModel):
+    """Inclusive fiscal-year range; at least one bound is required."""
+
+    gte: int | None = Field(None, ge=1990, le=2100, description="First fiscal year")
+    lte: int | None = Field(None, ge=1990, le=2100, description="Last fiscal year")
+
+    model_config = ConfigDict(extra="forbid")
+
+    @model_validator(mode="after")
+    def _check_bounds(self) -> "YearRange":
+        if self.gte is None and self.lte is None:
+            raise ValueError("fiscal_year range needs 'gte' and/or 'lte'")
+        if self.gte is not None and self.lte is not None and self.gte > self.lte:
+            raise ValueError("fiscal_year range has gte > lte")
+        return self
+
+
+class RetrievalFilters(BaseModel):
+    """Chunk metadata filters. A list matches any of its values."""
+
+    ticker: str | list[str] | None = Field(None, description="e.g. 'AAPL' or ['AAPL', 'MSFT']")
+    fiscal_year: int | list[int] | YearRange | None = Field(
+        None, description="e.g. 2024, [2023, 2024] or {'gte': 2022, 'lte': 2024}"
+    )
+    form: str | None = Field(None, description="SEC form, e.g. '10-K'")
+    section: str | list[str] | None = Field(None, description="e.g. 'Item 7'")
+    type: Literal["text", "table"] | None = Field(None, description="Chunk type")
+
+    model_config = ConfigDict(extra="forbid")
+
+    @model_validator(mode="after")
+    def _check_lists(self) -> "RetrievalFilters":
+        if not self.model_dump(exclude_none=True):
+            raise ValueError("filters must set at least one field")
+        for name in ("ticker", "fiscal_year", "section"):
+            value = getattr(self, name)
+            if isinstance(value, list) and not 1 <= len(value) <= 20:
+                raise ValueError(f"{name} list must have 1-20 values")
+        if isinstance(self.ticker, list):
+            self.ticker = [t.upper() for t in self.ticker]
+        elif self.ticker is not None:
+            self.ticker = self.ticker.upper()
+        return self
+
+    def to_filters(self) -> dict[str, Any]:
+        """Retriever ``filters`` dict (ranges become ``{"gte": .., "lte": ..}``)."""
+        return self.model_dump(exclude_none=True)
+
 
 class QuestionRequest(BaseModel):
-    """Request body for POST /questions."""
+    """Request body for POST /questions.
+
+    Scope the search with ``doc_id``, ``filters`` and/or ``group_by``; at least one is
+    required. With ``group_by``, ``context_k`` is the number of chunks per group.
+    """
 
     question: str = Field(
         ..., min_length=3, max_length=2000, description="The question to ask about the filing"
     )
-    doc_id: str = Field(..., description="Filing ID to query, e.g., 'AAPL_10-K_2025'")
+    doc_id: str | None = Field(None, description="Filing ID to query, e.g., 'AAPL_10-K_2025'")
+    filters: RetrievalFilters | None = Field(None, description="Metadata filters")
+    group_by: Literal["doc_id", "ticker", "fiscal_year"] | None = Field(
+        None, description="Retrieve and rerank separately per filing, ticker or fiscal year"
+    )
+    groups: list[str | int] | None = Field(
+        None,
+        min_length=1,
+        max_length=MAX_GROUPS,
+        description="Group values to compare, e.g. ['AAPL', 'MSFT']. Omit to let retrieval pick.",
+    )
+    group_limit: int = Field(
+        3, ge=1, le=MAX_GROUPS, description="Maximum groups when 'groups' is omitted"
+    )
     context_k: int | None = Field(
         None, ge=1, le=20, description="Number of context chunks to use (default: from settings)"
     )
 
     model_config = ConfigDict(
         json_schema_extra={
-            "example": {
-                "question": "What was Apple's total net sales in fiscal 2025?",
-                "doc_id": "AAPL_10-K_2025",
-            }
+            "examples": [
+                {
+                    "question": "What was Apple's total net sales in fiscal 2025?",
+                    "doc_id": "AAPL_10-K_2025",
+                },
+                {
+                    "question": "How did R&D expense compare between Apple and Microsoft?",
+                    "filters": {"fiscal_year": 2024},
+                    "group_by": "ticker",
+                    "groups": ["AAPL", "MSFT"],
+                },
+            ]
         }
     )
+
+    @model_validator(mode="after")
+    def _check_scope(self) -> "QuestionRequest":
+        if self.doc_id is None and self.filters is None and self.group_by is None:
+            raise ValueError("Provide at least one of 'doc_id', 'filters' or 'group_by'")
+        if self.groups is not None:
+            if self.group_by is None:
+                raise ValueError("'groups' requires 'group_by'")
+            filters = self.filters.to_filters() if self.filters else {}
+            if self.group_by in filters or (self.group_by == "doc_id" and self.doc_id):
+                raise ValueError(f"Pass {self.group_by!r} either in 'groups' or as a filter")
+            if self.group_by == "fiscal_year":
+                try:
+                    self.groups = [int(g) for g in self.groups]
+                except ValueError as error:
+                    raise ValueError("fiscal_year groups must be integers") from error
+            else:
+                self.groups = [str(g) for g in self.groups]
+                if self.group_by == "ticker":
+                    self.groups = [g.upper() for g in self.groups]
+        if self.group_by is not None and self.context_k is not None:
+            group_count = len(set(self.groups)) if self.groups else self.group_limit
+            if self.context_k * group_count > MAX_GROUPED_CONTEXT:
+                raise ValueError(
+                    f"context_k x groups must be at most {MAX_GROUPED_CONTEXT} chunks, "
+                    f"got {self.context_k} x {group_count}"
+                )
+        return self
+
+    def retrieval_options(self) -> dict[str, Any]:
+        """Keyword arguments for ``AnswerGenerator.retrieve()`` beyond doc_id/context_k."""
+        options: dict[str, Any] = {}
+        if self.filters is not None:
+            options["filters"] = self.filters.to_filters()
+        if self.group_by is not None:
+            options.update(group_by=self.group_by, groups=self.groups, group_limit=self.group_limit)
+        return options
 
 
 # =============================================================================

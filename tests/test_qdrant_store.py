@@ -67,7 +67,9 @@ def test_on_disk_store_persists_across_reopen(tmp_path):
     reopened = QdrantChunkStore("http://unused:6333", "disk", path=tmp_path / "qdrant")
     assert reopened.count() == len(CHUNKS)
     assert reopened.index_metadata()["embedding_model"]["name"] == "fake"
-    hits = reopened.search("supply chain", VECTORS[1], k=1, mode="hybrid", filters={"doc_id": "AAPL"})
+    hits = reopened.search(
+        "supply chain", VECTORS[1], k=1, mode="hybrid", filters={"doc_id": "AAPL"}
+    )
     assert hits[0][1]["chunk_id"] == "A_1"
     reopened.client.close()
 
@@ -92,7 +94,11 @@ def test_bm25_length_normalisation_uses_average():
 def test_new_collection_records_default_avg_doc_tokens(store):
     from vector_store.sparse import AVG_DOC_TOKENS
 
-    assert store.index_metadata()["bm25"] == {"avg_doc_tokens": AVG_DOC_TOKENS, "k1": 1.5, "b": 0.75}
+    assert store.index_metadata()["bm25"] == {
+        "avg_doc_tokens": AVG_DOC_TOKENS,
+        "k1": 1.5,
+        "b": 0.75,
+    }
 
 
 def test_explicit_avg_doc_tokens_is_recorded_and_used_for_encoding():
@@ -194,6 +200,200 @@ class _FakeEmbedder:
 
     def encode_query(self, query):
         return VECTORS[0]
+
+
+FILING_CHUNKS = [
+    {
+        "chunk_id": f"{ticker}_10-K_{year}_c{i:04d}",
+        "doc_id": f"{ticker}_10-K_{year}",
+        "ticker": ticker,
+        "fiscal_year": year,
+        "form": "10-K",
+        "section": section,
+        "type": "text",
+        "text": f"{ticker} {year} research and development {section}",
+        "embed_text": f"{ticker} {year} research and development {section}",
+    }
+    for ticker in ("AAPL", "MSFT", "TSLA")
+    for year in (2023, 2024)
+    for i, section in enumerate(("Item 7", "Item 8"))
+]
+FILING_VECTORS = np.stack([_unit(100 + i) for i in range(len(FILING_CHUNKS))])
+
+
+@pytest.fixture
+def filings_store() -> QdrantChunkStore:
+    s = QdrantChunkStore(":memory:", "filings")
+    s.index_chunks(FILING_CHUNKS, FILING_VECTORS, {"name": "fake", "dimension": DIM})
+    return s
+
+
+def _all(store, filters):
+    hits = store.search("research", FILING_VECTORS[0], k=100, filters=filters, mode="dense")
+    return {h[1]["chunk_id"] for h in hits}
+
+
+@pytest.mark.parametrize(
+    "filters",
+    [
+        {"ticker": "MSFT"},
+        {"ticker": ["AAPL", "TSLA"]},
+        {"fiscal_year": 2024},
+        {"fiscal_year": [2023]},
+        {"fiscal_year": {"gte": 2024}},
+        {"fiscal_year": {"gt": 2023, "lte": 2024}, "ticker": ["MSFT"], "section": "Item 8"},
+        {"ticker": "NVDA"},
+    ],
+)
+def test_scalar_list_and_range_filters_match_in_memory_semantics(filings_store, filters):
+    from vector_store.filters import matching_indices, merge_filters
+
+    expected = {
+        FILING_CHUNKS[i]["chunk_id"]
+        for i in matching_indices(FILING_CHUNKS, merge_filters(filters))
+    }
+    assert _all(filings_store, filters) == expected
+
+
+def test_range_filter_selects_years(filings_store):
+    years = {cid.split("_")[2] for cid in _all(filings_store, {"fiscal_year": {"lte": 2023}})}
+    assert years == {"2023"}
+
+
+@pytest.mark.parametrize(
+    "filters, message",
+    [
+        ({"ticker": []}, "empty"),
+        ({"fiscal_year": {}}, "Range"),
+        ({"fiscal_year": {"from": 2020}}, "Range"),
+        ({"fiscal_year": {"gte": "2020"}}, "numeric"),
+    ],
+)
+def test_invalid_filters_rejected(filings_store, filters, message):
+    with pytest.raises(ValueError, match=message):
+        filings_store.search("x", FILING_VECTORS[0], filters=filters)
+
+
+def test_none_filter_values_are_dropped():
+    from vector_store.filters import merge_filters
+
+    assert merge_filters({"ticker": None, "form": "10-K"}, doc_id=None, type="text") == {
+        "form": "10-K",
+        "type": "text",
+    }
+
+
+def test_get_chunks_returns_request_order_and_skips_unknown(filings_store):
+    ids = ["MSFT_10-K_2024_c0001", "missing", "AAPL_10-K_2023_c0000", "MSFT_10-K_2024_c0001"]
+    chunks = filings_store.get_chunks(ids)
+    assert [c["chunk_id"] for c in chunks] == ["MSFT_10-K_2024_c0001", "AAPL_10-K_2023_c0000"]
+    assert chunks[0]["ticker"] == "MSFT" and "filing" not in chunks[0]
+    assert filings_store.get_chunks([]) == []
+
+
+def test_grouped_search_with_known_groups_returns_every_group(filings_store):
+    grouped = filings_store.search_grouped(
+        "research and development",
+        FILING_VECTORS[0],
+        "ticker",
+        groups=["MSFT", "AAPL", "NVDA"],
+        group_size=2,
+        filters={"fiscal_year": 2024},
+    )
+    assert list(grouped) == ["MSFT", "AAPL", "NVDA"]
+    assert grouped["NVDA"] == []
+    for ticker in ("MSFT", "AAPL"):
+        assert len(grouped[ticker]) == 2
+        assert {(c["ticker"], c["fiscal_year"]) for _, c in grouped[ticker]} == {(ticker, 2024)}
+
+
+def test_grouped_search_discovers_groups(filings_store):
+    grouped = filings_store.search_grouped(
+        "research", FILING_VECTORS[0], "doc_id", group_size=1, group_limit=4
+    )
+    assert len(grouped) == 4
+    assert all(len(hits) == 1 and hits[0][1]["doc_id"] == doc for doc, hits in grouped.items())
+    by_year = filings_store.search_grouped(
+        "research", FILING_VECTORS[0], "fiscal_year", group_size=3, filters={"ticker": "TSLA"}
+    )
+    assert set(by_year) == {2023, 2024}
+    assert all(c["ticker"] == "TSLA" for hits in by_year.values() for _, c in hits)
+
+
+@pytest.mark.parametrize(
+    "kwargs, message",
+    [
+        ({"group_by": "section"}, "group_by"),
+        ({"group_by": "ticker", "groups": []}, "empty"),
+        ({"group_by": "ticker", "groups": ["AAPL"], "filters": {"ticker": "AAPL"}}, "either"),
+    ],
+)
+def test_grouped_search_rejects_bad_arguments(filings_store, kwargs, message):
+    with pytest.raises(ValueError, match=message):
+        filings_store.search_grouped("x", FILING_VECTORS[0], **kwargs)
+
+
+def test_bare_strings_rejected_for_groups_and_chunk_ids(filings_store):
+    with pytest.raises(TypeError, match="groups"):
+        filings_store.search_grouped("x", FILING_VECTORS[0], "ticker", groups="AAPL")
+    with pytest.raises(TypeError, match="chunk_ids"):
+        filings_store.get_chunks("AAPL_10-K_2023_c0000")
+
+
+def test_payload_indexes_created_once_on_server():
+    from unittest.mock import MagicMock
+
+    from qdrant_client import models
+
+    client = MagicMock()
+    client.get_collection.return_value.payload_schema = {"doc_id": object()}
+    s = QdrantChunkStore("http://unused", "c", client=client)
+    created = s.ensure_payload_indexes()
+    assert created == ["ticker", "form", "section", "type", "fiscal_year"]
+    calls = {c.args[1]: c.args[2] for c in client.create_payload_index.call_args_list}
+    assert calls["fiscal_year"] == models.PayloadSchemaType.INTEGER
+    assert calls["ticker"] == models.PayloadSchemaType.KEYWORD
+
+
+def test_payload_indexes_skipped_in_embedded_mode(filings_store):
+    assert filings_store.ensure_payload_indexes() == []
+
+
+class _Item8Reranker:
+    backend = "fake"
+    model_name = "fake-reranker"
+
+    def __init__(self):
+        self.calls = 0
+
+    def score(self, query, documents):
+        self.calls += 1
+        return np.asarray([float(d.endswith("Item 8")) for d in documents])
+
+
+def test_qdrant_pipeline_grouped_rerank_and_get_chunks(filings_store, monkeypatch):
+    from retriever.qdrant_retriever import QdrantRetrieverWithReranker
+
+    backend = _Item8Reranker()
+    monkeypatch.setattr("retriever.hybrid_retriever.create_reranker", lambda *a, **k: backend)
+    pipeline = QdrantRetrieverWithReranker(
+        filings_store, embedder=_FakeEmbedder(), retrieve_k=4, rerank_k=1, alpha=0.5
+    )
+    grouped = pipeline.search_grouped(
+        "research and development", "ticker", groups=["AAPL", "TSLA"], filters={"fiscal_year": 2023}
+    )
+    assert backend.calls == 1  # all groups scored in one reranker call
+    assert {g: [r.chunk["chunk_id"] for r in hits] for g, hits in grouped.items()} == {
+        "AAPL": ["AAPL_10-K_2023_c0001"],
+        "TSLA": ["TSLA_10-K_2023_c0001"],
+    }
+    flat = pipeline.search(
+        "research", k=10, filters={"ticker": ["MSFT"], "fiscal_year": {"gte": 2024}}
+    )
+    assert {r.chunk["doc_id"] for r in flat} == {"MSFT_10-K_2024"}
+    assert [c["chunk_id"] for c in pipeline.get_chunks(["TSLA_10-K_2024_c0000"])] == [
+        "TSLA_10-K_2024_c0000"
+    ]
 
 
 def test_retriever_rrf_weights_follow_alpha(store):
