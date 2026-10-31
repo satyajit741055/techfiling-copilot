@@ -1,14 +1,17 @@
-"""End-to-end ingestion: raw 10-K HTML -> parsed elements -> chunks -> embeddings (.npy).
+"""End-to-end ingestion: raw 10-K HTML -> parsed elements -> chunks -> embeddings.
 
 Output: data/chunks/<run_timestamp>/
-    <doc_id>.chunks.jsonl, embeddings_gpu_base.npy, run_manifest.json
-(the layout read by retriver/retriever.py)
+    <doc_id>.chunks.jsonl, run_manifest.json, and embeddings_gpu_base.npy when
+    VECTOR_STORE=numpy (the layout read by retriever/retriever.py). With
+    VECTOR_STORE=qdrant the embeddings go into a new timestamped collection instead.
 """
 
 from __future__ import annotations
 
 import argparse
-from datetime import datetime
+import json
+from collections import Counter, defaultdict
+from datetime import datetime, timezone
 from pathlib import Path
 
 from config.logging import get_logger
@@ -26,6 +29,80 @@ from ingestion.parser.parser import RAW_DIR, parse_all
 
 logger = get_logger(__name__)
 
+REQUIRED_METADATA_FIELDS = ("ticker", "fiscal_year", "form", "period_end")
+REQUIRED_STRUCTURAL_FIELDS = ("chunk_id", "doc_id", "text", "embed_text", "type")
+
+
+def validate_ingestion(doc_ids: list[str], all_chunks: list[dict]) -> None:
+    """Validate document and chunk invariants before embedding.
+
+    Args:
+        doc_ids: Document IDs from the current parse run.
+        all_chunks: All chunks generated for the current run.
+
+    Raises:
+        ValueError: If any invariant fails.
+    """
+    # Document-level checks
+    duplicates = sorted(d for d, n in Counter(doc_ids).items() if n > 1)
+    if duplicates:
+        raise ValueError(f"Duplicate document IDs in current run: {', '.join(duplicates)}")
+
+    # Per-chunk field checks run first so later checks can index fields safely
+    for chunk in all_chunks:
+        cid = chunk.get("chunk_id", "<missing chunk_id>")
+        missing = [f for f in REQUIRED_STRUCTURAL_FIELDS if f not in chunk]
+        if missing:
+            raise ValueError(f"Chunk {cid} missing structural field: {', '.join(missing)}")
+        missing = [f for f in REQUIRED_METADATA_FIELDS if chunk.get(f) is None]
+        if missing:
+            raise ValueError(f"Chunk {cid} missing required field: {', '.join(missing)}")
+        fy = chunk["fiscal_year"]
+        if isinstance(fy, bool) or not isinstance(fy, int):
+            raise ValueError(f"Chunk {cid} has non-integer fiscal_year: {fy!r}")
+
+    # chunk_id uniqueness (primary key)
+    chunk_duplicates = sorted(c for c, n in Counter(c["chunk_id"] for c in all_chunks).items() if n > 1)
+    if chunk_duplicates:
+        raise ValueError(f"Duplicate chunk IDs: {', '.join(chunk_duplicates[:20])}")
+
+    by_doc: dict[str, list[dict]] = defaultdict(list)
+    for chunk in all_chunks:
+        by_doc[chunk["doc_id"]].append(chunk)
+
+    missing_chunks = set(doc_ids) - set(by_doc)
+    if missing_chunks:
+        raise ValueError(f"Documents with no chunks: {', '.join(sorted(missing_chunks))}")
+    unknown_docs = set(by_doc) - set(doc_ids)
+    if unknown_docs:
+        raise ValueError(f"Chunks for documents not in current run: {', '.join(sorted(unknown_docs))}")
+
+    doc_keys: dict[tuple, str] = {}
+    for doc_id in doc_ids:
+        doc_chunks = by_doc[doc_id]
+        actual = sorted(c["chunk_id"] for c in doc_chunks)
+        for i, cid in enumerate(actual):
+            if cid != f"{doc_id}_c{i:04d}":
+                raise ValueError(
+                    f"Chunk suffixes not sequential for {doc_id}: expected {doc_id}_c{i:04d}, got {cid}"
+                )
+
+        # Filing metadata must be identical on every chunk of a document
+        metas = {tuple(c[f] for f in REQUIRED_METADATA_FIELDS) for c in doc_chunks}
+        if len(metas) > 1:
+            raise ValueError(f"Inconsistent filing metadata across chunks of {doc_id}: {sorted(metas)}")
+
+        # (ticker, form, fiscal_year) must identify exactly one document
+        first = doc_chunks[0]
+        key = (first["ticker"], first["form"], first["fiscal_year"])
+        if key in doc_keys:
+            raise ValueError(
+                f"Duplicate (ticker, form, fiscal_year) key {key}: {doc_keys[key]} and {doc_id}"
+            )
+        doc_keys[key] = doc_id
+
+    logger.info(f"Ingestion validation passed: {len(doc_ids)} documents, {len(all_chunks)} chunks")
+
 
 def process(
     raw_dir: Path = RAW_DIR,
@@ -35,6 +112,7 @@ def process(
     device: str | None = None,
     batch_size: int = 64,
     skip_parse: bool = False,
+    skip_embed: bool = False,
     max_chars: int = MAX_CHARS,
     min_chars: int = MIN_CHARS,
     table_max_chars: int = TABLE_MAX_CHARS,
@@ -42,26 +120,39 @@ def process(
     pseudo_headings: bool = True,
 ) -> Path:
     if not skip_parse:
-        parse_all(raw_dir, parsed_dir)
+        docs = parse_all(raw_dir, parsed_dir)
+        doc_ids = [doc.doc_id for doc in docs]
+    else:
+        doc_ids = list_doc_ids(parsed_dir)
 
-    doc_ids = list_doc_ids(parsed_dir)
     if not doc_ids:
         raise FileNotFoundError(f"No *.elements.jsonl in {parsed_dir}; run without --skip-parse")
+
+    chunks_by_doc = {}
+    for doc_id in doc_ids:
+        chunks_by_doc[doc_id] = chunk_doc_id(
+            doc_id, parsed_dir, max_chars, min_chars, table_max_chars, pseudo_headings
+        )
+        logger.info(f"{doc_id}: {len(chunks_by_doc[doc_id])} chunks")
+    all_chunks = [c for chunks in chunks_by_doc.values() for c in chunks]
+    logger.info(f"Total chunks: {len(all_chunks)}")
+
+    # Validate invariants before anything is written, embedded or indexed
+    validate_ingestion(doc_ids, all_chunks)
 
     run_timestamp = datetime.now().strftime("%Y-%m-%d_%H-%M-%S")
     out_dir = chunks_dir / run_timestamp
     out_dir.mkdir(parents=True, exist_ok=False)
-
-    all_chunks = []
-    for doc_id in doc_ids:
-        chunks = chunk_doc_id(
-            doc_id, parsed_dir, max_chars, min_chars, table_max_chars, pseudo_headings
-        )
+    for doc_id, chunks in chunks_by_doc.items():
         write_chunks(chunks, out_dir / f"{doc_id}.chunks.jsonl")
-        all_chunks += chunks
-        logger.info(f"{doc_id}: {len(chunks)} chunks")
-    logger.info(f"Total chunks: {len(all_chunks)}")
 
+    if skip_embed:
+        logger.info(f"Skipping embedding and Qdrant indexing (chunk-only run) -> {out_dir}")
+        return out_dir
+
+    from config.settings import settings
+
+    use_qdrant = settings.VECTOR_STORE == "qdrant"
     embeddings, manifest = embed_and_save(
         all_chunks,
         out_dir,
@@ -75,22 +166,62 @@ def process(
             "pseudo_headings": pseudo_headings,
         },
         model_cache_dir=model_cache_dir,
+        parsed_dir=parsed_dir,
+        skip_npy=use_qdrant,
     )
     logger.info(f"Embeddings shape: {embeddings.shape} -> {out_dir}")
 
-    from config.settings import settings
-
-    if settings.VECTOR_STORE == "qdrant":
+    if use_qdrant:
         from vector_store import QdrantChunkStore, load_filing_metadata
 
-        store = QdrantChunkStore.from_settings()
+        # Create a timestamped collection name
+        collection_timestamp = datetime.now(timezone.utc).strftime("%Y%m%dT%H%M%SZ")
+        collection_name = f"techfiling_{collection_timestamp}"
+
+        # Create a new store with the timestamped collection
+        store = QdrantChunkStore.from_settings(settings, collection=collection_name)
+
+        # Fail if collection already exists (should not happen with timestamp)
+        if store.exists():
+            raise ValueError(f"Collection {collection_name!r} already exists; timestamp collision")
+
         n = store.index_chunks(
             all_chunks,
             embeddings,
             manifest["embedding_model"],
             filings=load_filing_metadata(parsed_dir, doc_ids),
         )
-        logger.info(f"Indexed {n} chunks into Qdrant collection {store.collection!r}")
+        logger.info(f"Indexed {n} chunks into Qdrant collection {collection_name!r}")
+
+        # Verify point count matches chunk count
+        if n != len(all_chunks):
+            raise ValueError(
+                f"Qdrant point count {n} does not match chunk count {len(all_chunks)}"
+            )
+
+        # Verify all filings appear in list_filings
+        filings = store.list_filings()
+        filing_doc_ids = {f["doc_id"] for f in filings}
+        missing_filings = set(doc_ids) - filing_doc_ids
+        if missing_filings:
+            raise ValueError(f"Missing filings in Qdrant: {', '.join(sorted(missing_filings))}")
+
+        # Write collection name to manifest
+        manifest["qdrant_collection"] = {
+            "name": collection_name,
+            "created_at": collection_timestamp,
+            "point_count": n,
+            "location": str(settings.QDRANT_PATH) if settings.QDRANT_PATH else settings.QDRANT_URL,
+        }
+        store.client.close()
+        (out_dir / "run_manifest.json").write_text(
+            json.dumps(manifest, indent=2, ensure_ascii=False), encoding="utf-8"
+        )
+        logger.info(
+            f"Updated manifest with Qdrant collection {collection_name!r}; "
+            f"set QDRANT_COLLECTION={collection_name} to serve it "
+            f"(currently {settings.QDRANT_COLLECTION!r})"
+        )
     return out_dir
 
 
@@ -107,6 +238,9 @@ def main() -> None:
     parser.add_argument("--batch-size", type=int, default=64)
     parser.add_argument(
         "--skip-parse", action="store_true", help="reuse existing data/parsed/*.elements.jsonl"
+    )
+    parser.add_argument(
+        "--skip-embed", action="store_true", help="skip embedding and Qdrant indexing (chunk-only run)"
     )
     parser.add_argument("--max-chars", type=int, default=MAX_CHARS)
     parser.add_argument("--min-chars", type=int, default=MIN_CHARS)
@@ -126,6 +260,7 @@ def main() -> None:
         args.device,
         args.batch_size,
         args.skip_parse,
+        args.skip_embed,
         args.max_chars,
         args.min_chars,
         args.table_max_chars,

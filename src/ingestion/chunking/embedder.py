@@ -9,6 +9,7 @@ from __future__ import annotations
 
 import argparse
 import json
+from collections import Counter
 from datetime import datetime
 from pathlib import Path
 
@@ -181,6 +182,7 @@ def build_manifest(
     run_timestamp: str,
     output_directory: str,
     chunking_config: dict,
+    parsed_dir: Path | None = None,
 ) -> dict:
     """Build run-level and per-document embedding metadata.
 
@@ -192,6 +194,8 @@ def build_manifest(
         run_timestamp: Timestamp or run identifier for this output.
         output_directory: Output location recorded in the manifest.
         chunking_config: Character limits used to generate the chunks.
+        parsed_dir: Directory containing document metadata files. If provided,
+            corpus and per-document metadata are included in the manifest.
 
     Returns:
         A serializable manifest containing model and chunk statistics.
@@ -199,7 +203,8 @@ def build_manifest(
     limits = token_limits(model)
     min_chars = chunking_config["min_chars"]
     doc_ids = list(dict.fromkeys(c["doc_id"] for c in chunks))
-    return {
+
+    manifest = {
         "run_timestamp": run_timestamp,
         "output_directory": output_directory,
         "chunking_config": chunking_config,
@@ -223,6 +228,38 @@ def build_manifest(
         },
     }
 
+    # Add corpus and per-document metadata if parsed_dir is provided
+    if parsed_dir:
+        first_chunk = {c["doc_id"]: c for c in reversed(chunks)}
+        doc_tickers = Counter(first_chunk[d]["ticker"] for d in doc_ids)
+        fiscal_years = sorted({first_chunk[d]["fiscal_year"] for d in doc_ids})
+
+        manifest["corpus"] = {
+            "document_count": len(doc_ids),
+            "tickers": sorted(doc_tickers),
+            "fiscal_year_start": fiscal_years[0] if fiscal_years else None,
+            "fiscal_year_end": fiscal_years[-1] if fiscal_years else None,
+            "filings_per_ticker": dict(sorted(doc_tickers.items())),
+        }
+
+        # Load document metadata for each doc_id
+        for doc_id in doc_ids:
+            doc_meta_path = parsed_dir / f"{doc_id}.document.json"
+            if doc_meta_path.exists():
+                with doc_meta_path.open(encoding="utf-8") as fh:
+                    doc_meta = json.load(fh)
+                manifest["documents"][doc_id].update(
+                    {
+                        "ticker": doc_meta.get("ticker"),
+                        "form": doc_meta.get("form"),
+                        "fiscal_year": doc_meta.get("fiscal_year"),
+                        "period_end": doc_meta.get("period_end"),
+                        "source_file": doc_meta.get("source_file"),
+                    }
+                )
+
+    return manifest
+
 
 def embed_and_save(
     chunks: list[dict],
@@ -233,6 +270,8 @@ def embed_and_save(
     chunking_config: dict | None = None,
     model: Embedder | None = None,
     model_cache_dir: Path = MODEL_CACHE_DIR,
+    parsed_dir: Path | None = None,
+    skip_npy: bool = False,
 ) -> tuple[np.ndarray, dict]:
     """Validate, embed, and persist chunks with their run manifest.
 
@@ -245,6 +284,9 @@ def embed_and_save(
         chunking_config: Chunk-size settings to record in the manifest.
         model: Optional pre-built embedder, primarily for reuse or testing.
         model_cache_dir: Directory used to cache model files when loading.
+        parsed_dir: Directory containing document metadata files. If provided,
+            corpus and per-document metadata are included in the manifest.
+        skip_npy: If True, skip writing the .npy file (embeddings are generated in memory only).
 
     Returns:
         A tuple containing the embedding matrix and manifest dictionary.
@@ -265,7 +307,9 @@ def embed_and_save(
 
     embeddings = embed_chunks(model, chunks, batch_size)
     out_dir.mkdir(parents=True, exist_ok=True)
-    np.save(out_dir / EMBEDDINGS_FILENAME, embeddings)
+
+    if not skip_npy:
+        np.save(out_dir / EMBEDDINGS_FILENAME, embeddings)
 
     try:
         output_directory = str(out_dir.resolve().relative_to(ROOT))
@@ -279,6 +323,7 @@ def embed_and_save(
         out_dir.name or datetime.now().strftime("%Y-%m-%d_%H-%M-%S"),
         output_directory,
         chunking_config,
+        parsed_dir,
     )
     (out_dir / MANIFEST_FILENAME).write_text(
         json.dumps(manifest, indent=2, ensure_ascii=False), encoding="utf-8"

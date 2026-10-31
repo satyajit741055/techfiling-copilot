@@ -4,13 +4,14 @@ from __future__ import annotations
 
 import uuid
 from collections.abc import Iterable, Mapping, Sequence
+from pathlib import Path
 from typing import Any, cast
 
 import numpy as np
 from qdrant_client import QdrantClient, models
 
 from config.logging import get_logger
-from vector_store.sparse import encode_document, encode_query
+from vector_store.sparse import AVG_DOC_TOKENS, B, K1, encode_document, encode_query
 
 logger = get_logger(__name__)
 
@@ -37,26 +38,35 @@ class QdrantChunkStore:
         api_key: str | None = None,
         timeout: float = 30.0,
         client: QdrantClient | None = None,
+        path: str | Path | None = None,
     ) -> None:
+        """``path`` opens an embedded on-disk store (no server) and takes precedence over ``url``."""
         self.collection = collection
+        self.local = client is None and (path is not None or url == ":memory:")
         if client is not None:
             self.client = client
+        elif path is not None:
+            Path(path).mkdir(parents=True, exist_ok=True)
+            self.client = QdrantClient(path=str(path))
         elif url == ":memory:":
             self.client = QdrantClient(location=":memory:")
         else:
             self.client = QdrantClient(url=url, api_key=api_key, timeout=int(timeout))
 
     @classmethod
-    def from_settings(cls, settings: Any | None = None) -> QdrantChunkStore:
+    def from_settings(
+        cls, settings: Any | None = None, collection: str | None = None
+    ) -> QdrantChunkStore:
         if settings is None:
             from config.settings import settings as global_settings
 
             settings = global_settings
         return cls(
             settings.QDRANT_URL,
-            settings.QDRANT_COLLECTION,
+            collection or settings.QDRANT_COLLECTION,
             api_key=settings.QDRANT_API_KEY,
             timeout=settings.QDRANT_TIMEOUT,
+            path=getattr(settings, "QDRANT_PATH", None),
         )
 
     def exists(self) -> bool:
@@ -66,18 +76,36 @@ class QdrantChunkStore:
         return self.client.count(self.collection, exact=True).count if self.exists() else 0
 
     def index_metadata(self) -> dict[str, Any]:
-        """Embedding model metadata stored on the collection (manifest-shaped)."""
-        info = self.client.get_collection(self.collection)
-        return {"embedding_model": (info.config.metadata or {}).get("embedding_model", {})}
+        """Embedding model and BM25 metadata stored on the collection (manifest-shaped)."""
+        metadata = self.client.get_collection(self.collection).config.metadata or {}
+        return {
+            "embedding_model": metadata.get("embedding_model", {}),
+            "bm25": metadata.get("bm25", {}),
+        }
+
+    def avg_doc_tokens(self) -> float:
+        """BM25 average chunk length stored on the collection (legacy collections: default)."""
+        return float(self.index_metadata()["bm25"].get("avg_doc_tokens", AVG_DOC_TOKENS))
+
+    @staticmethod
+    def _sparse_text(chunk: Mapping[str, Any]) -> str:
+        return chunk.get("embed_text") or chunk.get("text", "")
 
     def dimension(self) -> int:
         params = self.client.get_collection(self.collection).config.params.vectors
         return int(params[DENSE].size)  # type: ignore[index]
 
     def ensure_collection(
-        self, dimension: int, embedding_model: Mapping[str, Any] | None = None
+        self,
+        dimension: int,
+        embedding_model: Mapping[str, Any] | None = None,
+        avg_doc_tokens: float = AVG_DOC_TOKENS,
     ) -> None:
-        """Create the collection and payload indexes if missing; verify the dimension otherwise."""
+        """Create the collection and payload indexes if missing; verify the dimension otherwise.
+
+        ``avg_doc_tokens`` is recorded only on creation; an existing collection keeps its
+        value so later upserts stay consistent with the points already indexed.
+        """
         if self.exists():
             if self.dimension() != dimension:
                 raise ValueError(
@@ -98,12 +126,17 @@ class QdrantChunkStore:
                 DENSE: models.VectorParams(size=dimension, distance=models.Distance.COSINE)
             },
             sparse_vectors_config={SPARSE: models.SparseVectorParams(modifier=models.Modifier.IDF)},
-            metadata={"embedding_model": dict(embedding_model or {})},
+            metadata={
+                "embedding_model": dict(embedding_model or {}),
+                "bm25": {"avg_doc_tokens": round(avg_doc_tokens, 2), "k1": K1, "b": B},
+            },
         )
-        for field in FILTER_FIELDS:
-            self.client.create_payload_index(
-                self.collection, field, models.PayloadSchemaType.KEYWORD
-            )
+        # Embedded Qdrant ignores payload indexes (filters still work by scanning)
+        if not self.local:
+            for field in FILTER_FIELDS:
+                self.client.create_payload_index(
+                    self.collection, field, models.PayloadSchemaType.KEYWORD
+                )
         logger.info(f"Created Qdrant collection {self.collection!r} (dim={dimension})")
 
     def upsert_chunks(
@@ -121,11 +154,12 @@ class QdrantChunkStore:
         """
         if len(chunks) != len(vectors):
             raise ValueError(f"{len(chunks)} chunks versus {len(vectors)} vectors")
+        avg_doc_tokens = self.avg_doc_tokens()
         for start in range(0, len(chunks), batch_size):
             batch = chunks[start : start + batch_size]
             points = []
             for chunk, vector in zip(batch, vectors[start : start + batch_size]):
-                indices, values = encode_document(chunk.get("embed_text") or chunk.get("text", ""))
+                indices, values = encode_document(self._sparse_text(chunk), avg_doc_tokens)
                 points.append(
                     models.PointStruct(
                         id=point_id(chunk["chunk_id"]),
@@ -154,12 +188,15 @@ class QdrantChunkStore:
         *,
         replace_documents: bool = True,
         filings: Mapping[str, Mapping[str, Any]] | None = None,
+        avg_doc_tokens: float = AVG_DOC_TOKENS,
     ) -> int:
         """Ensure the collection, upsert the chunks, then drop each document's stale chunks.
 
         Upserting first means a failed run never leaves a document without chunks.
+        ``avg_doc_tokens`` (BM25 ``avgdl``) applies only when the collection is created.
+        The fixed default beat the measured corpus average (~129) on the retrieval goldens.
         """
-        self.ensure_collection(int(vectors.shape[1]), embedding_model)
+        self.ensure_collection(int(vectors.shape[1]), embedding_model, avg_doc_tokens)
         count = self.upsert_chunks(chunks, vectors, filings=filings)
         if replace_documents:
             new_ids: dict[str, list[str]] = {}

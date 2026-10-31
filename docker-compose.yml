@@ -57,6 +57,8 @@ services:
       RATE_LIMIT_REDIS_URL: redis://redis:6379/0
       # Qdrant over the Docker network (used when VECTOR_STORE=qdrant)
       QDRANT_URL: http://qdrant:6333
+      # Clear the local embedded store from .env so the container uses the qdrant service
+      QDRANT_PATH: ""
       # Supabase JWT secret for authentication
       SUPABASE_JWT_SECRET: ${SUPABASE_JWT_SECRET:-}
     ports:

@@ -11,6 +11,7 @@ import pytest
 sys.path.insert(0, str(Path(__file__).resolve().parents[1] / "src"))
 
 from vector_store import QdrantChunkStore  # noqa: E402
+from vector_store.qdrant_store import point_id  # noqa: E402
 from vector_store.sparse import encode_document, encode_query  # noqa: E402
 
 DIM = 8
@@ -57,12 +58,56 @@ def store() -> QdrantChunkStore:
     return s
 
 
+def test_on_disk_store_persists_across_reopen(tmp_path):
+    """path= opens an embedded on-disk store; data survives closing and reopening it."""
+    s = QdrantChunkStore("http://unused:6333", "disk", path=tmp_path / "qdrant")
+    s.index_chunks(CHUNKS, VECTORS, {"name": "fake", "dimension": DIM})
+    s.client.close()
+
+    reopened = QdrantChunkStore("http://unused:6333", "disk", path=tmp_path / "qdrant")
+    assert reopened.count() == len(CHUNKS)
+    assert reopened.index_metadata()["embedding_model"]["name"] == "fake"
+    hits = reopened.search("supply chain", VECTORS[1], k=1, mode="hybrid", filters={"doc_id": "AAPL"})
+    assert hits[0][1]["chunk_id"] == "A_1"
+    reopened.client.close()
+
+
 def test_sparse_encoding_is_stable_and_weighted():
     idx, vals = encode_document("sales sales revenue")
     assert len(idx) == len(vals) == 2
     assert encode_document("sales sales revenue") == (idx, vals)
     qi, qv = encode_query("Sales SALES")
     assert len(qi) == 1 and qv == [1.0]
+
+
+def test_bm25_length_normalisation_uses_average():
+    from vector_store.sparse import average_tokens
+
+    assert average_tokens(["a b", "a b c d"]) == 3.0
+    short = encode_document("sales " * 4, avg_doc_tokens=4.0)[1][0]
+    long_avg = encode_document("sales " * 4, avg_doc_tokens=400.0)[1][0]
+    assert short < long_avg  # same text is penalised more when it is long relative to avgdl
+
+
+def test_new_collection_records_default_avg_doc_tokens(store):
+    from vector_store.sparse import AVG_DOC_TOKENS
+
+    assert store.index_metadata()["bm25"] == {"avg_doc_tokens": AVG_DOC_TOKENS, "k1": 1.5, "b": 0.75}
+
+
+def test_explicit_avg_doc_tokens_is_recorded_and_used_for_encoding():
+    s = QdrantChunkStore(":memory:", "tuned")
+    s.index_chunks(CHUNKS, VECTORS, {"name": "fake"}, avg_doc_tokens=4.0)
+    assert s.avg_doc_tokens() == 4.0
+    stored = s.client.retrieve(s.collection, [point_id("A_0")], with_vectors=True)[0]
+    expected = encode_document(CHUNKS[0]["embed_text"], 4.0)[1]
+    assert stored.vector["bm25"].values == pytest.approx(expected)
+
+
+def test_existing_collection_keeps_its_avg_doc_tokens(store):
+    before = store.avg_doc_tokens()
+    store.index_chunks(CHUNKS[:1], VECTORS[:1], {"name": "fake"}, avg_doc_tokens=4.0)
+    assert store.avg_doc_tokens() == before
 
 
 def test_dense_search_returns_nearest_chunk(store):

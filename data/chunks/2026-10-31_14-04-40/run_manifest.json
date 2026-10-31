@@ -1,0 +1,439 @@
+{
+  "run_timestamp": "2026-10-31_14-04-40",
+  "output_directory": "data\\chunks\\2026-10-31_14-04-40",
+  "chunking_config": {
+    "max_chars": 1300,
+    "min_chars": 200,
+    "table_max_chars": 1000,
+    "pseudo_headings": true
+  },
+  "embedding_model": {
+    "name": "BAAI/bge-base-en-v1.5",
+    "backend": "local",
+    "dimension": 768,
+    "normalized": true,
+    "query_prefix": "Represent this sentence for searching relevant passages: ",
+    "model_max_tokens": 512,
+    "tokenizer_max_tokens": 512,
+    "effective_max_tokens": 512,
+    "recommended_token_limit": 481
+  },
+  "overall": {
+    "chunks": 7156,
+    "chunks_by_type": {
+      "text": 5471,
+      "table": 1685
+    },
+    "tiny_chunks": 643,
+    "over_recommended_limit": 0,
+    "over_model_limit": 0,
+    "token_statistics": {
+      "count": 7156,
+      "mean": 188.45,
+      "std": 80.77,
+      "min": 26,
+      "p25": 126.0,
+      "p50": 190.0,
+      "p75": 247.0,
+      "max": 457
+    }
+  },
+  "documents": {
+    "AAPL_10-K_2021": {
+      "chunks": 349,
+      "chunks_by_type": {
+        "text": 270,
+        "table": 79
+      },
+      "tiny_chunks": 35,
+      "over_recommended_limit": 0,
+      "over_model_limit": 0,
+      "token_statistics": {
+        "count": 349,
+        "mean": 183.92,
+        "std": 82.57,
+        "min": 30,
+        "p25": 119.0,
+        "p50": 180.0,
+        "p75": 246.0,
+        "max": 442
+      },
+      "ticker": "AAPL",
+      "form": "10-K",
+      "fiscal_year": 2021,
+      "period_end": "2021-09-25",
+      "source_file": "AAPL_10-K_2021.html"
+    },
+    "AAPL_10-K_2022": {
+      "chunks": 337,
+      "chunks_by_type": {
+        "text": 255,
+        "table": 82
+      },
+      "tiny_chunks": 38,
+      "over_recommended_limit": 0,
+      "over_model_limit": 0,
+      "token_statistics": {
+        "count": 337,
+        "mean": 187.95,
+        "std": 85.18,
+        "min": 31,
+        "p25": 121.0,
+        "p50": 186.0,
+        "p75": 253.0,
+        "max": 457
+      },
+      "ticker": "AAPL",
+      "form": "10-K",
+      "fiscal_year": 2022,
+      "period_end": "2022-09-24",
+      "source_file": "AAPL_10-K_2022.html"
+    },
+    "AAPL_10-K_2023": {
+      "chunks": 328,
+      "chunks_by_type": {
+        "text": 243,
+        "table": 85
+      },
+      "tiny_chunks": 38,
+      "over_recommended_limit": 0,
+      "over_model_limit": 0,
+      "token_statistics": {
+        "count": 328,
+        "mean": 184.54,
+        "std": 87.65,
+        "min": 26,
+        "p25": 116.0,
+        "p50": 180.0,
+        "p75": 250.0,
+        "max": 441
+      },
+      "ticker": "AAPL",
+      "form": "10-K",
+      "fiscal_year": 2023,
+      "period_end": "2023-09-30",
+      "source_file": "AAPL_10-K_2023.html"
+    },
+    "AAPL_10-K_2024": {
+      "chunks": 326,
+      "chunks_by_type": {
+        "text": 247,
+        "table": 79
+      },
+      "tiny_chunks": 33,
+      "over_recommended_limit": 0,
+      "over_model_limit": 0,
+      "token_statistics": {
+        "count": 326,
+        "mean": 185.51,
+        "std": 85.05,
+        "min": 31,
+        "p25": 116.0,
+        "p50": 187.0,
+        "p75": 247.0,
+        "max": 434
+      },
+      "ticker": "AAPL",
+      "form": "10-K",
+      "fiscal_year": 2024,
+      "period_end": "2024-09-28",
+      "source_file": "AAPL_10-K_2024.html"
+    },
+    "AAPL_10-K_2025": {
+      "chunks": 323,
+      "chunks_by_type": {
+        "text": 245,
+        "table": 78
+      },
+      "tiny_chunks": 34,
+      "over_recommended_limit": 0,
+      "over_model_limit": 0,
+      "token_statistics": {
+        "count": 323,
+        "mean": 188.42,
+        "std": 86.46,
+        "min": 31,
+        "p25": 118.5,
+        "p50": 190.0,
+        "p75": 252.5,
+        "max": 439
+      },
+      "ticker": "AAPL",
+      "form": "10-K",
+      "fiscal_year": 2025,
+      "period_end": "2025-09-27",
+      "source_file": "AAPL_10-K_2025.html"
+    },
+    "MSFT_10-K_2021": {
+      "chunks": 519,
+      "chunks_by_type": {
+        "text": 400,
+        "table": 119
+      },
+      "tiny_chunks": 46,
+      "over_recommended_limit": 0,
+      "over_model_limit": 0,
+      "token_statistics": {
+        "count": 519,
+        "mean": 178.17,
+        "std": 78.17,
+        "min": 28,
+        "p25": 120.0,
+        "p50": 178.0,
+        "p75": 233.5,
+        "max": 448
+      },
+      "ticker": "MSFT",
+      "form": "10-K",
+      "fiscal_year": 2021,
+      "period_end": "2021-06-30",
+      "source_file": "MSFT_10-K_2021.html"
+    },
+    "MSFT_10-K_2022": {
+      "chunks": 524,
+      "chunks_by_type": {
+        "text": 404,
+        "table": 120
+      },
+      "tiny_chunks": 47,
+      "over_recommended_limit": 0,
+      "over_model_limit": 0,
+      "token_statistics": {
+        "count": 524,
+        "mean": 178.1,
+        "std": 78.44,
+        "min": 29,
+        "p25": 119.75,
+        "p50": 177.0,
+        "p75": 237.25,
+        "max": 433
+      },
+      "ticker": "MSFT",
+      "form": "10-K",
+      "fiscal_year": 2022,
+      "period_end": "2022-06-30",
+      "source_file": "MSFT_10-K_2022.html"
+    },
+    "MSFT_10-K_2023": {
+      "chunks": 517,
+      "chunks_by_type": {
+        "text": 393,
+        "table": 124
+      },
+      "tiny_chunks": 43,
+      "over_recommended_limit": 0,
+      "over_model_limit": 0,
+      "token_statistics": {
+        "count": 517,
+        "mean": 179.51,
+        "std": 77.84,
+        "min": 31,
+        "p25": 126.0,
+        "p50": 177.0,
+        "p75": 236.0,
+        "max": 416
+      },
+      "ticker": "MSFT",
+      "form": "10-K",
+      "fiscal_year": 2023,
+      "period_end": "2023-06-30",
+      "source_file": "MSFT_10-K_2023.html"
+    },
+    "MSFT_10-K_2024": {
+      "chunks": 532,
+      "chunks_by_type": {
+        "text": 405,
+        "table": 127
+      },
+      "tiny_chunks": 49,
+      "over_recommended_limit": 0,
+      "over_model_limit": 0,
+      "token_statistics": {
+        "count": 532,
+        "mean": 182.83,
+        "std": 79.63,
+        "min": 31,
+        "p25": 123.0,
+        "p50": 183.0,
+        "p75": 242.25,
+        "max": 435
+      },
+      "ticker": "MSFT",
+      "form": "10-K",
+      "fiscal_year": 2024,
+      "period_end": "2024-06-30",
+      "source_file": "MSFT_10-K_2024.html"
+    },
+    "MSFT_10-K_2025": {
+      "chunks": 476,
+      "chunks_by_type": {
+        "text": 358,
+        "table": 118
+      },
+      "tiny_chunks": 42,
+      "over_recommended_limit": 0,
+      "over_model_limit": 0,
+      "token_statistics": {
+        "count": 476,
+        "mean": 183.15,
+        "std": 78.87,
+        "min": 31,
+        "p25": 125.75,
+        "p50": 185.0,
+        "p75": 235.25,
+        "max": 428
+      },
+      "ticker": "MSFT",
+      "form": "10-K",
+      "fiscal_year": 2025,
+      "period_end": "2025-06-30",
+      "source_file": "MSFT_10-K_2025.html"
+    },
+    "TSLA_10-K_2021": {
+      "chunks": 646,
+      "chunks_by_type": {
+        "text": 495,
+        "table": 151
+      },
+      "tiny_chunks": 58,
+      "over_recommended_limit": 0,
+      "over_model_limit": 0,
+      "token_statistics": {
+        "count": 646,
+        "mean": 196.84,
+        "std": 82.23,
+        "min": 27,
+        "p25": 136.25,
+        "p50": 203.0,
+        "p75": 262.0,
+        "max": 411
+      },
+      "ticker": "TSLA",
+      "form": "10-K",
+      "fiscal_year": 2021,
+      "period_end": "2021-12-31",
+      "source_file": "TSLA_10-K_2021.html"
+    },
+    "TSLA_10-K_2022": {
+      "chunks": 597,
+      "chunks_by_type": {
+        "text": 457,
+        "table": 140
+      },
+      "tiny_chunks": 49,
+      "over_recommended_limit": 0,
+      "over_model_limit": 0,
+      "token_statistics": {
+        "count": 597,
+        "mean": 196.57,
+        "std": 80.51,
+        "min": 31,
+        "p25": 137.0,
+        "p50": 200.0,
+        "p75": 255.0,
+        "max": 410
+      },
+      "ticker": "TSLA",
+      "form": "10-K",
+      "fiscal_year": 2022,
+      "period_end": "2022-12-31",
+      "source_file": "TSLA_10-K_2022.html"
+    },
+    "TSLA_10-K_2023": {
+      "chunks": 569,
+      "chunks_by_type": {
+        "text": 425,
+        "table": 144
+      },
+      "tiny_chunks": 42,
+      "over_recommended_limit": 0,
+      "over_model_limit": 0,
+      "token_statistics": {
+        "count": 569,
+        "mean": 199.62,
+        "std": 76.72,
+        "min": 31,
+        "p25": 144.0,
+        "p50": 205.0,
+        "p75": 257.0,
+        "max": 409
+      },
+      "ticker": "TSLA",
+      "form": "10-K",
+      "fiscal_year": 2023,
+      "period_end": "2023-12-31",
+      "source_file": "TSLA_10-K_2023.html"
+    },
+    "TSLA_10-K_2024": {
+      "chunks": 562,
+      "chunks_by_type": {
+        "text": 424,
+        "table": 138
+      },
+      "tiny_chunks": 46,
+      "over_recommended_limit": 0,
+      "over_model_limit": 0,
+      "token_statistics": {
+        "count": 562,
+        "mean": 196.93,
+        "std": 79.4,
+        "min": 31,
+        "p25": 139.25,
+        "p50": 201.0,
+        "p75": 257.75,
+        "max": 420
+      },
+      "ticker": "TSLA",
+      "form": "10-K",
+      "fiscal_year": 2024,
+      "period_end": "2024-12-31",
+      "source_file": "TSLA_10-K_2024.html"
+    },
+    "TSLA_10-K_2025": {
+      "chunks": 551,
+      "chunks_by_type": {
+        "text": 450,
+        "table": 101
+      },
+      "tiny_chunks": 43,
+      "over_recommended_limit": 0,
+      "over_model_limit": 0,
+      "token_statistics": {
+        "count": 551,
+        "mean": 194.8,
+        "std": 76.84,
+        "min": 31,
+        "p25": 142.0,
+        "p50": 203.0,
+        "p75": 249.5,
+        "max": 435
+      },
+      "ticker": "TSLA",
+      "form": "10-K",
+      "fiscal_year": 2025,
+      "period_end": "2025-12-31",
+      "source_file": "TSLA_10-K_2025.html"
+    }
+  },
+  "corpus": {
+    "document_count": 15,
+    "tickers": [
+      "AAPL",
+      "MSFT",
+      "TSLA"
+    ],
+    "fiscal_year_start": 2021,
+    "fiscal_year_end": 2025,
+    "filings_per_ticker": {
+      "AAPL": 5,
+      "MSFT": 5,
+      "TSLA": 5
+    }
+  },
+  "qdrant_collection": {
+    "name": "techfiling_20261031T083714Z",
+    "created_at": "20261031T083714Z",
+    "point_count": 7156,
+    "location": "C:\\Users\\Satyajit_Khot\\Downloads\\techfiling-copilot\\data\\qdrant"
+  }
+}

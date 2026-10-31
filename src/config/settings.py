@@ -253,6 +253,11 @@ class Settings(BaseSettings):
         default="http://127.0.0.1:6333",
         description="Qdrant URL (use ':memory:' for an ephemeral in-process store)",
     )
+    QDRANT_PATH: Path | None = Field(
+        default=None,
+        description="Local on-disk Qdrant folder (embedded, no server); overrides QDRANT_URL when set. "
+        "Single process only: ingestion and the API cannot open it at the same time",
+    )
     QDRANT_API_KEY: str | None = Field(
         default=None, description="Qdrant API key (cloud / secured server)"
     )
@@ -427,6 +432,15 @@ class Settings(BaseSettings):
                 return ROOT / path
             return path
         return v
+
+    @field_validator("QDRANT_PATH", mode="before")
+    @classmethod
+    def resolve_optional_path(cls, v: str | Path | None) -> Path | None:
+        """Blank means unset; relative paths resolve against the project root."""
+        if not v:
+            return None
+        path = Path(v)
+        return path if path.is_absolute() else ROOT / path
 
 
 @lru_cache

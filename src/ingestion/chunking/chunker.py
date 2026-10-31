@@ -63,6 +63,42 @@ def load_elements(doc_id: str, parsed_dir: Path = PARSED_DIR) -> list[dict]:
         return [json.loads(line) for line in fh if line.strip()]
 
 
+def load_document_metadata(doc_id: str, parsed_dir: Path = PARSED_DIR) -> dict:
+    """Load and validate document metadata from its JSON file.
+
+    Args:
+        doc_id: Document identifier used as the input filename prefix.
+        parsed_dir: Directory containing parsed document files.
+
+    Returns:
+        Document metadata dictionary with ticker, fiscal_year, form, period_end.
+
+    Raises:
+        FileNotFoundError: If the document metadata file does not exist.
+        ValueError: If the internal doc_id does not match the requested doc_id,
+            or if required metadata fields are missing.
+    """
+    path = parsed_dir / f"{doc_id}.document.json"
+    if not path.exists():
+        raise FileNotFoundError(f"Document metadata file not found: {path}")
+
+    with path.open(encoding="utf-8") as fh:
+        metadata = json.load(fh)
+
+    if metadata.get("doc_id") != doc_id:
+        raise ValueError(
+            f"Internal doc_id mismatch: file {path.name} contains doc_id={metadata.get('doc_id')!r}, "
+            f"expected {doc_id!r}"
+        )
+
+    required_fields = ["ticker", "fiscal_year", "form", "period_end"]
+    missing = [field for field in required_fields if metadata.get(field) is None]
+    if missing:
+        raise ValueError(f"Missing required metadata fields in {path.name}: {', '.join(missing)}")
+
+    return metadata
+
+
 def list_doc_ids(parsed_dir: Path = PARSED_DIR) -> list[str]:
     """Return sorted document IDs discovered in the parsed-data directory."""
     return sorted(
@@ -319,10 +355,20 @@ def chunk_doc_id(
     Returns:
         Final chunk dictionaries ready to be written or embedded.
     """
+    metadata = load_document_metadata(doc_id, parsed_dir)
     chunks = chunk_document(
         load_elements(doc_id, parsed_dir), max_chars, table_max_chars, pseudo_headings, min_chars
     )
-    return merge_tiny(chunks, min_chars, max_chars)
+    chunks = merge_tiny(chunks, min_chars, max_chars)
+
+    # Stamp filing metadata onto every chunk after merging
+    for chunk in chunks:
+        chunk["ticker"] = metadata["ticker"]
+        chunk["fiscal_year"] = metadata["fiscal_year"]
+        chunk["form"] = metadata["form"]
+        chunk["period_end"] = metadata["period_end"]
+
+    return chunks
 
 
 def write_chunks(chunks: list[dict], path: Path) -> None:

@@ -30,6 +30,7 @@ Thumbs.db
 nul
 
 models/
+data/qdrant/
 study_01/
 study_02/
 handoff/

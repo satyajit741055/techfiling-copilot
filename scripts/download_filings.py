@@ -13,12 +13,17 @@ from urllib import error, request
 
 ROOT = Path(__file__).resolve().parents[1]
 DEFAULT_OUTPUT_DIR = ROOT / "data" / "raw_html"
+# COMPANY_CIKS = {
+#     "AAPL": "0000320193",
+#     "MSFT": "0000789019",
+#     "NVDA": "0001045810",
+#     "AMZN": "0001018724",
+#     "GOOGL": "0001652044",
+#     "TSLA": "0001318605",
+# }
 COMPANY_CIKS = {
     "AAPL": "0000320193",
     "MSFT": "0000789019",
-    "NVDA": "0001045810",
-    "AMZN": "0001018724",
-    "GOOGL": "0001652044",
     "TSLA": "0001318605",
 }
 SEC_SUBMISSIONS_URL = "https://data.sec.gov/submissions"
@@ -179,7 +184,7 @@ def parse_args() -> argparse.Namespace:
         description="Download 10-K filings for the agentic RAG corpus."
     )
     parser.add_argument("--output-dir", type=Path, default=DEFAULT_OUTPUT_DIR)
-    parser.add_argument("--filings-per-company", type=int, default=6)
+    parser.add_argument("--filings-per-company", type=int, default=5)
     parser.add_argument(
         "--start-year",
         type=int,
