@@ -29,6 +29,8 @@ logs/
 Thumbs.db
 nul
 
+_work/
+goldens/golden_retriever_15filings_worklog.md
 models/
 data/qdrant/
 study_01/

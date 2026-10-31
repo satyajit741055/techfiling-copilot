@@ -153,6 +153,50 @@ class TestChunkDocument:
         chunks = chunk_document(els)
         assert chunks[0]["headings"] == ["Old heading"] and chunks[1]["headings"] == []
 
+    def test_risk_category_after_titled_risk_drops_stale_title(self):
+        it_title = "The Company's business is impacted by system failures."
+        retail_title = "The Company's retail stores are subject to numerous risks."
+        els = [
+            _el(0, "heading", "Business Risks", section="Item 1A"),
+            _el(1, "heading", it_title, section="Item 1A"),
+            _el(2, text="IT body.", section="Item 1A"),
+            _el(3, "heading", retail_title, section="Item 1A"),
+            _el(4, text="Retail body.", section="Item 1A"),
+            _el(5, "heading", "Legal and Regulatory Compliance Risks", section="Item 1A"),
+            _el(6, text="Patent body.", section="Item 1A"),
+        ]
+        chunks = chunk_document(els)
+        assert [c["headings"] for c in chunks] == [
+            ["Business Risks", it_title],
+            ["Business Risks", retail_title],
+            ["Legal and Regulatory Compliance Risks"],
+        ]
+        assert "retail stores" not in chunks[2]["embed_text"]
+
+    def test_label_directly_under_titled_risk_stays_its_child(self):
+        title = "We face intense competition across all markets for our products."
+        els = [
+            _el(0, "heading", title, section="Item 1A"),
+            _el(1, "heading", "Competition in the technology sector", section="Item 1A"),
+            _el(2, text="Tech body.", section="Item 1A"),
+            _el(3, "heading", "Business model competition", section="Item 1A"),
+            _el(4, text="Model body.", section="Item 1A"),
+        ]
+        chunks = chunk_document(els)
+        assert [c["headings"] for c in chunks] == [
+            [title, "Competition in the technology sector"],
+            ["Competition in the technology sector", "Business model competition"],
+        ]
+
+    def test_label_headings_keep_stacking(self):
+        els = [
+            _el(0, "heading", "Note 2 - Revenue", section="Item 8"),
+            _el(1, text="Intro.", section="Item 8"),
+            _el(2, "heading", "Contract balances", section="Item 8"),
+            _el(3, text="Body.", section="Item 8"),
+        ]
+        assert chunk_document(els)[-1]["headings"] == ["Note 2 - Revenue", "Contract balances"]
+
     def test_pseudo_heading_starts_new_chunk_once_min_chars_reached(self):
         els = [
             _el(0, text="Body sentence here. " * 15),

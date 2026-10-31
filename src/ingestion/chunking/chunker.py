@@ -188,6 +188,29 @@ def breadcrumb(e: dict, headings: list[str]) -> str:
     return " > ".join([p for p in parts if p] + headings[-2:])
 
 
+def is_sentence_heading(text: str) -> bool:
+    """Return whether a heading is a sentence-style title (e.g. a risk factor), not a label."""
+    t = text.strip()
+    return t.endswith((".", "?", "!")) and len(t.split()) >= 5
+
+
+def push_heading(stack: list[tuple[str, bool]], text: str, has_body: bool) -> None:
+    """Add a parser heading to the heading path, keeping sibling titles from nesting.
+
+    Parsed headings carry no level, so the path is inferred. Only a sentence-style title
+    that already has body text is treated as closed: a following sentence title replaces
+    it (sibling risk factors), and a following label heading (a new risk category such as
+    "Financial Risks") starts a fresh path. A label directly under a title with no body in
+    between stays its child, and label-after-label stacking is unchanged.
+    """
+    if stack and stack[-1][1] and has_body:
+        if is_sentence_heading(text):
+            stack.pop()
+        else:
+            stack.clear()
+    stack.append((text, is_sentence_heading(text)))
+
+
 def chunk_document(
     els: list[dict],
     max_chars: int = MAX_CHARS,
@@ -213,11 +236,12 @@ def chunk_document(
     chunks: list[dict] = []
     buf: list[str] = []
     buf_orders: list[int] = []
-    headings: list[str] = []
-    state: dict = {"key": None, "first": None}
+    heading_path: list[tuple[str, bool]] = []
+    state: dict = {"key": None, "first": None, "body": False}
 
     def emit(type_, text, orders, ref, extra=None):
         """Create a chunk from buffered content and append it to the result."""
+        headings = [h for h, _ in heading_path]
         c = {
             "chunk_id": f"{ref['doc_id']}_c{len(chunks):04d}",
             "doc_id": ref["doc_id"],
@@ -246,7 +270,7 @@ def chunk_document(
         if key != state["key"]:  # new Item -> hard boundary
             if state["first"]:
                 flush(state["first"])
-            headings.clear()
+            heading_path.clear()
             state["key"] = key
         if (
             pseudo_headings
@@ -260,10 +284,12 @@ def chunk_document(
         if e["type"] == "heading":
             if buf:
                 flush(ref)  # heading after body text = new topic
-            headings.append(e["text"])
+            push_heading(heading_path, e["text"], state["body"])
+            state["body"] = False
             continue
 
         if e["type"] == "table":
+            state["body"] = True
             flush(ref)
             t = e["table"]
             full_intro = t.get("intro")
@@ -288,6 +314,7 @@ def chunk_document(
         text = (e["text"] or "").strip()
         if not text:
             continue
+        state["body"] = True
         for piece in split_long(text, max_chars) if len(text) > max_chars else [text]:
             if buf and sum(map(len, buf)) + len(piece) > max_chars:
                 flush(ref)
