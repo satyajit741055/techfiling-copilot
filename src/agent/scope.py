@@ -184,25 +184,12 @@ def resolve_scope(
     task_count = len(cells) * sub_question_count
     collapse_years = False
     if task_count > max_tasks:
-        if analysis.question_type in _COLLAPSIBLE_TYPES or analysis.scope == "corpus_wide":
-            collapsed_count = len(tickers) * sub_question_count
-            if collapsed_count <= max_tasks:
-                collapse_years = True
-            else:
-                return ResolvedScope(
-                    tickers=tickers,
-                    fiscal_years=sorted(set(all_years)),
-                    cells=cells,
-                    assumptions=assumptions,
-                    coverage=coverage,
-                    not_in_corpus=unknown,
-                    route="clarify",
-                    clarification=Clarification(
-                        dimension="other",
-                        question="This request is too broad. Please narrow the companies, years, or topics.",
-                    ),
-                )
-        else:
+        collapsible = (
+            analysis.question_type in _COLLAPSIBLE_TYPES or analysis.scope == "corpus_wide"
+        )
+        if collapsible and len(tickers) * sub_question_count <= max_tasks:
+            collapse_years = True
+        elif clarifications_this_turn == 0:
             return ResolvedScope(
                 tickers=tickers,
                 fiscal_years=sorted(set(all_years)),
@@ -215,6 +202,25 @@ def resolve_scope(
                     dimension="other",
                     question="This request is too broad. Please narrow the companies, years, or topics.",
                 ),
+            )
+        else:
+            limit = max(1, max_tasks // sub_question_count)
+            kept = {
+                (cell.ticker, cell.fiscal_year)
+                for cell in sorted(cells, key=lambda item: (-item.fiscal_year, item.ticker))[:limit]
+            }
+            cells = [cell for cell in cells if (cell.ticker, cell.fiscal_year) in kept]
+            coverage = [
+                cell
+                for cell in coverage
+                if cell.status == "not_in_corpus" or (cell.ticker, cell.fiscal_year) in kept
+            ]
+            tickers = _unique([cell.ticker for cell in coverage])
+            all_years = [cell.fiscal_year for cell in coverage]
+            assumptions.append(
+                f"Request still exceeded the {max_tasks}-search limit after clarification; "
+                f"limited to the most recent filings "
+                f"({', '.join(f'{cell.ticker} FY{cell.fiscal_year}' for cell in cells)})"
             )
 
     route: Route = (

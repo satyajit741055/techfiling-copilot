@@ -218,3 +218,24 @@ def test_fanout_cap_clarifies_non_collapsible_request(catalog):
     )
     assert scope.route == "clarify"
     assert scope.clarification and "too broad" in scope.clarification.question
+
+
+def test_fanout_cap_narrows_instead_of_clarifying_twice(catalog):
+    scope = resolve_scope(
+        analysis(
+            question_type="trend",
+            years={"explicit": [2023, 2024, 2025]},
+            sub_questions=["Revenue", "Margin"],
+        ),
+        catalog,
+        clarifications_this_turn=1,
+        max_tasks=4,
+    )
+    assert scope.route == "research"
+    assert [(cell.ticker, cell.fiscal_year) for cell in scope.cells] == [
+        ("AAPL", 2024),
+        ("AAPL", 2025),
+    ]
+    assert [cell.fiscal_year for cell in scope.coverage] == [2024, 2025]
+    assert scope.fiscal_years == [2024, 2025]
+    assert any("search limit" in assumption for assumption in scope.assumptions)

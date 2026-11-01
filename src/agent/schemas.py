@@ -4,7 +4,7 @@ from __future__ import annotations
 
 from typing import Any, Literal
 
-from pydantic import BaseModel, ConfigDict, Field, model_validator
+from pydantic import BaseModel, ConfigDict, Field, field_validator, model_validator
 
 Intent = Literal[
     "greeting",
@@ -106,6 +106,16 @@ class ResolvedScope(AgentModel):
     collapse_years: bool = False
 
 
+class PlanItem(AgentModel):
+    sub_question: str
+    query: str
+    section: str | None = None
+
+
+class ResearchPlan(AgentModel):
+    items: list[PlanItem] = Field(min_length=1, max_length=3)
+
+
 class Task(AgentModel):
     task_id: str
     ticker: str
@@ -136,15 +146,41 @@ class TaskResult(AgentModel):
     llm_fallback: bool = False
 
 
+MAX_EXCERPT_CHARS = 300
+
+
 class GroundedClaim(AgentModel):
     text: str
-    citations: list[str] = Field(default_factory=list)
+    citation_ids: list[str] = Field(default_factory=list)
+    excerpt: str = Field(default="", max_length=MAX_EXCERPT_CHARS)
+    ticker: str
+    fiscal_year: int
+
+    @field_validator("excerpt", mode="before")
+    @classmethod
+    def truncate_excerpt(cls, value: Any) -> Any:
+        if isinstance(value, str) and len(value) > MAX_EXCERPT_CHARS:
+            return value[:MAX_EXCERPT_CHARS]
+        return value
+
+
+class CalculationInput(AgentModel):
+    value: float
+    citation_id: str
+
+
+class Calculation(AgentModel):
+    description: str
+    expression: str
+    result: float
+    inputs: list[CalculationInput] = Field(default_factory=list)
 
 
 class GroundedAnswer(AgentModel):
     answer: str | None = None
     claims: list[GroundedClaim] = Field(default_factory=list)
-    calculations: list[str] = Field(default_factory=list)
+    coverage: list[CoverageCell] = Field(default_factory=list)
+    calculations: list[Calculation] = Field(default_factory=list)
     insufficient_context: bool = False
 
 
@@ -152,6 +188,7 @@ class ValidationReport(AgentModel):
     is_valid: bool
     errors: list[str] = Field(default_factory=list)
     dropped_claims: list[str] = Field(default_factory=list)
+    dropped_calculations: list[str] = Field(default_factory=list)
 
 
 class Source(AgentModel):
@@ -179,7 +216,7 @@ class ChatAnswer(AgentModel):
     claims: list[GroundedClaim] = Field(default_factory=list)
     coverage: list[CoverageCell] = Field(default_factory=list)
     assumptions: list[str] = Field(default_factory=list)
-    calculations: list[str] = Field(default_factory=list)
+    calculations: list[Calculation] = Field(default_factory=list)
     sources: list[Source] = Field(default_factory=list)
     is_valid: bool = True
     validation_errors: list[str] = Field(default_factory=list)
