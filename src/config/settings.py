@@ -43,7 +43,7 @@ from functools import lru_cache
 from pathlib import Path
 from typing import Any, Literal
 
-from pydantic import Field, field_validator, model_validator
+from pydantic import AliasChoices, Field, field_validator, model_validator
 from pydantic_settings import BaseSettings, SettingsConfigDict
 
 
@@ -173,8 +173,14 @@ class Settings(BaseSettings):
     HISTORY_STORE: Literal["none", "postgres"] = Field(
         default="none", description="Conversation history backend"
     )
-    SUPABASE_DB_URL: str | None = Field(
-        default=None, description="Server-side Supabase Postgres pooler URL"
+    HISTORY_DB_URL: str | None = Field(
+        default=None,
+        validation_alias=AliasChoices("HISTORY_DB_URL", "SUPABASE_DB_URL"),
+        description="Server-side Postgres URL for history: Docker Postgres locally or the "
+        "Supabase pooler. Falls back to SUPABASE_DB_URL.",
+    )
+    HISTORY_DB_POOL_SIZE: int = Field(
+        default=5, ge=1, le=50, description="Maximum history database connections"
     )
 
     # =========================================================================
@@ -466,8 +472,10 @@ class Settings(BaseSettings):
             raise ValueError("ANTHROPIC_API_KEY is required when using Anthropic provider")
         if LLMProvider.GOOGLE in (provider, agent_provider) and not self.GOOGLE_API_KEY:
             raise ValueError("GOOGLE_API_KEY is required when using Google provider")
-        if self.HISTORY_STORE == "postgres" and not self.SUPABASE_DB_URL:
-            raise ValueError("SUPABASE_DB_URL is required when HISTORY_STORE=postgres")
+        if self.HISTORY_STORE == "postgres" and not self.HISTORY_DB_URL:
+            raise ValueError(
+                "HISTORY_DB_URL (or SUPABASE_DB_URL) is required when HISTORY_STORE=postgres"
+            )
 
         return self
 
@@ -483,7 +491,7 @@ class Settings(BaseSettings):
         """Treat an empty override (e.g. ``RERANKER_EXECUTION_MODE=``) as not set."""
         return v or None
 
-    @field_validator("AGENT_MIN_EVIDENCE_SCORE", "SUPABASE_DB_URL", mode="before")
+    @field_validator("AGENT_MIN_EVIDENCE_SCORE", "HISTORY_DB_URL", mode="before")
     @classmethod
     def blank_optional_value_is_unset(cls, v: Any) -> Any:
         """Treat empty or whitespace-only optional agent settings as unset."""

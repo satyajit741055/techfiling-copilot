@@ -15,6 +15,8 @@ Endpoints:
     GET  /health     - Health check
     GET  /filings    - List available filings
     POST /questions  - Ask a question about a filing
+    GET  /threads    - The current user's saved conversation threads
+    GET  /threads/{thread_id}/messages - Saved turns of one thread
 
     GET  /docs       - Swagger UI (auto-generated)
     GET  /redoc      - ReDoc (auto-generated)
@@ -30,10 +32,15 @@ from slowapi.errors import RateLimitExceeded
 
 from api.auth import require_user
 from api.config import api_settings
-from api.dependencies import init_generator, shutdown_generator
+from api.dependencies import (
+    init_generator,
+    init_history_store,
+    shutdown_generator,
+    shutdown_history_store,
+)
 from api.middleware import AuthMiddleware, CorrelationIDMiddleware, RequestLoggingMiddleware
 from api.rate_limit import limiter
-from api.routers import filings, health, questions
+from api.routers import filings, health, history, questions
 from api.security import require_api_key
 
 # Configure logging
@@ -72,6 +79,7 @@ async def lifespan(app: FastAPI):
         )
 
     init_generator()
+    init_history_store()
 
     logger.info("=" * 60)
     logger.info("API ready to serve requests!")
@@ -83,6 +91,7 @@ async def lifespan(app: FastAPI):
 
     # Shutdown
     logger.info("Shutting down...")
+    shutdown_history_store()
     shutdown_generator()
     logger.info("Goodbye!")
 
@@ -170,6 +179,9 @@ app.include_router(
     questions.router,
     tags=["Questions"],
     dependencies=[Depends(require_api_key), Depends(require_user)],
+)
+app.include_router(
+    history.router, tags=["History"], dependencies=[Depends(require_api_key), Depends(require_user)]
 )
 
 

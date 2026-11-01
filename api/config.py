@@ -6,6 +6,7 @@ Handles API-specific settings (host, port, CORS, auth) separate from RAG pipelin
 
 from pathlib import Path
 from typing import Annotated, Literal
+from uuid import UUID
 
 from pydantic import AliasChoices, Field, field_validator, model_validator
 from pydantic_settings import BaseSettings, NoDecode, SettingsConfigDict
@@ -63,6 +64,11 @@ class APISettings(BaseSettings):
         validation_alias=AliasChoices("SUPABASE_URL", "NEXT_PUBLIC_SUPABASE_URL"),
         description="Supabase project URL. Used to fetch the public signing keys (JWKS) that verify "
         "ES256/RS256 tokens. Falls back to NEXT_PUBLIC_SUPABASE_URL.",
+    )
+    HISTORY_DEV_USER_ID: UUID | None = Field(
+        default=None,
+        description="Dev only: fixed user id that owns saved history while Supabase auth is "
+        "not configured. Ignored when auth is on; rejected when ENVIRONMENT=prod.",
     )
 
     # Rate limiting
@@ -122,11 +128,12 @@ class APISettings(BaseSettings):
         "SUPABASE_URL",
         "RATE_LIMIT_REDIS_URL",
         "RATE_LIMIT_CHAT_PER_MINUTE",
+        "HISTORY_DEV_USER_ID",
         mode="before",
     )
     @classmethod
     def _empty_key_is_unset(cls, value: object) -> object:
-        """Treat empty optional keys, URLs and the chat rate limit as not set."""
+        """Treat empty optional keys, URLs, the chat rate limit and dev user id as not set."""
         if isinstance(value, str):
             return value.strip() or None
         return value
@@ -153,6 +160,8 @@ class APISettings(BaseSettings):
                 "CORS_ORIGINS must be set explicitly to your frontend origin(s) in prod "
                 "(no '*', no localhost defaults)"
             )
+        if self.HISTORY_DEV_USER_ID:
+            problems.append("HISTORY_DEV_USER_ID is for local development only; unset it in prod")
         if problems:
             raise ValueError("; ".join(problems))
         return self

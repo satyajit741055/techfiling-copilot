@@ -4,6 +4,7 @@ API Schemas.
 Pydantic models for request validation and response serialization.
 """
 
+from .history import ThreadMessagesResponse, ThreadsResponse
 from .questions import (
     AnswerInfo,
     DependencyCheck,
@@ -26,4 +27,6 @@ __all__ = [
     "FilingInfo",
     "FilingsResponse",
     "HealthResponse",
+    "ThreadsResponse",
+    "ThreadMessagesResponse",
 ]

@@ -26,6 +26,7 @@ def _clean_env(monkeypatch):
         "HUGGINGFACE_API_KEY",
         "OPENAI_API_KEY",
         "HISTORY_STORE",
+        "HISTORY_DB_URL",
         "SUPABASE_DB_URL",
     ):
         monkeypatch.delenv(key, raising=False)
@@ -105,9 +106,19 @@ def test_agent_openai_provider_requires_key():
 
 def test_agent_blank_optionals_and_postgres_history_requirement():
     s = make_settings(AGENT_MIN_EVIDENCE_SCORE=" ", SUPABASE_DB_URL="")
-    assert s.AGENT_MIN_EVIDENCE_SCORE is None and s.SUPABASE_DB_URL is None
-    with pytest.raises(ValueError, match="SUPABASE_DB_URL"):
+    assert s.AGENT_MIN_EVIDENCE_SCORE is None and s.HISTORY_DB_URL is None
+    with pytest.raises(ValueError, match="HISTORY_DB_URL"):
         make_settings(HISTORY_STORE="postgres")
+
+
+def test_history_db_url_falls_back_to_supabase_name():
+    assert make_settings(SUPABASE_DB_URL="postgresql://s").HISTORY_DB_URL == "postgresql://s"
+    both = make_settings(HISTORY_DB_URL="postgresql://h", SUPABASE_DB_URL="postgresql://s")
+    assert both.HISTORY_DB_URL == "postgresql://h"
+    assert (
+        make_settings(HISTORY_STORE="postgres", HISTORY_DB_URL="postgresql://h").HISTORY_STORE
+        == "postgres"
+    )
 
 
 # ----------------------------------------------------------------------------- factory

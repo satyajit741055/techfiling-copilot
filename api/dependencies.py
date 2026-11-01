@@ -18,6 +18,7 @@ if str(ROOT / "src") not in sys.path:
     sys.path.insert(0, str(ROOT / "src"))
 from api.config import api_settings
 from api.services.rag_service import RAGService
+from persistence import HistoryStore, NullHistoryStore, create_history_store
 
 if TYPE_CHECKING:
     from generation import AnswerGenerator
@@ -33,6 +34,7 @@ logger = logging.getLogger(__name__)
 _generator: "AnswerGenerator | None" = None
 _rag_service: RAGService | None = None
 _filings: list[dict] | None = None
+_history_store: HistoryStore = NullHistoryStore()
 
 
 # =============================================================================
@@ -131,6 +133,32 @@ def shutdown_generator() -> None:
     logger.info("Generator shutdown complete")
 
 
+def init_history_store() -> None:
+    """Create the history store for HISTORY_STORE; the database is reached lazily."""
+    global _history_store
+    from config.settings import settings
+
+    _history_store = create_history_store(settings)
+    _history_store.open()
+    if not _history_store.enabled:
+        logger.info("History store: DISABLED (HISTORY_STORE=none)")
+    elif api_settings.supabase_auth_enabled:
+        logger.info("History store: Postgres (owner = signed-in Supabase user)")
+    elif api_settings.HISTORY_DEV_USER_ID:
+        logger.info("History store: Postgres (owner = HISTORY_DEV_USER_ID, auth disabled)")
+    else:
+        logger.warning(
+            "History store: Postgres, but auth is disabled and HISTORY_DEV_USER_ID is unset, "
+            "so nothing is saved and history endpoints return 404"
+        )
+
+
+def shutdown_history_store() -> None:
+    global _history_store
+    _history_store.close()
+    _history_store = NullHistoryStore()
+
+
 # =============================================================================
 # DEPENDENCY INJECTION
 # =============================================================================
@@ -158,6 +186,11 @@ def get_rag_service() -> RAGService:
     if _rag_service is None:
         raise RuntimeError("RAG service not initialized. Call init_generator() first.")
     return _rag_service
+
+
+def get_history_store() -> HistoryStore:
+    """FastAPI dependency: the history store (the null store when history is off)."""
+    return _history_store
 
 
 def get_filings() -> list[dict]:

@@ -9,6 +9,7 @@ import logging
 import threading
 import time
 from typing import Annotated, Any
+from uuid import UUID
 
 import httpx
 from fastapi import Header, HTTPException, Request, status
@@ -145,6 +146,21 @@ def require_user(request: Request) -> None:
         detail="Please sign in to continue.",
         headers={"WWW-Authenticate": "Bearer"},
     )
+
+
+def history_user_id(request: Request) -> UUID | None:
+    """
+    Owner of saved history for this request, or None when history is off for it.
+
+    With Supabase auth on, this is the verified JWT subject. Without auth (local dev)
+    it is HISTORY_DEV_USER_ID, so history can be tested before Supabase is available.
+    """
+    if not api_settings.supabase_auth_enabled:
+        return api_settings.HISTORY_DEV_USER_ID
+    try:
+        return UUID(str(getattr(request.state, "user_id", "")))
+    except ValueError:
+        return None
 
 
 def get_current_user(

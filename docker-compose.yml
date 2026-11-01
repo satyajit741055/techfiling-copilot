@@ -38,6 +38,29 @@ services:
       retries: 10
     restart: unless-stopped
 
+  # Conversation history (HISTORY_STORE=postgres) until Supabase is available; the schema
+  # is the same, so switching only changes HISTORY_DB_URL. Opt-in:
+  #   docker compose --profile history up -d postgres
+  #   uv run python scripts/apply_migrations.py
+  # Requires POSTGRES_PASSWORD in .env (URL-safe); the image refuses to start without it.
+  postgres:
+    image: postgres:17-alpine
+    profiles: ["history"]
+    environment:
+      POSTGRES_USER: techfiling
+      POSTGRES_DB: techfiling
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:-}
+    ports:
+      - "127.0.0.1:5432:5432"
+    volumes:
+      - postgres_data:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U techfiling -d techfiling"]
+      interval: 5s
+      timeout: 3s
+      retries: 10
+    restart: unless-stopped
+
   backend:
     build:
       context: .
@@ -61,6 +84,10 @@ services:
       QDRANT_PATH: ""
       # Supabase JWT secret for authentication
       SUPABASE_JWT_SECRET: ${SUPABASE_JWT_SECRET:-}
+      # History database: defaults to the postgres service above. Set DOCKER_HISTORY_DB_URL
+      # (e.g. to the Supabase pooler URL) to use another database. Only read when
+      # HISTORY_STORE=postgres; writes are best-effort, so the backend does not wait for it.
+      HISTORY_DB_URL: ${DOCKER_HISTORY_DB_URL:-postgresql://techfiling:${POSTGRES_PASSWORD:-}@postgres:5432/techfiling}
     ports:
       # Loopback only: for local debugging. Remove in production so only the frontend is exposed.
       - "127.0.0.1:8000:8000"
@@ -92,3 +119,4 @@ services:
 volumes:
   redis_data:
   qdrant_data:
+  postgres_data:

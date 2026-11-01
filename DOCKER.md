@@ -68,6 +68,35 @@ If a collection was loaded before the catalog existed, the backend logs a warnin
 - To ingest new filings straight into Qdrant, run `uv run src/ingestion/processor.py`
   with `VECTOR_STORE=qdrant` and Qdrant running on the host.
 
+## Postgres (optional conversation history)
+
+Compose has an opt-in `postgres` service (`postgres:17-alpine`, profile `history`, data in the
+`postgres_data` volume, published on `127.0.0.1:5432` only). It stands in for Supabase: the
+schema is plain Postgres, so switching later only changes the database URL.
+
+```bash
+# 1. in .env (URL-safe password, e.g. openssl rand -hex 24)
+HISTORY_STORE=postgres
+POSTGRES_PASSWORD=<password>
+HISTORY_DB_URL=postgresql://techfiling:<password>@127.0.0.1:5432/techfiling   # for host runs
+HISTORY_DEV_USER_ID=<uuid>        # dev only, while Supabase auth is off
+
+# 2. start Postgres and create the tables (safe to re-run; applied files are skipped)
+docker compose --profile history up -d postgres
+uv run python scripts/apply_migrations.py
+```
+
+- In Compose the backend uses `postgres:5432` automatically. Set `DOCKER_HISTORY_DB_URL` to use
+  another database from the container.
+- Use `127.0.0.1`, not `localhost`, on Windows: `localhost` tries IPv6 first and stalls.
+- Writes are best-effort: if the database is down, answers still work and the failure is logged.
+- **Moving to Supabase:** run `uv run python scripts/apply_migrations.py --supabase --db-url
+  <pooler url>` (adds Row Level Security), set `HISTORY_DB_URL` to the pooler URL
+  (`?sslmode=require`), turn on Supabase auth and remove `HISTORY_DEV_USER_ID`. For the Compose
+  backend also set `DOCKER_HISTORY_DB_URL` to the pooler URL; otherwise Compose overrides
+  `HISTORY_DB_URL` with the local `postgres` service. Docker history
+  belongs to the dev user id, so start fresh rather than copying it.
+
 ## Run
 
 ```bash
