@@ -2,6 +2,7 @@
 
 from __future__ import annotations
 
+import re
 import threading
 from collections import defaultdict
 from collections.abc import Iterable, Mapping
@@ -11,6 +12,8 @@ from typing import Any
 from generation.context import format_source
 
 from .schemas import Source
+
+_CHUNK_POSITION = re.compile(r"^(?P<doc>.+)_c(?P<number>\d+)$")
 
 
 @dataclass(frozen=True)
@@ -93,8 +96,18 @@ class EvidenceRegistry:
         return dict(self._entries)
 
     @staticmethod
-    def _document_order(entry: EvidenceEntry) -> str:
-        return str(entry.chunk.get("chunk_id", ""))
+    def _document_order(entry: EvidenceEntry) -> tuple[str, int, str]:
+        chunk_id = str(entry.chunk.get("chunk_id", ""))
+        match = _CHUNK_POSITION.match(chunk_id)
+        return (match["doc"], int(match["number"]), "") if match else (chunk_id, -1, chunk_id)
+
+    @staticmethod
+    def _cell(entry: EvidenceEntry) -> tuple[str, int]:
+        return str(entry.chunk.get("ticker", "")), int(entry.chunk.get("fiscal_year") or 0)
+
+    @staticmethod
+    def _score(entry: EvidenceEntry) -> float:
+        return entry.best_score if entry.best_score is not None else float("-inf")
 
     @staticmethod
     def _priority(entry: EvidenceEntry) -> tuple[str, int, str, float, str]:
@@ -111,33 +124,83 @@ class EvidenceRegistry:
             str(chunk.get("chunk_id", "")),
         )
 
-    def _select(self, max_chunks: int) -> list[EvidenceEntry]:
+    def _groups(self) -> list[list[EvidenceEntry]]:
+        """Entries joined by a shared ``table_id`` or adjacent chunks of the same filing."""
+        parent = {chunk_id: chunk_id for chunk_id in self._entries}
+
+        def find(chunk_id: str) -> str:
+            while parent[chunk_id] != chunk_id:
+                parent[chunk_id] = parent[parent[chunk_id]]
+                chunk_id = parent[chunk_id]
+            return chunk_id
+
+        def union(left: str, right: str) -> None:
+            parent[find(left)] = find(right)
+
+        tables: dict[str, str] = {}
+        positions: dict[tuple[str, int], str] = {}
+        for chunk_id, entry in self._entries.items():
+            if table_id := entry.chunk.get("table_id"):
+                union(chunk_id, tables.setdefault(str(table_id), chunk_id))
+            if match := _CHUNK_POSITION.match(chunk_id):
+                positions[(match["doc"], int(match["number"]))] = chunk_id
+        for (doc, number), chunk_id in positions.items():
+            if (following := positions.get((doc, number + 1))) is not None:
+                union(chunk_id, following)
+        groups: defaultdict[str, list[EvidenceEntry]] = defaultdict(list)
+        for chunk_id, entry in self._entries.items():
+            groups[find(chunk_id)].append(entry)
+        return [sorted(group, key=self._document_order) for group in groups.values()]
+
+    def _group_priority(self, group: list[EvidenceEntry]) -> tuple[str, int, str, float, str]:
+        return min(self._priority(entry) for entry in group)
+
+    def _trim(self, group: list[EvidenceEntry], limit: int) -> list[EvidenceEntry]:
+        best = sorted(group, key=lambda entry: (-self._score(entry), self._document_order(entry)))
+        return sorted(best[:limit], key=self._document_order)
+
+    def _select(self, max_chunks: int) -> list[list[EvidenceEntry]]:
+        """Context budget: the best group of every cell first, then whole groups by score.
+
+        Returns groups in source-id order (cell, sub-question, score), each group in
+        document order so neighbours and table parts stay together.
+        """
         if max_chunks < 1:
             raise ValueError("max_chunks must be at least 1")
-        entries = list(self._entries.values())
-        if len(entries) <= max_chunks:
-            return entries
-        by_cell: defaultdict[tuple[str, int], list[EvidenceEntry]] = defaultdict(list)
-        for entry in entries:
-            cell = (str(entry.chunk.get("ticker", "")), int(entry.chunk.get("fiscal_year") or 0))
-            by_cell[cell].append(entry)
-        selected: list[EvidenceEntry] = []
-        for cell in sorted(by_cell):
-            if len(selected) == max_chunks:
-                break
-            selected.append(min(by_cell[cell], key=self._priority))
-        selected_ids = {entry.chunk["chunk_id"] for entry in selected}
-        remaining = sorted(
-            (entry for entry in entries if entry.chunk["chunk_id"] not in selected_ids),
-            key=self._priority,
+        groups = sorted(self._groups(), key=self._group_priority)
+        if sum(map(len, groups)) <= max_chunks:
+            return groups
+        selected: dict[int, list[EvidenceEntry]] = {}
+        used = 0
+        cells: set[tuple[str, int]] = set()
+        cells_left = len({self._cell(group[0]) for group in groups})
+        for index, group in enumerate(groups):
+            cell = self._cell(group[0])
+            if cell in cells or used == max_chunks:
+                continue
+            cells.add(cell)
+            cells_left -= 1
+            # Reserve one slot for every cell still waiting so a large group cannot starve it.
+            room = max(1, max_chunks - used - cells_left)
+            selected[index] = group if len(group) <= room else self._trim(group, room)
+            used += len(selected[index])
+        by_score = sorted(
+            (index for index in range(len(groups)) if index not in selected),
+            key=lambda index: (
+                -max(map(self._score, groups[index])),
+                self._group_priority(groups[index]),
+            ),
         )
-        selected.extend(remaining[: max_chunks - len(selected)])
-        return selected
+        for index in by_score:
+            if len(groups[index]) <= max_chunks - used:
+                selected[index] = groups[index]
+                used += len(groups[index])
+        return [selected[index] for index in sorted(selected)]
 
     def assign_source_ids(self, max_chunks: int) -> list[Source]:
         with self._lock:
             if not self._assigned:
-                selected = sorted(self._select(max_chunks), key=self._priority)
+                selected = [entry for group in self._select(max_chunks) for entry in group]
                 selected_ids = {entry.chunk["chunk_id"] for entry in selected}
                 for chunk_id in list(self._entries):
                     if chunk_id not in selected_ids:

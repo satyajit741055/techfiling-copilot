@@ -6,11 +6,13 @@ import asyncio
 import itertools
 import json
 import re
+import uuid
 from collections.abc import Mapping, Sequence
 from dataclasses import dataclass, field
 from typing import Any
 
 from langchain_core.messages import BaseMessage, HumanMessage, SystemMessage
+from langgraph.config import get_stream_writer
 from langgraph.types import interrupt
 
 from generation.generator import AnswerGenerator
@@ -81,6 +83,24 @@ def _turn_id(state: Mapping[str, Any]) -> str:
     return str(state.get("turn_id") or "")
 
 
+def emit(event: dict[str, Any]) -> None:
+    """Send a progress event to ``stream_mode="custom"``; a no-op outside a graph run."""
+    try:
+        writer = get_stream_writer()
+    except (RuntimeError, KeyError):
+        return
+    writer(event)
+
+
+def _step(node: str, label: str, detail: str | None = None) -> None:
+    emit({"type": "step", "node": node, "label": label, "detail": detail})
+
+
+def _filings_label(tickers: Sequence[str], years: Sequence[int]) -> str:
+    years_text = ", ".join(f"FY{year}" for year in years) or "no filings"
+    return f"{', '.join(tickers) or 'no companies'} · {years_text}"
+
+
 def _analysis_messages(state: AgentState) -> list[BaseMessage]:
     history = "\n".join(
         f"Q: {turn.question}\nA: {turn.answer}" for turn in state.get("turns", [])[-3:]
@@ -92,9 +112,13 @@ def _analysis_messages(state: AgentState) -> list[BaseMessage]:
 
 
 async def analyze_node(state: AgentState, deps: NodeDependencies) -> dict[str, Any]:
-    deps.evidence.release(_turn_id(state))
+    _step("analyze", "Understanding the question")
+    # Without a turn id every turn would share the "" evidence registry.
+    turn_id = _turn_id(state) or uuid.uuid4().hex
+    deps.evidence.release(turn_id)
     analysis = await deps.llm.structured(Analysis, _analysis_messages(state))
     return {
+        "turn_id": turn_id,
         "analysis": analysis,
         "scope": None,
         "tasks": [],
@@ -121,6 +145,12 @@ def resolve_scope_node(state: AgentState, deps: NodeDependencies) -> dict[str, A
         clarifications_this_turn=state.get("clarifications_this_turn", 0),
         max_tasks=deps.max_tasks,
     )
+    if scope.route not in {"refuse", "onboard"}:
+        _step(
+            "resolve_scope",
+            f"Scope: {_filings_label(scope.tickers, scope.fiscal_years)}",
+            "; ".join(scope.assumptions) or None,
+        )
     return {"scope": scope, "coverage": scope.coverage}
 
 
@@ -208,6 +238,7 @@ async def simple_rag_node(state: AgentState, deps: NodeDependencies) -> dict[str
     if scope is None or len(scope.cells) != 1:
         raise ValueError("simple_rag requires exactly one scope cell")
     cell = scope.cells[0]
+    _step("simple_rag", f"Searching {cell.ticker} FY{cell.fiscal_year}")
     result = await deps.retrieve(
         deps.generator.answer,
         state["question"],
@@ -345,7 +376,9 @@ async def plan_node(state: AgentState, deps: NodeDependencies) -> dict[str, Any]
             itertools.product(units, plan.items[:max_items]), start=1
         )
     ]
-    return {"tasks": tasks[: deps.max_tasks], "replans": replans}
+    tasks = tasks[: deps.max_tasks]
+    _step("plan", f"Planning {len(tasks)} searches", "Re-plan" if replans else None)
+    return {"tasks": tasks, "replans": replans}
 
 
 def _worker_messages(
@@ -396,17 +429,34 @@ async def execute_node(state: WorkerState, deps: NodeDependencies) -> dict[str, 
     }
     trajectory: list[ToolStep] = []
     chunks: list[dict[str, Any]] = []
+
+    def record(step: ToolStep) -> None:
+        trajectory.append(step)
+        emit(
+            {
+                "type": "tool",
+                "task_id": task.task_id,
+                "tool": step.tool,
+                "args": step.args,
+                "n_results": len(step.chunk_ids),
+                "ticker": task.ticker,
+                "fiscal_year": task.fiscal_year,
+                "fiscal_years": task.fiscal_years,
+                "error": step.error,
+            }
+        )
+
     try:
         output = await deps.retrieve(
             tools.search_filings, task, section=task.section, **search_args
         )
-        trajectory.append(output.step)
+        record(output.step)
         if not output.chunks and task.section:
             output = await deps.retrieve(tools.search_filings, task, **search_args)
-            trajectory.append(output.step)
+            record(output.step)
         chunks.extend(output.chunks)
     except Exception as error:
-        trajectory.append(ToolStep(tool="search_filings", args=search_args, error=repr(error)))
+        record(ToolStep(tool="search_filings", args=search_args, error=repr(error)))
         result = TaskResult(
             task_id=task.task_id,
             ticker=task.ticker,
@@ -431,7 +481,7 @@ async def execute_node(state: WorkerState, deps: NodeDependencies) -> dict[str, 
             )
         except Exception as error:
             fallback = True
-            trajectory.append(ToolStep(tool="worker_llm", error=type(error).__name__))
+            record(ToolStep(tool="worker_llm", error=type(error).__name__))
         else:
             calls = [
                 call
@@ -443,7 +493,7 @@ async def execute_node(state: WorkerState, deps: NodeDependencies) -> dict[str, 
                 try:
                     follow_up = await deps.retrieve(follow_ups[name], task, **args)
                 except Exception as error:
-                    trajectory.append(
+                    record(
                         ToolStep(
                             tool=name,
                             args=args if isinstance(args, dict) else {},
@@ -451,7 +501,7 @@ async def execute_node(state: WorkerState, deps: NodeDependencies) -> dict[str, 
                         )
                     )
                     continue
-                trajectory.append(follow_up.step)
+                record(follow_up.step)
                 chunks.extend(follow_up.chunks)
 
     registry = deps.registry(state)
@@ -496,7 +546,8 @@ def check_coverage_node(state: AgentState, deps: NodeDependencies) -> dict[str, 
             entry = registry.get(chunk_id)
             if entry and entry.chunk.get("fiscal_year") is not None:
                 found.add((result.ticker, int(entry.chunk["fiscal_year"])))
-    exhausted = state.get("replans", 0) >= deps.max_replans
+    # No tasks means the planner had nothing left to search, so a re-plan cannot help.
+    exhausted = state.get("replans", 0) >= deps.max_replans or not state.get("tasks")
     coverage = [
         cell.model_copy(
             update={
@@ -509,6 +560,9 @@ def check_coverage_node(state: AgentState, deps: NodeDependencies) -> dict[str, 
         else cell
         for cell in scope.coverage
     ]
+    searchable = [cell for cell in coverage if cell.status != "not_in_corpus"]
+    found_count = sum(cell.status == "found" for cell in searchable)
+    _step("check_coverage", f"Coverage {found_count}/{len(searchable)}")
     return {"coverage": coverage}
 
 
@@ -535,6 +589,7 @@ def _synthesis_messages(
 
 
 async def synthesize_node(state: AgentState, deps: NodeDependencies) -> dict[str, Any]:
+    _step("synthesize", "Writing answer", "Repair pass" if state.get("validation") else None)
     registry = deps.registry(state)
     registry.assign_source_ids(deps.max_context_chunks)
     draft = await deps.llm.structured(
@@ -553,6 +608,7 @@ def validate_node(state: AgentState, deps: NodeDependencies) -> dict[str, Any]:
     draft, scope = state.get("draft"), state.get("scope")
     if draft is None or scope is None:
         raise ValueError("validate requires a draft and scope")
+    _step("validate", "Verifying citations")
     entries = deps.registry(state).source_entries()
     report = validate_grounded_answer(draft, scope, entries, deps.catalog)
     repairs = state.get("repairs", 0)

@@ -12,6 +12,8 @@ from collections.abc import Callable, Sequence
 from dataclasses import dataclass
 from decimal import Decimal, InvalidOperation
 
+from generation.validation import normalize_to_millions
+
 from .catalog import FilingCatalog
 from .evidence import EvidenceEntry
 from .schemas import (
@@ -28,6 +30,7 @@ _CITATION_GROUP = re.compile(r"\s*\[S\d+(?:\s*,\s*S\d+)*]")
 _NUMBER = re.compile(r"(?<![\w.])\$?\d[\d,]*(?:\.\d+)?%?")
 _FORM_SUFFIX = re.compile(r"-[A-Za-z]")
 _UNIT_WORD = re.compile(r"\s*(?:thousand|million|billion|trillion)\b", re.IGNORECASE)
+_UNIT_LABEL = re.compile(r"\b(thousand|million|billion)s?\b", re.IGNORECASE)
 _TRANSLATION = str.maketrans({"“": '"', "”": '"', "‘": "'", "’": "'", "–": "-", "—": "-"})
 _EXPRESSION_TRANSLATION = str.maketrans(
     {"×": "*", "÷": "/", "−": "-", "$": None, ",": None, "%": None}
@@ -35,6 +38,7 @@ _EXPRESSION_TRANSLATION = str.maketrans(
 _FINAL_STATUSES = {"found", "not_disclosed", "not_in_corpus"}
 _SCALE_CONSTANTS = (100.0, 1_000.0, 1_000_000.0, 1_000_000_000.0)
 _MAX_EXPRESSION_CHARS = 200
+_MAX_ROUNDING = 0.05
 _OPERATORS: dict[type[ast.operator], Callable[[float, float], float]] = {
     ast.Add: operator.add,
     ast.Sub: operator.sub,
@@ -55,6 +59,17 @@ class _Number:
     value: Decimal
     decimals: int
     financial: bool
+    unit: str | None = None
+
+    def millions(self, default_unit: str | None = None) -> tuple[float, float] | None:
+        """Value and rounding tolerance in millions, when the scale is known."""
+        unit = self.unit or default_unit
+        if unit is None or "%" in self.raw:
+            return None
+        tolerance = 0.5 * 10.0**-self.decimals
+        return normalize_to_millions(float(self.value), unit), normalize_to_millions(
+            tolerance, unit
+        )
 
 
 def _key(value: Decimal | float) -> str:
@@ -77,18 +92,46 @@ def _parse_numbers(text: str) -> list[_Number]:
             value = Decimal(digits.replace(",", ""))
         except InvalidOperation:
             continue
-        financial = (
-            has_symbol
-            or "," in digits
-            or "." in digits
-            or bool(_UNIT_WORD.match(text, match.end()))
-        )
-        found.append(_Number(raw, value, len(digits.partition(".")[2]), financial))
+        word = _UNIT_WORD.match(text, match.end())
+        financial = has_symbol or "," in digits or "." in digits or word is not None
+        unit = _unit(word.group(0)) if word else None
+        found.append(_Number(raw, value, len(digits.partition(".")[2]), financial, unit))
     return found
 
 
 def _number_keys(text: str) -> set[str]:
     return {_key(number.value) for number in _parse_numbers(text)}
+
+
+def _unit(text: str | None) -> str | None:
+    """``thousand``/``million``/``billion`` named in a table units label or after a number."""
+    match = _UNIT_LABEL.search(text or "")
+    return match.group(1).lower() if match else None
+
+
+def _scaled_values(excerpt: str, units: Sequence[str | None]) -> list[float]:
+    """Excerpt numbers in millions, scaled by their own unit word or a table units label."""
+    excerpt_numbers = _parse_numbers(excerpt)
+    return [
+        scaled[0]
+        for default in {None, *map(_unit, units)}
+        for number in excerpt_numbers
+        if (scaled := number.millions(default)) is not None
+    ]
+
+
+def _scaled_match(number: _Number, excerpt_values: Sequence[float]) -> bool:
+    """Whether a claim number with a scale word equals an excerpt number in millions.
+
+    Lets "$94.83 billion" match "94,830" from a table labelled "(in millions)"; the
+    tolerance is half a unit of the claim's last digit, so rounding is allowed, but
+    never more than 5% of the source value ("$1 billion" does not match 600 million).
+    """
+    claimed = number.millions() if number.unit else None
+    return claimed is not None and any(
+        abs(claimed[0] - value) <= min(claimed[1], _MAX_ROUNDING * abs(value)) + 1e-9
+        for value in excerpt_values
+    )
 
 
 def _matches_result(number: _Number, results: Sequence[float]) -> bool:
@@ -190,15 +233,20 @@ def _claim_errors(
     if wrong_scope:
         errors.append(f"Claim scope does not match its cited filing: {claim.text}")
     excerpt = normalize_excerpt(claim.excerpt)
-    if not excerpt or not any(
-        excerpt in normalize_excerpt(str(entry.chunk.get("text", ""))) for entry in valid_entries
-    ):
+    containing = [
+        entry
+        for entry in valid_entries
+        if excerpt and excerpt in normalize_excerpt(str(entry.chunk.get("text", "")))
+    ]
+    if not containing:
         errors.append(f"Claim excerpt is not verbatim in a cited source: {claim.text}")
     excerpt_numbers = _number_keys(claim.excerpt)
+    scaled = _scaled_values(claim.excerpt, [entry.chunk.get("units") for entry in containing])
     unsupported = [
         number.raw
         for number in _parse_numbers(claim.text)
         if _key(number.value) not in excerpt_numbers
+        and not _scaled_match(number, scaled)
         and not _matches_result(number, calculation_results)
     ]
     if unsupported:

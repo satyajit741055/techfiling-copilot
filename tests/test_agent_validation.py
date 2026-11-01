@@ -211,6 +211,94 @@ def test_number_parsing_ignores_forms_and_year_ranges_and_handles_millions() -> 
     assert report.is_valid, report.errors
 
 
+def test_scaled_claim_numbers_match_table_units() -> None:
+    catalog, scope, _ = setup_context()
+    evidence = EvidenceRegistry()
+    evidence.register(
+        [
+            {
+                "chunk_id": "AAPL_10-K_2025_c0001",
+                "ticker": "AAPL",
+                "fiscal_year": 2025,
+                "units": "In millions, except per-share amounts",
+                "text": "| Total net sales | 94,830 | 88,000 |",
+            }
+        ],
+        task_id="T1",
+        tool="read_table",
+        scores=[0.9],
+    )
+    evidence.assign_source_ids(1)
+
+    def answer(text: str) -> GroundedAnswer:
+        return GroundedAnswer(
+            answer=f"{text} [S1]",
+            claims=[
+                GroundedClaim(
+                    text=text,
+                    citation_ids=["S1"],
+                    excerpt="Total net sales | 94,830",
+                    ticker="AAPL",
+                    fiscal_year=2025,
+                )
+            ],
+            coverage=[CoverageCell(ticker="AAPL", fiscal_year=2025, status="found")],
+        )
+
+    entries = evidence.source_entries()
+    for supported in ("Net sales were $94.83 billion.", "Net sales were about $94.8 billion."):
+        report = validate_grounded_answer(answer(supported), scope, entries, catalog)
+        assert report.is_valid, report.errors
+    wrong = validate_grounded_answer(
+        answer("Net sales were $95.9 billion."), scope, entries, catalog
+    )
+    assert any("unsupported numbers ($95.9)" in error for error in wrong.errors)
+    repeated = validate_grounded_answer(
+        answer("Net sales were 94.83 billion, not 94.83 thousand."), scope, entries, catalog
+    )
+    assert any("unsupported numbers (94.83)" in error for error in repeated.errors)
+
+
+def test_scaled_rounding_is_capped_at_five_percent() -> None:
+    catalog, scope, _ = setup_context()
+    evidence = EvidenceRegistry()
+    evidence.register(
+        [
+            {
+                "chunk_id": "AAPL_10-K_2025_c0001",
+                "ticker": "AAPL",
+                "fiscal_year": 2025,
+                "units": "In millions",
+                "text": "| Total net sales | 94,830 |\n| Other income | 960 |\n| Interest | 600 |",
+            }
+        ],
+        task_id="T1",
+        tool="read_table",
+        scores=[0.9],
+    )
+    evidence.assign_source_ids(1)
+    entries = evidence.source_entries()
+
+    def report(text: str, excerpt: str) -> list[str]:
+        claim = GroundedClaim(
+            text=text, citation_ids=["S1"], excerpt=excerpt, ticker="AAPL", fiscal_year=2025
+        )
+        answer = GroundedAnswer(
+            answer=f"{text} [S1]",
+            claims=[claim],
+            coverage=[CoverageCell(ticker="AAPL", fiscal_year=2025, status="found")],
+        )
+        return validate_grounded_answer(answer, scope, entries, catalog).errors
+
+    assert report("Net sales were $95 billion.", "Total net sales | 94,830") == []
+    assert report("Other income was $1.0 billion.", "Other income | 960") == []
+    assert report("Other income was $1 billion.", "Other income | 960") == []
+    assert any(
+        "unsupported numbers ($1)" in error
+        for error in report("Interest was $1 billion.", "Interest | 600")
+    )
+
+
 def test_uncited_prose_numbers_and_pending_coverage_fail() -> None:
     catalog, scope, evidence = setup_context()
     answer = valid_answer().model_copy(deep=True)

@@ -208,3 +208,61 @@ def test_evidence_source_ids_are_stable_and_budget_keeps_each_cell() -> None:
     ]
     assert {source.ticker for source in first.sources()} == {"AAPL", "MSFT"}
     assert '<source id="S1"' in first.format_context()
+
+
+def test_budget_keeps_neighbours_and_table_parts_together_in_document_order() -> None:
+    registry = EvidenceRegistry()
+
+    def register(item: dict[str, Any], score: float, task_id: str = "T1") -> None:
+        registry.register([item], task_id=task_id, tool="search_filings", scores=[score])
+
+    register(chunk("AAPL_10-K_2025_c0011"), 0.9)
+    register(chunk("AAPL_10-K_2025_c0010"), 0.5)
+    register(chunk("AAPL_10-K_2025_c0040", table_id="AAPL_10-K_2025_t001"), 0.7)
+    register(chunk("AAPL_10-K_2025_c0042", table_id="AAPL_10-K_2025_t001"), 0.7)
+    register(chunk("AAPL_10-K_2025_c0090"), 0.2)
+    register(chunk("MSFT_10-K_2025_c0005", ticker="MSFT"), 0.1, "T2")
+
+    sources = registry.assign_source_ids(5)
+    assert [source.chunk_id for source in sources] == [
+        "AAPL_10-K_2025_c0010",
+        "AAPL_10-K_2025_c0011",
+        "AAPL_10-K_2025_c0040",
+        "AAPL_10-K_2025_c0042",
+        "MSFT_10-K_2025_c0005",
+    ]
+    assert [source.source_id for source in sources] == ["S1", "S2", "S3", "S4", "S5"]
+
+
+def test_budget_fills_remaining_slots_by_score_not_ticker_order() -> None:
+    registry = EvidenceRegistry()
+    for chunk_id, ticker, score in (
+        ("AAPL_10-K_2025_c0001", "AAPL", 0.9),
+        ("AAPL_10-K_2025_c0050", "AAPL", 0.1),
+        ("MSFT_10-K_2025_c0001", "MSFT", 0.8),
+        ("MSFT_10-K_2025_c0050", "MSFT", 0.7),
+    ):
+        registry.register(
+            [chunk(chunk_id, ticker=ticker)], task_id="T", tool="search_filings", scores=[score]
+        )
+    kept = {source.chunk_id for source in registry.assign_source_ids(3)}
+    assert kept == {"AAPL_10-K_2025_c0001", "MSFT_10-K_2025_c0001", "MSFT_10-K_2025_c0050"}
+
+
+def test_large_group_cannot_starve_other_cells() -> None:
+    registry = EvidenceRegistry()
+    table = [
+        chunk(f"AAPL_10-K_2025_c{number:04d}", table_id="AAPL_10-K_2025_t001")
+        for number in range(10, 20)
+    ]
+    registry.register(table, task_id="T1", tool="read_table", scores=[0.9] * len(table))
+    for ticker in ("MSFT", "TSLA"):
+        registry.register(
+            [chunk(f"{ticker}_10-K_2025_c0005", ticker=ticker)],
+            task_id="T2",
+            tool="search_filings",
+            scores=[0.1],
+        )
+    sources = registry.assign_source_ids(5)
+    assert len(sources) == 5
+    assert [source.ticker for source in sources] == ["AAPL"] * 3 + ["MSFT", "TSLA"]
