@@ -288,6 +288,11 @@ class LLMClient:
             options={
                 "temperature": self.temperature,
                 "num_predict": self.max_tokens,
+                **(
+                    {"num_ctx": self._settings.OLLAMA_NUM_CTX}
+                    if self._settings.OLLAMA_NUM_CTX
+                    else {}
+                ),
             },
         )
 

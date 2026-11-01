@@ -1,12 +1,30 @@
 'use client';
 
 import { useMemo } from 'react';
-import type { Source } from '@/types';
+
+/** Fields shared by /questions sources and research-chat sources. */
+export interface SourceView {
+  source_id: string;
+  text: string;
+  section?: string | null;
+  section_title?: string | null;
+  chunk_type?: string;
+  table_id?: string | null;
+  score?: number | null;
+  doc_id?: string | null;
+  breadcrumb?: string | null;
+  ticker?: string | null;
+  fiscal_year?: number | null;
+  period_end?: string | null;
+  units?: string | null;
+}
 
 interface SourceCardProps {
-  source: Source;
+  source: SourceView;
   isExpanded: boolean;
   onToggle: () => void;
+  /** DOM id for citation scrolling; defaults to source-<id> (unique on single-answer pages). */
+  anchorId?: string;
 }
 
 /**
@@ -142,12 +160,12 @@ function FormattedSourceText({ text, isTable }: { text: string; isTable: boolean
   return <>{content}</>;
 }
 
-export function SourceCard({ source, isExpanded, onToggle }: SourceCardProps) {
-  const isTable = source.chunk_type === 'table';
+export function SourceCard({ source, isExpanded, onToggle, anchorId }: SourceCardProps) {
+  const isTable = source.chunk_type ? source.chunk_type === 'table' : Boolean(source.table_id);
 
   return (
     <div
-      id={`source-${source.source_id}`}
+      id={anchorId ?? `source-${source.source_id}`}
       className="overflow-hidden rounded-xl border border-slate-200 bg-white shadow-sm"
     >
       <button
@@ -159,6 +177,12 @@ export function SourceCard({ source, isExpanded, onToggle }: SourceCardProps) {
           <span className="rounded-md bg-brand-600 px-2.5 py-0.5 text-sm font-semibold text-white">
             {source.source_id}
           </span>
+          {source.ticker && (
+            <span className="rounded-md bg-slate-800 px-2 py-0.5 text-xs font-semibold text-white">
+              {source.ticker}
+              {source.fiscal_year != null && <> · FY{source.fiscal_year}</>}
+            </span>
+          )}
           <span className="text-sm text-slate-700">
             {source.section ?? 'Unknown section'}
             {source.section_title && source.section_title !== source.section && <> · {source.section_title}</>}
@@ -197,12 +221,31 @@ export function SourceCard({ source, isExpanded, onToggle }: SourceCardProps) {
           )}
 
           <div className="flex flex-wrap items-center gap-4 bg-slate-50 px-4 py-2 text-xs text-slate-500">
-            <span>
-              <span className="font-medium">Relevance:</span> {source.score.toFixed(2)}
-            </span>
-            <span>
-              <span className="font-medium">Document:</span> {source.doc_id}
-            </span>
+            {source.score != null && (
+              <span>
+                <span className="font-medium">Relevance:</span> {source.score.toFixed(2)}
+              </span>
+            )}
+            {source.doc_id && (
+              <span>
+                <span className="font-medium">Document:</span> {source.doc_id}
+              </span>
+            )}
+            {source.period_end && (
+              <span>
+                <span className="font-medium">Period end:</span> {source.period_end}
+              </span>
+            )}
+            {source.table_id && (
+              <span>
+                <span className="font-medium">Table:</span> {source.table_id}
+              </span>
+            )}
+            {source.units && (
+              <span>
+                <span className="font-medium">Units:</span> {source.units}
+              </span>
+            )}
           </div>
 
           <div className="p-4">

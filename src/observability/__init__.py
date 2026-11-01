@@ -2,6 +2,7 @@
 
 from .pricing import PRICE_TABLE_PER_1M, CostBreakdown, compute_cost
 from .records import (
+    AgentRecord,
     JsonlMetricsWriter,
     QueryRecord,
     get_last_record,
@@ -12,6 +13,7 @@ from .summary import distribution, percentile, summarize
 from .tracker import QueryTracker
 
 __all__ = [
+    "AgentRecord",
     "PRICE_TABLE_PER_1M",
     "CostBreakdown",
     "JsonlMetricsWriter",

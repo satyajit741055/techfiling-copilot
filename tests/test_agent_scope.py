@@ -57,6 +57,23 @@ def test_catalog_resolves_aliases_and_describes_coverage(catalog):
     assert catalog.describe() == "AAPL, MSFT · FY2023–FY2025"
 
 
+def test_catalog_finds_companies_in_free_text(catalog):
+    assert catalog.find_companies("Compare MSFT and Apple's R&D") == ["MSFT", "AAPL"]
+    assert catalog.find_companies("What did microsoft corporation report?") == ["MSFT"]
+    # Tickers match only in capitals and as whole tokens; names only as whole words.
+    assert catalog.find_companies("msft and pineapple revenue") == []
+    assert catalog.find_companies("What was revenue last year?") == []
+
+
+def test_catalog_example_questions_use_indexed_companies_and_years(catalog):
+    examples = catalog.example_questions()
+    assert len(examples) == 3
+    assert examples[0] == "What was Apple Inc.'s total revenue in FY2025?"
+    assert "MICROSOFT CORPORATION" in examples[1]
+    assert "FY2024 to FY2025" in examples[2]
+    assert FilingCatalog([]).example_questions() == []
+
+
 def test_catalog_rejects_duplicate_company_year():
     records = [
         {"doc_id": "a", "ticker": "AAPL", "company": "Apple", "fiscal_year": 2025},

@@ -219,6 +219,14 @@ class Settings(BaseSettings):
     # OLLAMA CONFIGURATION
     # =========================================================================
     OLLAMA_HOST: str = Field(default="http://localhost:11434", description="Ollama server URL")
+    OLLAMA_NUM_CTX: int | None = Field(
+        default=16384,
+        ge=2048,
+        description="Context window requested from Ollama (num_ctx) by /questions and the "
+        "agent. Ollama's server default (often 4096) is too small for research synthesis. "
+        "Both use the same value so the model is not reloaded between calls. Empty = server "
+        "default.",
+    )
 
     # =========================================================================
     # HUGGING FACE CONFIGURATION
@@ -491,7 +499,7 @@ class Settings(BaseSettings):
         """Treat an empty override (e.g. ``RERANKER_EXECUTION_MODE=``) as not set."""
         return v or None
 
-    @field_validator("AGENT_MIN_EVIDENCE_SCORE", "HISTORY_DB_URL", mode="before")
+    @field_validator("AGENT_MIN_EVIDENCE_SCORE", "HISTORY_DB_URL", "OLLAMA_NUM_CTX", mode="before")
     @classmethod
     def blank_optional_value_is_unset(cls, v: Any) -> Any:
         """Treat empty or whitespace-only optional agent settings as unset."""

@@ -6,7 +6,7 @@ import json
 import logging
 import threading
 from contextvars import ContextVar
-from dataclasses import asdict, dataclass
+from dataclasses import asdict, dataclass, field
 from datetime import datetime, timezone
 from pathlib import Path
 from typing import Any
@@ -55,6 +55,42 @@ class QueryRecord:
         return asdict(self)
 
 
+@dataclass
+class AgentRecord:
+    """One /chat turn. Written to the same JSONL files; ``record_type`` tells them apart."""
+
+    timestamp: str
+    request_id: str | None
+    thread_id: str | None
+    turn_id: str | None
+    status: str  # success | error | timeout | cancelled
+    outcome: str | None = None  # answer | clarification | refused | onboard
+    route: str | None = None
+    error_type: str | None = None
+    error_code: str | None = None
+    total_seconds: float = 0.0
+    node_seconds: dict[str, float] = field(default_factory=dict)
+    llm_calls: int = 0
+    tool_calls: int = 0
+    replans: int = 0
+    repairs: int = 0
+    is_valid: bool | None = None
+    insufficient_context: bool | None = None
+    claims: int = 0
+    dropped_claims: int = 0
+    coverage: dict[str, int] = field(default_factory=dict)  # status -> cell count
+    provider: str | None = None
+    model: str | None = None
+    prompt_tokens: int = 0
+    completion_tokens: int = 0
+    total_cost_usd: float = 0.0
+    record_type: str = "agent"
+    schema_version: int = SCHEMA_VERSION
+
+    def to_dict(self) -> dict[str, Any]:
+        return asdict(self)
+
+
 def is_timeout_error(error: BaseException) -> bool:
     """True for timeouts of any provider SDK (httpx, openai, requests, ollama, builtins)."""
     seen: set[int] = set()
@@ -81,7 +117,7 @@ class JsonlMetricsWriter:
         self.directory = Path(directory)
         self._lock = threading.Lock()
 
-    def write(self, record: QueryRecord) -> None:
+    def write(self, record: QueryRecord | AgentRecord) -> None:
         try:
             day = datetime.now(timezone.utc).strftime("%Y-%m-%d")
             line = json.dumps(record.to_dict(), ensure_ascii=False)

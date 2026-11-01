@@ -24,7 +24,9 @@ def get_chat_model(role: str = "agent", config: Settings | None = None) -> BaseC
     provider = config.effective_agent_provider
     model = config.effective_agent_model
     if provider == "ollama":
-        return ChatOllama(model=model, base_url=config.OLLAMA_HOST, temperature=0)
+        return ChatOllama(
+            model=model, base_url=config.OLLAMA_HOST, temperature=0, num_ctx=config.OLLAMA_NUM_CTX
+        )
     if provider == "openai":
         return ChatOpenAI(model=model, api_key=config.OPENAI_API_KEY, temperature=0)
     if provider == "huggingface":

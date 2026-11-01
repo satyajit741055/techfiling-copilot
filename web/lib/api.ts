@@ -1,4 +1,12 @@
-import type { FilingsResponse, QuestionResponse, HealthResponse } from '@/types';
+import type {
+  ChatEvent,
+  ChatRequestBody,
+  FilingsResponse,
+  HealthResponse,
+  QuestionResponse,
+  StoredMessage,
+  ThreadSummary,
+} from '@/types';
 import { getAccessToken } from '@/lib/supabase';
 
 // Calls go to this app's own server-side proxy (app/api/[...path]/route.ts),
@@ -37,20 +45,13 @@ function readQuota(headers: Headers): Quota | null {
 }
 
 /**
- * Generic fetch wrapper with error handling
+ * fetch() with the JSON content type and the user's JWT; network failures become APIError(0)
  */
-async function fetchAPI<T>(
-  endpoint: string,
-  options?: RequestInit
-): Promise<{ data: T; headers: Headers }> {
-  const url = `${API_BASE}${endpoint}`;
-
+async function send(endpoint: string, options?: RequestInit): Promise<Response> {
   // Get JWT token if user is authenticated
   const token = await getAccessToken();
-
-  let response: Response;
   try {
-    response = await fetch(url, {
+    return await fetch(`${API_BASE}${endpoint}`, {
       ...options,
       headers: {
         'Content-Type': 'application/json',
@@ -58,33 +59,46 @@ async function fetchAPI<T>(
         ...options?.headers,
       },
     });
-  } catch {
+  } catch (e) {
+    if (e instanceof DOMException && e.name === 'AbortError') throw e;
     throw new APIError(
       'Failed to connect to server. Please ensure the backend is running.',
       0,
       'Network error'
     );
   }
+}
 
-  if (!response.ok) {
-    let detail = 'Request failed';
-    let retryAfter: number | undefined;
-    try {
-      const body = await response.json();
-      const d = body?.detail;
-      if (typeof d === 'string') {
-        detail = d;
-      } else if (d && typeof d === 'object' && !Array.isArray(d)) {
-        detail = d.error ?? detail;
-        retryAfter = typeof d.retry_after === 'number' ? d.retry_after : undefined;
-      }
-    } catch {
-      // Response wasn't JSON
+async function errorFrom(response: Response): Promise<APIError> {
+  let detail = 'Request failed';
+  let retryAfter: number | undefined;
+  try {
+    const body = await response.json();
+    const d = body?.detail;
+    if (typeof d === 'string') {
+      detail = d;
+    } else if (Array.isArray(d) && typeof d[0]?.msg === 'string') {
+      detail = d[0].msg;
+    } else if (d && typeof d === 'object') {
+      detail = d.error ?? detail;
+      retryAfter = typeof d.retry_after === 'number' ? d.retry_after : undefined;
     }
-    retryAfter ??= Number(response.headers.get('retry-after')) || undefined;
-    throw new APIError(detail, response.status, detail, retryAfter);
+  } catch {
+    // Response wasn't JSON
   }
+  retryAfter ??= Number(response.headers.get('retry-after')) || undefined;
+  return new APIError(detail, response.status, detail, retryAfter);
+}
 
+/**
+ * Generic fetch wrapper with error handling
+ */
+async function fetchAPI<T>(
+  endpoint: string,
+  options?: RequestInit
+): Promise<{ data: T; headers: Headers }> {
+  const response = await send(endpoint, options);
+  if (!response.ok) throw await errorFrom(response);
   return { data: (await response.json()) as T, headers: response.headers };
 }
 
@@ -142,4 +156,73 @@ export async function askQuestion(
     }),
   });
   return { response: data, quota: readQuota(headers) };
+}
+
+/**
+ * Parse one SSE block ("event: x\ndata: {...}") into a chat event; comments are ignored
+ */
+export function parseSSEBlock(block: string): ChatEvent | null {
+  let event: string | null = null;
+  const data: string[] = [];
+  for (const line of block.split('\n')) {
+    if (line.startsWith(':')) continue;
+    const colon = line.indexOf(':');
+    const field = colon === -1 ? line : line.slice(0, colon);
+    const value = colon === -1 ? '' : line.slice(colon + 1).replace(/^ /, '');
+    if (field === 'event') event = value;
+    else if (field === 'data') data.push(value);
+  }
+  if (!event || data.length === 0) return null;
+  try {
+    return { event, data: JSON.parse(data.join('\n')) } as ChatEvent;
+  } catch {
+    return null;
+  }
+}
+
+/**
+ * Stream one research-chat turn. Calls onEvent for every server event, in order.
+ * Browser EventSource is GET-only, so this reads the POST response body directly.
+ * Abort `signal` to stop; the backend then cancels the run.
+ */
+export async function streamChat(
+  body: ChatRequestBody,
+  onEvent: (event: ChatEvent) => void,
+  signal?: AbortSignal
+): Promise<Quota | null> {
+  const response = await send('/chat', { method: 'POST', body: JSON.stringify(body), signal });
+  if (!response.ok) throw await errorFrom(response);
+  if (!response.body) throw new APIError('The server returned an empty response.', 502);
+
+  const reader = response.body.pipeThrough(new TextDecoderStream()).getReader();
+  let buffer = '';
+  for (;;) {
+    const { value, done } = await reader.read();
+    if (done) break;
+    buffer += value.replace(/\r\n?/g, '\n');
+    let end: number;
+    while ((end = buffer.indexOf('\n\n')) !== -1) {
+      const event = parseSSEBlock(buffer.slice(0, end));
+      buffer = buffer.slice(end + 2);
+      if (event) onEvent(event);
+    }
+  }
+  const tail = parseSSEBlock(buffer.trim());
+  if (tail) onEvent(tail);
+  return readQuota(response.headers);
+}
+
+/**
+ * The signed-in user's saved threads. Throws APIError(404) when server history is off.
+ */
+export async function getThreads(): Promise<ThreadSummary[]> {
+  return (await fetchAPI<{ threads: ThreadSummary[] }>('/threads')).data.threads;
+}
+
+/**
+ * One saved thread's turns, oldest first
+ */
+export async function getThreadMessages(threadId: string): Promise<StoredMessage[]> {
+  return (await fetchAPI<{ messages: StoredMessage[] }>(`/threads/${threadId}/messages`)).data
+    .messages;
 }

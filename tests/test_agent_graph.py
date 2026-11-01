@@ -21,10 +21,10 @@ from agent.nodes import NodeDependencies
 from agent.schemas import (
     Analysis,
     CoverageCell,
-    GroundedAnswer,
     GroundedClaim,
     ResearchPlan,
     ResolvedScope,
+    SynthesisDraft,
     Task,
     ValidationReport,
 )
@@ -138,20 +138,18 @@ def cell(ticker: str, status: str, year: int = 2025) -> CoverageCell:
     return CoverageCell(ticker=ticker, fiscal_year=year, status=status)  # type: ignore[arg-type]
 
 
-COMPARISON = GroundedAnswer(
+COMPARISON = SynthesisDraft(
     answer="Apple net sales were $100 million [S1]; Microsoft revenue was $200 million [S2].",
     claims=[
         claim("AAPL", "S1", "Apple net sales were $100 million.", "Net sales were $100 million"),
         claim("MSFT", "S2", "Microsoft revenue was $200 million.", "Revenue was $200 million"),
     ],
-    coverage=[cell("AAPL", "found"), cell("MSFT", "found")],
 )
-APPLE = GroundedAnswer(
+APPLE = SynthesisDraft(
     answer="Apple net sales were $100 million [S1].",
     claims=[
         claim("AAPL", "S1", "Apple net sales were $100 million.", "Net sales were $100 million")
     ],
-    coverage=[cell("AAPL", "found")],
 )
 
 
@@ -248,7 +246,7 @@ async def test_fan_out_streams_progress_and_next_turn_resets_results() -> None:
                 analysis(companies=["AAPL"]),
             ],
             ResearchPlan: [plan("revenue")],
-            GroundedAnswer: [COMPARISON],
+            SynthesisDraft: [COMPARISON],
         }
     )
     deps = make_deps(llm, generator=simple_generator())
@@ -299,13 +297,13 @@ async def test_replan_then_success_with_one_repair_pass() -> None:
         {
             Analysis: [analysis("trend", companies=["AAPL"])],
             ResearchPlan: [plan("bad query"), plan("net sales")],
-            GroundedAnswer: [invalid, APPLE],
+            SynthesisDraft: [invalid, APPLE],
         }
     )
     graph = build_graph(make_deps(llm, FakeRetriever({"net sales"})))
     state = await graph.ainvoke({"question": "Revenue trend?", "turn_id": "t1"}, graph_config("t"))
 
-    assert llm.calls == {"Analysis": 1, "ResearchPlan": 2, "GroundedAnswer": 2}
+    assert llm.calls == {"Analysis": 1, "ResearchPlan": 2, "SynthesisDraft": 2}
     assert state["replans"] == 1
     assert [task.task_id for task in state["tasks"]] == ["T2"]
     assert state["final"].is_valid
@@ -314,12 +312,12 @@ async def test_replan_then_success_with_one_repair_pass() -> None:
 
 @pytest.mark.asyncio
 async def test_replans_exhausted_marks_not_disclosed() -> None:
-    abstain = GroundedAnswer(coverage=[cell("AAPL", "not_disclosed")], insufficient_context=True)
+    abstain = SynthesisDraft(answer="", claims=[], insufficient_context=True)
     llm = ScriptedLLM(
         {
             Analysis: [analysis("trend", companies=["AAPL"])],
             ResearchPlan: [plan("a"), plan("b"), plan("c")],
-            GroundedAnswer: [abstain],
+            SynthesisDraft: [abstain],
         }
     )
     graph = build_graph(make_deps(llm, FakeRetriever(set())))
@@ -356,7 +354,7 @@ async def test_worker_without_tool_calling_falls_back_to_search_hits() -> None:
         {
             Analysis: [analysis("cross_company", companies=["AAPL", "MSFT"])],
             ResearchPlan: [plan("revenue")],
-            GroundedAnswer: [COMPARISON],
+            SynthesisDraft: [COMPARISON],
         },
         model=NoToolsModel(),
     )

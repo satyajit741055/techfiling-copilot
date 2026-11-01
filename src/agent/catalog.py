@@ -86,8 +86,53 @@ class FilingCatalog:
     def resolve_company(self, mention: str) -> str | None:
         return self._aliases.get(normalize_company(mention))
 
+    def find_companies(self, text: str) -> list[str]:
+        """Indexed companies named in free text, in order of first mention.
+
+        Names match as whole words after normalisation ("Apple's" -> apple); tickers only
+        when written in capitals ("MSFT"), so short tickers do not match ordinary words.
+        """
+        normalized = f" {normalize_company(text)} "
+        positions: dict[str, int] = {}
+        for alias, ticker in self._aliases.items():
+            if alias == ticker.casefold():
+                match = re.search(rf"(?<![A-Za-z0-9]){re.escape(ticker)}(?![A-Za-z0-9])", text)
+                position = match.start() if match else -1
+            else:
+                position = normalized.find(f" {alias} ") if len(alias) >= 3 else -1
+            if position >= 0:
+                positions[ticker] = min(position, positions.get(ticker, position))
+        return sorted(positions, key=positions.__getitem__)
+
     def filings(self) -> list[Filing]:
         return list(self._filings)
+
+    def company_name(self, ticker: str) -> str:
+        latest = self.latest_year(ticker)
+        filing = self._by_cell.get((ticker.upper(), latest)) if latest is not None else None
+        return filing.company if filing else ticker.upper()
+
+    def example_questions(self) -> list[str]:
+        """Three questions that the indexed filings can answer (for refusals and onboarding)."""
+        tickers = self.tickers
+        if not tickers:
+            return []
+        first, second = tickers[0], tickers[1 % len(tickers)]
+        latest = self.latest_year(first)
+        years = self.years_by_ticker(first)
+        examples = [f"What was {self.company_name(first)}'s total revenue in FY{latest}?"]
+        if second != first:
+            examples.append(
+                f"Compare research and development spending for {self.company_name(first)} "
+                f"and {self.company_name(second)}."
+            )
+        if len(years) > 1:
+            examples.append(
+                f"How did {self.company_name(first)}'s main risk factors change from "
+                f"FY{years[-2]} to FY{years[-1]}?"
+            )
+        examples.append(f"What risk factors did {self.company_name(tickers[-1])} report?")
+        return examples[:3]
 
     def describe(self) -> str:
         if not self._filings:

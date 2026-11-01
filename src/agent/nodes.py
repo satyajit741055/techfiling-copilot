@@ -30,6 +30,7 @@ from .schemas import (
     GroundedClaim,
     ResearchPlan,
     Source,
+    SynthesisDraft,
     Task,
     TaskResult,
     ToolStep,
@@ -101,14 +102,107 @@ def _filings_label(tickers: Sequence[str], years: Sequence[int]) -> str:
     return f"{', '.join(tickers) or 'no companies'} · {years_text}"
 
 
-def _analysis_messages(state: AgentState) -> list[BaseMessage]:
-    history = "\n".join(
-        f"Q: {turn.question}\nA: {turn.answer}" for turn in state.get("turns", [])[-3:]
-    )
+ANALYZE_PROMPT = """You classify one user question for a research assistant that answers \
+only from indexed SEC 10-K filings. Indexed filings: {coverage}.
+
+Fields:
+- intent: filing_question (about a company's 10-K: financials, segments, risks, business, \
+strategy); greeting; capabilities ("what can you do"); general_knowledge (a definition or \
+concept not tied to one company's filing, e.g. "What is EBITDA?"); out_of_scope (stock \
+prices, news, forecasts, investment advice, anything a 10-K does not contain).
+- scope: specific (about particular companies, named or not); corpus_wide (only when the \
+question explicitly asks across companies: "which companies", "all companies", "each \
+company"); context_dependent (relies on earlier turns: "their", "same for", "what about"); \
+general_knowledge; out_of_scope.
+- question_type: single_fact (one value for one company and year); qualitative (a \
+description for one company and year); trend (one company over several years); \
+cross_company (several companies, one year); matrix (several companies and several years); \
+qualitative_change (how a description changed between years).
+- companies: every company or ticker named in the question, as written ("Apple", "MSFT", \
+"Nvidia"), including companies that are not indexed. Empty when none is named.
+- years: explicit = fiscal years named ("fiscal 2025" -> [2025]); range = {{"gte", "lte"}} \
+for "from 2021 to 2024"; relative = latest ("latest", "most recent"), last_year ("last \
+year"), or last_n with n ("last 3 years"). Leave all empty when no year is mentioned.
+- topics: the metrics or disclosures asked about ("net sales", "R&D expense", "risk factors").
+- sub_questions: up to 3 short sub-questions only when the question asks distinct things.
+- ambiguity: is_ambiguous=true only when the question cannot be answered without asking the \
+user (e.g. no company named and none in the conversation); dimension = what is missing.
+- uses_history: true when the question depends on the conversation.
+
+Examples:
+"What was Apple's total net sales in fiscal 2025?" -> filing_question, specific, \
+single_fact, companies ["Apple"], years explicit [2025], topics ["total net sales"]
+"Compare R&D for Microsoft and Tesla over the last 3 years" -> filing_question, specific, \
+matrix, companies ["Microsoft", "Tesla"], years relative last_n n=3
+"And their operating income?" -> filing_question, context_dependent, single_fact, \
+uses_history true
+"What was net income last year?" (no conversation) -> filing_question, specific, \
+single_fact, years relative last_year, ambiguity is_ambiguous true, dimension company
+"Which companies mention supply chain risks?" -> filing_question, corpus_wide, qualitative
+"Should I buy Tesla stock?" -> out_of_scope, out_of_scope, qualitative, companies ["Tesla"]"""
+
+
+def _turn_line(turn: TurnSummary) -> str:
+    scope = ", ".join(turn.tickers) or "none"
+    years = ", ".join(f"FY{year}" for year in turn.fiscal_years) or "none"
+    return f"Q: {turn.question}\n(companies: {scope}; years: {years})\nA: {turn.answer}"
+
+
+def _analysis_messages(state: AgentState, catalog: FilingCatalog) -> list[BaseMessage]:
+    history = "\n".join(_turn_line(turn) for turn in state.get("turns", [])[-3:])
     return [
-        SystemMessage(content="Classify the filing question. Use only the supplied conversation."),
-        HumanMessage(content=f"Conversation:\n{history}\n\nQuestion: {state['question']}"),
+        SystemMessage(content=ANALYZE_PROMPT.format(coverage=catalog.describe())),
+        HumanMessage(
+            content=f"Conversation:\n{history or '(none)'}\n\nQuestion: {state['question']}"
+        ),
     ]
+
+
+_CORPUS_WIDE_CUE = re.compile(
+    r"\b(?:which|all|each|every|any|across|both)\s+(?:of\s+the\s+)?(?:compan|firm|filer)",
+    re.IGNORECASE,
+)
+_FOLLOW_UP_CUE = re.compile(
+    r"\b(?:their|they|them|its|it|same|those|these|that company|what about|how about)\b"
+    r"|^\s*(?:and|also)\b",
+    re.IGNORECASE,
+)
+
+
+def _ground_analysis(
+    analysis: Analysis,
+    question: str,
+    catalog: FilingCatalog,
+    has_history: bool = False,
+) -> Analysis:
+    """Code-side corrections of the LLM analysis (the LLM detects, code decides).
+
+    - Indexed companies named in the question but missed by the LLM are added.
+    - A follow-up ("their", "what about ...") with no company reuses the conversation.
+    - A filing question never gets a refusal scope; refusals follow the intent.
+    - corpus_wide needs explicit cross-company wording; otherwise a question with no
+      company stays "specific" and the scope rules ask which company.
+    - A single-company question cannot be cross-company or a matrix.
+    """
+    companies = list(analysis.companies)
+    resolved = {catalog.resolve_company(name) for name in companies}
+    companies += [t for t in catalog.find_companies(question) if t not in resolved]
+    update: dict[str, Any] = {"companies": companies} if companies != analysis.companies else {}
+    if has_history and not companies and not analysis.uses_history:
+        if _FOLLOW_UP_CUE.search(question):
+            update["uses_history"] = True
+    scope = analysis.scope
+    if analysis.intent == "filing_question" and scope in {"general_knowledge", "out_of_scope"}:
+        scope = "specific"
+    if scope == "corpus_wide" and (companies or not _CORPUS_WIDE_CUE.search(question)):
+        scope = "specific"
+    if scope != analysis.scope:
+        update["scope"] = scope
+    tickers = {catalog.resolve_company(name) for name in companies}
+    single = {"cross_company": "single_fact", "matrix": "trend"}
+    if len(companies) == 1 and None not in tickers and analysis.question_type in single:
+        update["question_type"] = single[analysis.question_type]
+    return analysis.model_copy(update=update) if update else analysis
 
 
 async def analyze_node(state: AgentState, deps: NodeDependencies) -> dict[str, Any]:
@@ -116,7 +210,10 @@ async def analyze_node(state: AgentState, deps: NodeDependencies) -> dict[str, A
     # Without a turn id every turn would share the "" evidence registry.
     turn_id = _turn_id(state) or uuid.uuid4().hex
     deps.evidence.release(turn_id)
-    analysis = await deps.llm.structured(Analysis, _analysis_messages(state))
+    analysis = await deps.llm.structured(Analysis, _analysis_messages(state, deps.catalog))
+    analysis = _ground_analysis(
+        analysis, state["question"], deps.catalog, has_history=bool(state.get("turns"))
+    )
     return {
         "turn_id": turn_id,
         "analysis": analysis,
@@ -154,10 +251,22 @@ def resolve_scope_node(state: AgentState, deps: NodeDependencies) -> dict[str, A
     return {"scope": scope, "coverage": scope.coverage}
 
 
+def _examples_text(catalog: FilingCatalog) -> str:
+    examples = catalog.example_questions()
+    return "\n\nFor example:\n" + "\n".join(f"- {item}" for item in examples) if examples else ""
+
+
 def refuse_node(state: AgentState, deps: NodeDependencies) -> dict[str, Any]:
+    scope = state.get("scope")
+    unknown = scope.not_in_corpus if scope else []
+    reason = (
+        f"{', '.join(unknown)} {'is' if len(unknown) == 1 else 'are'} not in the indexed filings. "
+        if unknown
+        else ""
+    )
     answer = (
-        f"I can only answer questions grounded in the indexed SEC filings. "
-        f"Available coverage: {deps.catalog.describe()}."
+        f"{reason}I answer only from the indexed 10-K filings. "
+        f"Available coverage: {deps.catalog.describe()}.{_examples_text(deps.catalog)}"
     )
     return {"final": ChatAnswer(answer=answer, route="refuse", coverage=state.get("coverage", []))}
 
@@ -166,6 +275,7 @@ def onboard_node(state: AgentState, deps: NodeDependencies) -> dict[str, Any]:
     answer = (
         f"I research and compare the indexed 10-K filings for {deps.catalog.describe()}. "
         "Ask about a disclosed metric, trend, risk, or company comparison."
+        f"{_examples_text(deps.catalog)}"
     )
     return {"final": ChatAnswer(answer=answer, route="onboard")}
 
@@ -566,37 +676,80 @@ def check_coverage_node(state: AgentState, deps: NodeDependencies) -> dict[str, 
     return {"coverage": coverage}
 
 
+SYNTHESIS_RULES = """You answer questions about SEC 10-K filings using only the numbered \
+sources provided.
+
+Return:
+- answer: a concise markdown answer. Put the [S#] id of the supporting source right after \
+every statement, e.g. "Apple's R&D expense was $34,550 million [S1]."
+- claims: one entry for every factual statement in the answer, with
+  - text: the statement,
+  - citation_ids: the [S#] ids that support it, e.g. ["S1"],
+  - excerpt: text copied exactly from one cited source (at most 300 characters; for tables, \
+copy the row),
+  - ticker and fiscal_year: the company and fiscal year of the cited source.
+- calculations: only for numbers you derive (differences, growth rates): a simple arithmetic \
+expression over cited values, its result, and the cited inputs.
+
+Rules: use only facts from the sources; never mix companies or fiscal years in one claim; \
+keep units as the source states them (e.g. "$34,550 million"). If the sources do not answer \
+the question for a filing, say so for that filing. If they do not answer it at all, return \
+an empty answer, no claims and insufficient_context true."""
+
+
 def _synthesis_messages(
     state: AgentState, context: str, validation: ValidationReport | None
 ) -> list[BaseMessage]:
     cells = "\n".join(
-        f"- {cell.ticker} FY{cell.fiscal_year}: {cell.status}" for cell in state.get("coverage", [])
+        f"- {cell.ticker} FY{cell.fiscal_year}"
+        + (" (not indexed)" if cell.status == "not_in_corpus" else "")
+        + (" (no relevant passage found)" if cell.status == "not_disclosed" else "")
+        for cell in state.get("coverage", [])
     )
-    rules = (
-        "Answer only from the sources and cite every claim with inline [S#] ids. "
-        "Each claim needs citation_ids, an excerpt copied verbatim (at most 300 characters) "
-        "from a cited source, and the ticker and fiscal_year of the cited filing. Never mix "
-        "companies or years in one claim. Return exactly one coverage entry per listed cell: "
-        "keep not_in_corpus, use found only when a claim supports the cell, otherwise "
-        "not_disclosed. Any derived number needs a calculation with cited inputs and a simple "
-        "arithmetic expression."
-    )
-    prompt = f"Question: {state['question']}\nCoverage cells:\n{cells}\n\nSources:\n{context}"
+    prompt = f"Question: {state['question']}\nFilings in scope:\n{cells}\n\nSources:\n{context}"
     if validation is not None and not validation.is_valid:
         errors = "\n".join(f"- {error}" for error in validation.errors)
         prompt += f"\n\nThe previous draft failed validation; fix these errors:\n{errors}"
-    return [SystemMessage(content=rules), HumanMessage(content=prompt)]
+    return [SystemMessage(content=SYNTHESIS_RULES), HumanMessage(content=prompt)]
+
+
+def draft_from_synthesis(
+    synthesis: SynthesisDraft, scope_coverage: Sequence[CoverageCell]
+) -> GroundedAnswer:
+    """The model's draft with code-owned coverage: a cell is found when a claim is about it
+    (validation then checks that claim), not_in_corpus stays, otherwise not_disclosed."""
+    claimed = {(claim.ticker, claim.fiscal_year) for claim in synthesis.claims}
+    coverage = [
+        cell
+        if cell.status == "not_in_corpus"
+        else cell.model_copy(
+            update={
+                "status": "found" if (cell.ticker, cell.fiscal_year) in claimed else "not_disclosed"
+            }
+        )
+        for cell in scope_coverage
+    ]
+    return GroundedAnswer(
+        answer=synthesis.answer.strip() or None,
+        claims=synthesis.claims,
+        coverage=coverage,
+        calculations=synthesis.calculations,
+        insufficient_context=synthesis.insufficient_context or not synthesis.claims,
+    )
 
 
 async def synthesize_node(state: AgentState, deps: NodeDependencies) -> dict[str, Any]:
+    scope = state.get("scope")
+    if scope is None:
+        raise ValueError("synthesize requires resolved scope")
     _step("synthesize", "Writing answer", "Repair pass" if state.get("validation") else None)
     registry = deps.registry(state)
     registry.assign_source_ids(deps.max_context_chunks)
-    draft = await deps.llm.structured(
-        GroundedAnswer,
+    synthesis = await deps.llm.structured(
+        SynthesisDraft,
         _synthesis_messages(state, registry.format_context(), state.get("validation")),
     )
-    return {"draft": draft}
+    return {"draft": draft_from_synthesis(synthesis, scope.coverage)}
 
 
 def validate_node(state: AgentState, deps: NodeDependencies) -> dict[str, Any]:

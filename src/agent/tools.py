@@ -6,7 +6,7 @@ from collections.abc import Sequence
 from typing import Any, Literal
 
 from langchain_core.tools import StructuredTool
-from pydantic import Field, model_validator
+from pydantic import Field, ValidationInfo, field_validator, model_validator
 
 from retriever.qdrant_retriever import QdrantRetrieverWithReranker
 from vector_store import QdrantChunkStore, neighbor_ids
@@ -25,6 +25,13 @@ class SearchFilingsArgs(AgentModel):
     type: Literal["text", "table"] | None = None
     k: int = Field(default=5, ge=1, le=10)
     group_by: Literal["doc_id", "ticker", "fiscal_year"] | None = None
+
+    @field_validator("type", "group_by", mode="before")
+    @classmethod
+    def unknown_option_is_unset(cls, value: Any, info: ValidationInfo) -> Any:
+        """Small models put things like "10-K" here; treat unknown options as unset."""
+        allowed = {"type": {"text", "table"}, "group_by": {"doc_id", "ticker", "fiscal_year"}}
+        return value if value in allowed[str(info.field_name)] else None
 
     @model_validator(mode="after")
     def exclusive_year_filters(self) -> "SearchFilingsArgs":
@@ -48,9 +55,10 @@ class ReadTableArgs(AgentModel):
     chunk_id: str | None = None
 
     @model_validator(mode="after")
-    def exactly_one_identifier(self) -> "ReadTableArgs":
-        if bool(self.table_id) == bool(self.chunk_id):
-            raise ValueError("Pass exactly one of table_id or chunk_id")
+    def some_identifier(self) -> "ReadTableArgs":
+        # Both is fine (table_id wins); the in-scope filter still applies to the result.
+        if not self.table_id and not self.chunk_id:
+            raise ValueError("Pass table_id or chunk_id")
         return self
 
 
@@ -121,7 +129,9 @@ class AgentTools:
     def search_filings(self, task: Task, **kwargs: Any) -> ToolOutput:
         args = SearchFilingsArgs.model_validate(kwargs)
         allowed_tickers, allowed_years = self._scope(task)
-        tickers, ticker_clamped = self._clamp(args.tickers, allowed_tickers)
+        # Company names ("Apple") resolve to tickers before clamping to the task.
+        requested_tickers = [self.catalog.resolve_company(name) or name for name in args.tickers]
+        tickers, ticker_clamped = self._clamp(requested_tickers, allowed_tickers)
         requested_years = args.fiscal_years
         if args.year_range:
             requested_years = list(range(args.year_range.gte, args.year_range.lte + 1))
@@ -211,7 +221,7 @@ class AgentTools:
     def read_table(self, task: Task, **kwargs: Any) -> ToolOutput:
         args = ReadTableArgs.model_validate(kwargs)
         table_id = args.table_id
-        if args.chunk_id:
+        if not table_id and args.chunk_id:
             chunks = self.store.get_chunks([args.chunk_id])
             table_id = chunks[0].get("table_id") if chunks else None
         if not table_id:

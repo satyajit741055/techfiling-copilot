@@ -9,9 +9,12 @@ from agent.catalog import FilingCatalog
 from agent.evidence import EvidenceRegistry
 from agent.nodes import (
     NodeDependencies,
+    _analysis_messages,
+    _ground_analysis,
     analyze_node,
     apply_clarification,
     check_coverage_node,
+    draft_from_synthesis,
     execute_node,
     finalize_node,
     onboard_node,
@@ -29,6 +32,7 @@ from agent.schemas import (
     GroundedClaim,
     ResearchPlan,
     ResolvedScope,
+    SynthesisDraft,
     Task,
     TaskResult,
     ValidationReport,
@@ -159,6 +163,100 @@ async def test_analyze_resets_turn_state(dependencies: NodeDependencies) -> None
     assert dependencies.evidence.get("t1") is not stale
 
 
+def test_analyze_prompt_lists_coverage(dependencies: NodeDependencies) -> None:
+    messages = _analysis_messages({"question": "Revenue?", "turns": []}, dependencies.catalog)
+    assert "Indexed filings: AAPL · FY2025" in messages[0].content
+    assert "Conversation:\n(none)" in messages[1].content
+
+
+@pytest.mark.parametrize(
+    ("question", "llm", "expected"),
+    [
+        # Indexed companies named in the question are added when the LLM missed them.
+        (
+            "What was Apple's revenue?",
+            {"question_type": "single_fact"},
+            {"companies": ["AAPL"], "question_type": "single_fact"},
+        ),
+        # One company cannot be cross-company / a matrix.
+        (
+            "Apple revenue in 2024 and 2025",
+            {"companies": ["Apple"], "question_type": "matrix"},
+            {"question_type": "trend"},
+        ),
+        (
+            "Apple revenue",
+            {"companies": ["Apple"], "question_type": "cross_company"},
+            {"question_type": "single_fact"},
+        ),
+        # A filing question never gets a refusal scope.
+        ("What was revenue last year?", {"scope": "general_knowledge"}, {"scope": "specific"}),
+        # corpus_wide needs explicit cross-company wording.
+        ("What was revenue last year?", {"scope": "corpus_wide"}, {"scope": "specific"}),
+        (
+            "Which companies mention AI risks?",
+            {"scope": "corpus_wide", "question_type": "qualitative"},
+            {"scope": "corpus_wide", "companies": []},
+        ),
+        # Unknown companies keep the LLM's question type.
+        (
+            "Compare Apple and Nvidia",
+            {"companies": ["Apple", "Nvidia"], "question_type": "cross_company"},
+            {"companies": ["Apple", "Nvidia"], "question_type": "cross_company"},
+        ),
+    ],
+)
+def test_ground_analysis_corrections(
+    question: str, llm: dict[str, Any], expected: dict[str, Any]
+) -> None:
+    catalog = make_catalog(("AAPL", 2025), ("MSFT", 2025))
+    raw = Analysis.model_validate(
+        {"intent": "filing_question", "scope": "specific", "question_type": "single_fact", **llm}
+    )
+    grounded = _ground_analysis(raw, question, catalog)
+    for key, value in expected.items():
+        assert getattr(grounded, key) == value, key
+
+
+def test_synthesis_coverage_is_derived_by_code_from_claims() -> None:
+    synthesis = SynthesisDraft(
+        answer="  Apple net sales were $100 million [S1].  ",
+        claims=[
+            GroundedClaim(
+                text="Apple net sales were $100 million.",
+                citation_ids=["S1"],
+                excerpt="Net sales were $100 million",
+                ticker="AAPL",
+                fiscal_year=2025,
+            )
+        ],
+    )
+    scope = [
+        CoverageCell(ticker="AAPL", fiscal_year=2025),
+        CoverageCell(ticker="MSFT", fiscal_year=2025, status="found"),
+        CoverageCell(ticker="MSFT", fiscal_year=2019, status="not_in_corpus"),
+    ]
+    draft = draft_from_synthesis(synthesis, scope)
+    assert [cell.status for cell in draft.coverage] == ["found", "not_disclosed", "not_in_corpus"]
+    assert draft.answer == "Apple net sales were $100 million [S1]."
+    assert not draft.insufficient_context
+
+    empty = draft_from_synthesis(SynthesisDraft(answer=" ", claims=[]), scope)
+    assert empty.answer is None and empty.insufficient_context
+
+
+def test_synthesis_schema_requires_answer_and_claims() -> None:
+    required = SynthesisDraft.model_json_schema()["required"]
+    assert {"answer", "claims"} <= set(required)
+
+
+def test_general_knowledge_intent_is_not_grounded_into_a_filing_question() -> None:
+    raw = Analysis(
+        intent="general_knowledge", scope="general_knowledge", question_type="qualitative"
+    )
+    assert _ground_analysis(raw, "What is EBITDA?", make_catalog(("AAPL", 2025))) == raw
+
+
 def test_scope_refuse_and_onboard_nodes(dependencies: NodeDependencies) -> None:
     analysis = Analysis(
         intent="filing_question",
@@ -172,7 +270,12 @@ def test_scope_refuse_and_onboard_nodes(dependencies: NodeDependencies) -> None:
     onboarded = onboard_node({}, dependencies)["final"]
     assert refused.route == "refuse"
     assert "AAPL" in refused.answer
+    assert "For example:\n- What was Apple Inc.'s total revenue in FY2025?" in refused.answer
     assert onboarded.route == "onboard"
+    assert "For example:" in onboarded.answer
+    unknown = ResolvedScope(route="refuse", not_in_corpus=["Nvidia"])
+    named = refuse_node({"scope": unknown}, dependencies)["final"].answer
+    assert named.startswith("Nvidia is not in the indexed filings. I answer only")
 
 
 def test_clarification_respects_dimension() -> None:
@@ -309,7 +412,7 @@ async def test_worker_retries_without_section_and_survives_bad_tool_call(
 ) -> None:
     model = FakeChatModel(
         [
-            {"name": "read_table", "args": {"table_id": "t", "chunk_id": "c"}},
+            {"name": "read_table", "args": {}},
             {
                 "name": "read_neighbors",
                 "args": {"chunk_id": "AAPL_10-K_2025_c0000", "before": 0, "after": 1},

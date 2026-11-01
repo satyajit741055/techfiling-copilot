@@ -10,7 +10,7 @@ from agent.schemas import (
     GroundedClaim,
     ResolvedScope,
 )
-from agent.validation import drop_invalid_claims, validate_grounded_answer
+from agent.validation import drop_invalid_claims, normalize_excerpt, validate_grounded_answer
 
 
 def setup_context() -> tuple[FilingCatalog, ResolvedScope, EvidenceRegistry]:
@@ -308,6 +308,12 @@ def test_uncited_prose_numbers_and_pending_coverage_fail() -> None:
     report = validate_grounded_answer(answer, scope, evidence.source_entries(), catalog)
     assert any("not backed by a valid claim: 46.2%" in error for error in report.errors)
     assert any("non-final status" in error for error in report.errors)
+
+
+def test_excerpt_ignores_missing_pipe_at_table_row_break() -> None:
+    source = "| R&D | 34,550 | 10% | 29,915 |\n| Percentage of total net sales | 8% |"
+    excerpt = "R&D | 34,550 | 10% | 29,915\n| Percentage of total net sales"
+    assert normalize_excerpt(excerpt) in normalize_excerpt(source)
 
 
 def test_long_excerpt_is_truncated_not_rejected() -> None:

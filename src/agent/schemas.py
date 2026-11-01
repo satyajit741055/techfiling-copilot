@@ -176,6 +176,23 @@ class Calculation(AgentModel):
     inputs: list[CalculationInput] = Field(default_factory=list)
 
 
+class SynthesisDraft(AgentModel):
+    """What the synthesis LLM returns. ``answer`` and ``claims`` are required so that
+    schema-constrained decoding cannot skip them; coverage is derived by code from the
+    claims and the resolved scope, not written by the model."""
+
+    answer: str = Field(
+        description="Concise markdown answer that cites every statement inline as [S#]; "
+        "empty when the sources do not answer the question"
+    )
+    claims: list[GroundedClaim] = Field(
+        description="One entry per factual statement in the answer, each with citation_ids, "
+        "a verbatim excerpt from a cited source, and that source's ticker and fiscal_year"
+    )
+    calculations: list[Calculation] = Field(default_factory=list)
+    insufficient_context: bool = False
+
+
 class GroundedAnswer(AgentModel):
     answer: str | None = None
     claims: list[GroundedClaim] = Field(default_factory=list)

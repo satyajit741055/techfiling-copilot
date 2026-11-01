@@ -8,7 +8,7 @@ from pydantic import ValidationError
 from agent.catalog import FilingCatalog
 from agent.evidence import EvidenceRegistry, TurnEvidence
 from agent.schemas import Task
-from agent.tools import AgentTools, ReadNeighborsArgs, SearchFilingsArgs
+from agent.tools import AgentTools, ReadNeighborsArgs, ReadTableArgs, SearchFilingsArgs
 from retriever.hybrid_retriever import SearchResult
 
 
@@ -186,6 +186,30 @@ def test_tool_argument_caps() -> None:
         SearchFilingsArgs(query="x", k=11)
     with pytest.raises(ValidationError):
         ReadNeighborsArgs(chunk_id="AAPL_10-K_2025_c0001", before=3)
+    with pytest.raises(ValidationError):
+        ReadTableArgs()
+
+
+def test_tolerates_small_model_tool_arguments(
+    tools: tuple[AgentTools, FakeRetriever, EvidenceRegistry],
+) -> None:
+    """Argument mistakes seen from local 7B models no longer fail the call; the task
+    scope is still enforced."""
+    agent_tools, retriever, _ = tools
+    # Unknown option values are treated as unset.
+    args = SearchFilingsArgs(query="x", type="10-K", group_by="company")  # type: ignore[arg-type]
+    assert (args.type, args.group_by) == (None, None)
+    # Company names resolve to tickers before clamping.
+    named = agent_tools.search_filings(task(), query="revenue", tickers=["Apple"])
+    assert not named.step.error and not named.step.scope_clamped
+    assert retriever.calls[-1]["filters"]["ticker"] == ["AAPL"]
+    outside = agent_tools.search_filings(task(), query="revenue", tickers=["Microsoft"])
+    assert outside.step.error and outside.step.scope_clamped
+    # Both table_id and chunk_id: table_id wins, results stay in scope.
+    table = agent_tools.read_table(
+        task(), table_id="AAPL_10-K_2025_t001", chunk_id="AAPL_10-K_2025_c0001"
+    )
+    assert table.step.chunk_ids == ["AAPL_10-K_2025_c0001", "AAPL_10-K_2025_c0002"]
 
 
 def test_evidence_source_ids_are_stable_and_budget_keeps_each_cell() -> None:

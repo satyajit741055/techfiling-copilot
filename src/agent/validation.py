@@ -49,7 +49,7 @@ _OPERATORS: dict[type[ast.operator], Callable[[float, float], float]] = {
 
 def normalize_excerpt(value: str) -> str:
     normalized = unicodedata.normalize("NFKC", value).translate(_TRANSLATION)
-    normalized = re.sub(r"\s*\|\s*", " | ", normalized)
+    normalized = re.sub(r"\s*\|(?:\s*\|)*\s*", " | ", normalized)
     return " ".join(normalized.split())
 
 

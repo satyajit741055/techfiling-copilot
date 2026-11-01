@@ -6,6 +6,7 @@ A production-ready research assistant that helps equity analysts extract insight
 
 ## Features
 
+- **Research Chat (LangGraph agent)**: multi-company, multi-year questions across all indexed filings, with live progress steps, clarifying questions, a coverage table and validated multi-source citations
 - **Grounded Answers**: Every answer is backed by explicit citations from the filing
 - **Citation Traceability**: Click any citation to view the exact source passage
 - **Hybrid Retrieval**: BM25 + Dense embeddings + Cross-encoder reranking for high-quality results
@@ -35,7 +36,7 @@ A production-ready research assistant that helps equity analysts extract insight
                               ▼
 ┌─────────────────────────────────────────────────────────────────┐
 │                     Backend (FastAPI)                           │
-│  /health │ /health/ready │ /filings │ /questions                │
+│  /health │ /health/ready │ /filings │ /questions │ /chat (SSE)  │
 │  Auth (JWT + API key) │ Rate limiting (Redis / in-memory)       │
 └─────────────────────────────────────────────────────────────────┘
                               │
@@ -232,6 +233,32 @@ Content-Type: application/json
   "latency_seconds": 2.34
 }
 ```
+
+### Research Chat (agent)
+```bash
+POST /chat           # Server-Sent Events stream
+GET  /threads        # saved conversations (when HISTORY_STORE=postgres)
+GET  /threads/{id}/messages
+```
+
+```json
+{
+  "message": "Compare R&D expenses for Apple and Microsoft in their latest fiscal year",
+  "thread_id": "optional uuid",
+  "filters": {"tickers": ["AAPL", "MSFT"], "fiscal_years": [2025]}
+}
+```
+
+To answer a clarification, send `{"thread_id": "...", "resume": {"option_id": "opt_1"}}` (or `{"text": "..."}`) instead of `message`.
+
+The stream emits `thread`, then `step` / `tool` progress events, then `answer` or `clarification` (or `error`), then `done` with latency, tokens and cost. How it works:
+
+- **Understand the question.** The agent works out the companies, years and topic, then resolves them against the indexed filings. When no year is given it uses the latest one and says so.
+- **Route it.** Single-filing questions use the `/questions` pipeline. Multi-company or multi-year questions run one worker per company and year in parallel. Each worker can search, read neighbouring chunks or read a whole table, and stays inside its own filing.
+- **Clarify or refuse.** It asks one clarifying question when the company is missing. It refuses companies that aren't indexed, general-knowledge questions and investment advice, and replies with an example list of questions instead.
+- **Validate the answer.** Each claim must cite a source, quote it word for word and match its numbers; claims that fail are dropped. When nothing valid remains, the answer abstains and shows which filings were covered.
+
+Settings are the `AGENT_*` variables in `.env.example`. The browser UI is the **Research chat** mode (default); **Single filing** keeps the original workspace. Smoke test against the local stack: `uv run python scripts/agent_smoke.py`.
 
 ## Project Structure
 
@@ -437,7 +464,7 @@ npm run build
 
 ## Roadmap
 
-- [ ] Multi-turn conversations with context
+- [x] Multi-turn research chat (LangGraph agent, conversation history on Postgres)
 - [x] User authentication (Supabase)
 - [ ] Analytics dashboard
 - [ ] Historical filing comparison

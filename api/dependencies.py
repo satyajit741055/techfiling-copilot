@@ -21,6 +21,7 @@ from api.services.rag_service import RAGService
 from persistence import HistoryStore, NullHistoryStore, create_history_store
 
 if TYPE_CHECKING:
+    from agent.service import AgentService
     from generation import AnswerGenerator
 
 # Configure logging
@@ -35,6 +36,7 @@ _generator: "AnswerGenerator | None" = None
 _rag_service: RAGService | None = None
 _filings: list[dict] | None = None
 _history_store: HistoryStore = NullHistoryStore()
+_agent_service: "AgentService | None" = None
 
 
 # =============================================================================
@@ -159,6 +161,40 @@ def shutdown_history_store() -> None:
     _history_store = NullHistoryStore()
 
 
+def init_agent() -> None:
+    """
+    Build the research agent for /chat on the generator's already-loaded retriever and
+    reranker (no second model load). Run after init_generator and init_history_store.
+
+    A failure (e.g. VECTOR_STORE is not qdrant) disables /chat with a 503 instead of
+    stopping the API; /questions is unaffected.
+    """
+    global _agent_service
+    from agent.service import AgentService
+    from observability import QueryTracker
+
+    try:
+        _agent_service = AgentService.from_generator(
+            get_generator(),
+            get_filings(),
+            history=_history_store,
+            writer=QueryTracker.from_settings().writer,
+        )
+    except Exception as e:
+        _agent_service = None
+        logger.error(f"Research chat DISABLED: {type(e).__name__}: {e}")
+        return
+    logger.info(
+        f"Research chat ready: {_agent_service.provider}/{_agent_service.model}, "
+        f"{len(_agent_service.catalog.filings())} filings"
+    )
+
+
+def shutdown_agent() -> None:
+    global _agent_service
+    _agent_service = None
+
+
 # =============================================================================
 # DEPENDENCY INJECTION
 # =============================================================================
@@ -191,6 +227,11 @@ def get_rag_service() -> RAGService:
 def get_history_store() -> HistoryStore:
     """FastAPI dependency: the history store (the null store when history is off)."""
     return _history_store
+
+
+def get_agent_service() -> "AgentService | None":
+    """FastAPI dependency: the research agent, or None when /chat is unavailable."""
+    return _agent_service
 
 
 def get_filings() -> list[dict]:

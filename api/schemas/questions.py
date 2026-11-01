@@ -128,9 +128,8 @@ class QuestionRequest(BaseModel):
                 except ValueError as error:
                     raise ValueError("fiscal_year groups must be integers") from error
             else:
-                self.groups = [str(g) for g in self.groups]
-                if self.group_by == "ticker":
-                    self.groups = [g.upper() for g in self.groups]
+                upper = self.group_by == "ticker"
+                self.groups = [str(g).upper() if upper else str(g) for g in self.groups]
         if self.group_by is not None and self.context_k is not None:
             group_count = len(set(self.groups)) if self.groups else self.group_limit
             if self.context_k * group_count > MAX_GROUPED_CONTEXT:

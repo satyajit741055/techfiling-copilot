@@ -119,9 +119,56 @@ def reliability_section(records: list[dict[str, Any]]) -> dict[str, Any]:
     }
 
 
+def agent_section(records: list[dict[str, Any]]) -> dict[str, Any]:
+    """/chat turns: outcome mix, latency, per-node time, loop counts, validity and cost."""
+    n = len(records)
+    finished = [r for r in records if r.get("status") == "success"]
+    answers = [r for r in finished if r.get("outcome") == "answer"]
+    nodes: dict[str, list[float]] = defaultdict(list)
+    for r in finished:
+        for node, seconds in (r.get("node_seconds") or {}).items():
+            nodes[node].append(seconds)
+    by: dict[str, dict[str, int]] = {"status": {}, "outcome": {}, "route": {}}
+    for r in records:
+        for key, counts in by.items():
+            value = str(r.get(key) or "none")
+            counts[value] = counts.get(value, 0) + 1
+    total_cost = sum(r.get("total_cost_usd", 0.0) for r in finished)
+    return {
+        "turns": n,
+        "by_status": by["status"],
+        "by_outcome": by["outcome"],
+        "by_route": by["route"],
+        "total_seconds": distribution(r.get("total_seconds") for r in finished),
+        "node_seconds": {node: distribution(values) for node, values in sorted(nodes.items())},
+        "llm_calls": distribution(r.get("llm_calls", 0) for r in finished),
+        "tool_calls": distribution(r.get("tool_calls", 0) for r in finished),
+        "replans": distribution(r.get("replans", 0) for r in finished),
+        "repairs": distribution(r.get("repairs", 0) for r in finished),
+        "invalid_answer_rate": (
+            sum(r.get("is_valid") is False for r in answers) / len(answers) if answers else None
+        ),
+        "abstain_rate": (
+            sum(bool(r.get("insufficient_context")) for r in answers) / len(answers)
+            if answers
+            else None
+        ),
+        "total_cost_usd": total_cost,
+        "cost_per_turn_usd": total_cost / len(finished) if finished else None,
+        "total_prompt_tokens": sum(r.get("prompt_tokens", 0) for r in finished),
+        "total_completion_tokens": sum(r.get("completion_tokens", 0) for r in finished),
+    }
+
+
 def summarize(records: list[dict[str, Any]], warmup: int = 2) -> dict[str, Any]:
     """Full summary. Latency percentiles are reported for warm requests, cold requests are
-    reported separately; cost and reliability cover all requests."""
+    reported separately; cost and reliability cover all requests.
+
+    /chat turns (``record_type == "agent"``) are summarised in their own ``agent`` section
+    and left out of the /questions numbers.
+    """
+    agent = [r for r in records if r.get("record_type") == "agent"]
+    records = [r for r in records if r.get("record_type") != "agent"]
     cold, warm = split_cold_warm(records, warmup)
     inits = [r["retriever_init_seconds"] for r in records if r.get("retriever_init_seconds")]
     return {
@@ -138,4 +185,5 @@ def summarize(records: list[dict[str, Any]], warmup: int = 2) -> dict[str, Any]:
         },
         "cost": cost_section(records),
         "reliability": reliability_section(records),
+        "agent": agent_section(agent),
     }

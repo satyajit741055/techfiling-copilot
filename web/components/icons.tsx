@@ -76,6 +76,24 @@ export const MenuIcon = ({ className = 'h-5 w-5' }: IconProps) => (
   </svg>
 );
 
+export const CheckIcon = ({ className = 'h-4 w-4' }: IconProps) => (
+  <svg {...base} className={className}>
+    <path strokeLinecap="round" strokeLinejoin="round" d="M5 12.5l4.5 4.5L19 7.5" />
+  </svg>
+);
+
+export const PlusIcon = ({ className = 'h-4 w-4' }: IconProps) => (
+  <svg {...base} className={className}>
+    <path strokeLinecap="round" strokeLinejoin="round" d="M12 5v14M5 12h14" />
+  </svg>
+);
+
+export const ChatIcon = ({ className = 'h-4 w-4' }: IconProps) => (
+  <svg {...base} className={className}>
+    <path strokeLinecap="round" strokeLinejoin="round" d="M7.5 9h9m-9 4h5.5M4 5.5A1.5 1.5 0 015.5 4h13A1.5 1.5 0 0120 5.5v10a1.5 1.5 0 01-1.5 1.5H9l-5 4V5.5z" />
+  </svg>
+);
+
 export const Spinner = ({ className = 'h-4 w-4' }: IconProps) => (
   <svg className={`animate-spin ${className}`} xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" aria-hidden>
     <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4" />

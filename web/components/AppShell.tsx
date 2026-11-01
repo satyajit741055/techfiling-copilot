@@ -77,6 +77,35 @@ function UserMenu() {
   );
 }
 
+export type AppMode = 'chat' | 'filing';
+
+const MODES: { id: AppMode; label: string; hint: string }[] = [
+  { id: 'chat', label: 'Research chat', hint: 'Across companies and years' },
+  { id: 'filing', label: 'Single filing', hint: 'One 10-K at a time' },
+];
+
+/** Segmented switch between the research chat and the single-filing workspace. */
+export function ModeSwitch({ mode, onChange }: { mode: AppMode; onChange: (mode: AppMode) => void }) {
+  return (
+    <div role="tablist" aria-label="Mode" className="inline-flex rounded-xl border border-slate-200 bg-white p-1 shadow-sm">
+      {MODES.map((item) => (
+        <button
+          key={item.id}
+          role="tab"
+          aria-selected={mode === item.id}
+          title={item.hint}
+          onClick={() => onChange(item.id)}
+          className={`rounded-lg px-3.5 py-1.5 text-sm font-medium transition-colors ${
+            mode === item.id ? 'bg-brand-600 text-white shadow-sm' : 'text-slate-600 hover:bg-slate-100'
+          }`}
+        >
+          {item.label}
+        </button>
+      ))}
+    </div>
+  );
+}
+
 export function AppShell({ children }: { children: React.ReactNode }) {
   return (
     <div className="flex min-h-screen flex-col">
