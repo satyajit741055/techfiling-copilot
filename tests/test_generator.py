@@ -16,6 +16,9 @@ def _chunk(i: int, **extra) -> dict:
     chunk = {
         "chunk_id": f"AAPL_10-K_2025_c{i:04d}",
         "doc_id": "AAPL_10-K_2025",
+        "ticker": "AAPL",
+        "fiscal_year": 2025,
+        "period_end": "2025-09-27",
         "section": "Item 7",
         "section_title": "MD&A",
         "type": "text",
@@ -91,11 +94,22 @@ class TestFormatContext:
 
     def test_source_block_attributes(self):
         block = format_source(3, _chunk(5, type="table", table_id="T1", units="millions"))
-        assert block.startswith('<source id="S3" doc="AAPL_10-K_2025" section="MD&A" type="table"')
+        assert block.startswith(
+            '<source id="S3" doc="AAPL_10-K_2025" ticker="AAPL" '
+            'fiscal_year="2025" period_end="2025-09-27" section="MD&A" type="table"'
+        )
         assert (
             'elements="[5]"' in block and 'table_id="T1"' in block and 'units="millions"' in block
         )
         assert block.endswith("chunk text 5\n</source>")
+
+    def test_source_mapping_includes_filing_scope(self):
+        _, sources = format_context([_chunk(0)])
+        assert {key: sources[0][key] for key in ("ticker", "fiscal_year", "period_end")} == {
+            "ticker": "AAPL",
+            "fiscal_year": 2025,
+            "period_end": "2025-09-27",
+        }
 
     def test_section_falls_back_to_unknown(self):
         assert 'section="Unknown"' in format_source(1, {"doc_id": "D", "text": "t"})

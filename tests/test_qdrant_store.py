@@ -10,7 +10,7 @@ import pytest
 
 sys.path.insert(0, str(Path(__file__).resolve().parents[1] / "src"))
 
-from vector_store import QdrantChunkStore  # noqa: E402
+from vector_store import QdrantChunkStore, neighbor_ids  # noqa: E402
 from vector_store.qdrant_store import point_id  # noqa: E402
 from vector_store.sparse import encode_document, encode_query  # noqa: E402
 
@@ -132,6 +132,61 @@ def test_filters(store):
     assert (
         store.search("revenue", VECTORS[0], k=5, filters={"type": "table", "doc_id": "AAPL"}) == []
     )
+
+
+def _table_store() -> QdrantChunkStore:
+    chunks = [
+        {
+            "chunk_id": f"D_c{i:04d}",
+            "doc_id": "D",
+            "type": "table",
+            "table_id": "D_t001" if i < 8 else "D_t002",
+            "text": f"row {i}",
+        }
+        for i in (5, 2, 7, 0, 3, 6, 1, 4, 8)
+    ]
+    s = QdrantChunkStore(":memory:", "tables")
+    s.index_chunks(chunks, np.stack([_unit(i) for i in range(len(chunks))]), {"name": "fake"})
+    return s
+
+
+def test_find_chunks_filters_and_sorts():
+    found = _table_store().find_chunks({"table_id": "D_t001"})
+    assert [chunk["chunk_id"] for chunk in found] == [f"D_c{i:04d}" for i in range(8)]
+
+
+def test_find_chunks_limit_keeps_lowest_chunk_ids():
+    found = _table_store().find_chunks({"table_id": "D_t001"}, limit=3)
+    assert [chunk["chunk_id"] for chunk in found] == ["D_c0000", "D_c0001", "D_c0002"]
+
+
+def test_find_chunks_rejects_bad_limit_and_empty_filters(store):
+    with pytest.raises(ValueError, match="limit"):
+        store.find_chunks({"doc_id": "AAPL"}, limit=0)
+    with pytest.raises(ValueError, match="at least one filter"):
+        store.find_chunks({})
+
+
+def test_neighbor_ids_include_center_and_clamp_at_zero():
+    assert neighbor_ids("AAPL_10-K_2025_c0000", before=2, after=2) == [
+        "AAPL_10-K_2025_c0000",
+        "AAPL_10-K_2025_c0001",
+        "AAPL_10-K_2025_c0002",
+    ]
+    assert neighbor_ids("AAPL_10-K_2025_c0010", before=1, after=1) == [
+        "AAPL_10-K_2025_c0009",
+        "AAPL_10-K_2025_c0010",
+        "AAPL_10-K_2025_c0011",
+    ]
+
+
+def test_neighbor_ids_reject_invalid_inputs():
+    with pytest.raises(ValueError, match="Invalid chunk_id"):
+        neighbor_ids("AAPL_10-K_2025")
+    with pytest.raises(ValueError, match="Invalid chunk_id"):
+        neighbor_ids("AAPL_10-K_2025_c\u0661\u0662")
+    with pytest.raises(ValueError, match="non-negative"):
+        neighbor_ids("AAPL_10-K_2025_c0001", before=-1)
 
 
 def test_reindex_replaces_document_and_delete(store):

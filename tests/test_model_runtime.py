@@ -21,7 +21,12 @@ def _clean_env(monkeypatch):
         "GENERATION_EXECUTION_MODE",
         "LLM_PROVIDER",
         "LLM_MODEL",
+        "AGENT_LLM_PROVIDER",
+        "AGENT_LLM_MODEL",
         "HUGGINGFACE_API_KEY",
+        "OPENAI_API_KEY",
+        "HISTORY_STORE",
+        "SUPABASE_DB_URL",
     ):
         monkeypatch.delenv(key, raising=False)
 
@@ -71,6 +76,38 @@ def test_hf_api_mode_requires_api_key():
 def test_llm_model_overrides_provider_default():
     s = make_settings(LLM_MODEL="custom-model")
     assert s.model_for_provider("huggingface") == "custom-model"
+
+
+def test_agent_model_inherits_or_overrides_generation_model():
+    inherited = make_settings(LLM_MODEL="shared-model")
+    assert inherited.effective_agent_provider == "ollama"
+    assert inherited.effective_agent_model == "shared-model"
+
+    overridden = make_settings(
+        AGENT_LLM_PROVIDER="openai",
+        AGENT_LLM_MODEL="agent-model",
+        OPENAI_API_KEY="test-key",
+    )
+    assert overridden.effective_agent_provider == "openai"
+    assert overridden.effective_agent_model == "agent-model"
+
+
+def test_agent_provider_switch_does_not_inherit_generation_model():
+    s = make_settings(LLM_MODEL="qwen-local", AGENT_LLM_PROVIDER="openai", OPENAI_API_KEY="k")
+    assert s.effective_model == "qwen-local"
+    assert s.effective_agent_model == "gpt-4o-mini"
+
+
+def test_agent_openai_provider_requires_key():
+    with pytest.raises(ValueError, match="OPENAI_API_KEY"):
+        make_settings(AGENT_LLM_PROVIDER="openai")
+
+
+def test_agent_blank_optionals_and_postgres_history_requirement():
+    s = make_settings(AGENT_MIN_EVIDENCE_SCORE=" ", SUPABASE_DB_URL="")
+    assert s.AGENT_MIN_EVIDENCE_SCORE is None and s.SUPABASE_DB_URL is None
+    with pytest.raises(ValueError, match="SUPABASE_DB_URL"):
+        make_settings(HISTORY_STORE="postgres")
 
 
 # ----------------------------------------------------------------------------- factory

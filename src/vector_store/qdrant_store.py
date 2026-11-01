@@ -2,6 +2,7 @@
 
 from __future__ import annotations
 
+import heapq
 import uuid
 from collections.abc import Iterable, Mapping, Sequence
 from pathlib import Path
@@ -34,6 +35,21 @@ _ID_NAMESPACE = uuid.UUID("5b1f1c1e-8a58-4d6b-9d46-0c7c4f7d2a10")
 def point_id(chunk_id: str) -> str:
     """Deterministic point id, so re-ingesting a chunk is an idempotent upsert."""
     return str(uuid.uuid5(_ID_NAMESPACE, chunk_id))
+
+
+def neighbor_ids(chunk_id: str, before: int = 1, after: int = 1) -> list[str]:
+    """Build neighboring ``{doc_id}_cNNNN`` ids, including the requested chunk."""
+    if before < 0 or after < 0:
+        raise ValueError("before and after must be non-negative")
+    prefix, separator, suffix = chunk_id.rpartition("_c")
+    if not separator or not prefix or not (suffix.isascii() and suffix.isdigit()):
+        raise ValueError(f"Invalid chunk_id: {chunk_id!r}")
+    index = int(suffix)
+    width = len(suffix)
+    return [
+        f"{prefix}_c{neighbor:0{width}d}"
+        for neighbor in range(max(0, index - before), index + after + 1)
+    ]
 
 
 class QdrantChunkStore:
@@ -279,11 +295,15 @@ class QdrantChunkStore:
             records.append({**(filing or {}), "doc_id": doc_id})
         return records
 
-    def scroll_chunks(self, batch_size: int = 1000) -> Iterable[dict[str, Any]]:
+    def scroll_chunks(
+        self, batch_size: int = 1000, filters: Mapping[str, Any] | None = None
+    ) -> Iterable[dict[str, Any]]:
         offset = None
+        scroll_filter = self._filter(filters)
         while True:
             points, offset = self.client.scroll(
                 self.collection,
+                scroll_filter=scroll_filter,
                 limit=batch_size,
                 offset=offset,
                 with_payload=True,
@@ -313,6 +333,20 @@ class QdrantChunkStore:
         )
         found = {p.payload["chunk_id"]: self._chunk(p.payload) for p in points if p.payload}
         return [found[c] for c in wanted if c in found]
+
+    def find_chunks(self, filters: Mapping[str, Any], limit: int = 200) -> list[dict[str, Any]]:
+        """Return the first ``limit`` filtered chunks in ``chunk_id`` order.
+
+        Qdrant scrolls in point-id (UUID) order, so every match is scanned before the
+        ``chunk_id`` cut; an empty filter is rejected to avoid a full-collection scan.
+        """
+        if limit < 1:
+            raise ValueError("limit must be at least 1")
+        if not merge_filters(filters):
+            raise ValueError("find_chunks requires at least one filter")
+        return heapq.nsmallest(
+            limit, self.scroll_chunks(filters=filters), key=lambda chunk: chunk["chunk_id"]
+        )
 
     @staticmethod
     def _query_args(

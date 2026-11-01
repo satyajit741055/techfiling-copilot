@@ -277,6 +277,7 @@ class TestRateLimiting:
         s = make_settings()
         assert s.RATE_LIMIT_DEFAULT_PER_MINUTE > 0
         assert s.RATE_LIMIT_QUESTIONS_PER_MINUTE > 0
+        assert s.RATE_LIMIT_CHAT_PER_MINUTE == s.RATE_LIMIT_QUESTIONS_PER_MINUTE
         assert s.RATE_LIMIT_FILINGS_PER_MINUTE > 0
         assert s.RATE_LIMIT_GLOBAL_PER_MINUTE > 0
         assert s.RATE_LIMIT_REDIS_URL is None  # Default to in-memory for dev
@@ -286,15 +287,21 @@ class TestRateLimiting:
         s = make_settings(
             RATE_LIMIT_DEFAULT_PER_MINUTE=100,
             RATE_LIMIT_QUESTIONS_PER_MINUTE=20,
+            RATE_LIMIT_CHAT_PER_MINUTE=5,
             RATE_LIMIT_FILINGS_PER_MINUTE=50,
             RATE_LIMIT_GLOBAL_PER_MINUTE=200,
             RATE_LIMIT_REDIS_URL="redis://localhost:6379/0",
         )
         assert s.RATE_LIMIT_DEFAULT_PER_MINUTE == 100
         assert s.RATE_LIMIT_QUESTIONS_PER_MINUTE == 20
+        assert s.RATE_LIMIT_CHAT_PER_MINUTE == 5
         assert s.RATE_LIMIT_FILINGS_PER_MINUTE == 50
         assert s.RATE_LIMIT_GLOBAL_PER_MINUTE == 200
         assert s.RATE_LIMIT_REDIS_URL == "redis://localhost:6379/0"
+
+    def test_blank_chat_rate_limit_falls_back_to_questions_limit(self):
+        s = make_settings(RATE_LIMIT_QUESTIONS_PER_MINUTE=7, RATE_LIMIT_CHAT_PER_MINUTE="")
+        assert s.RATE_LIMIT_CHAT_PER_MINUTE == 7
 
     def test_in_memory_limiter_basic(self):
         """Test that in-memory limiter correctly tracks requests."""

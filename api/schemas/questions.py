@@ -166,6 +166,9 @@ class SourceInfo(BaseModel):
     text: str = Field(..., description="The chunk text content")
 
     # Optional metadata
+    ticker: str | None = Field(None, description="Company ticker")
+    fiscal_year: int | None = Field(None, description="Filing fiscal year")
+    period_end: str | None = Field(None, description="Filing period end date")
     section: str | None = Field(None, description="Filing section")
     section_title: str | None = Field(
         None, description="Filing section title, e.g., 'Legal Proceedings'"
@@ -237,6 +240,9 @@ class QuestionResponse(BaseModel):
                     score=src.get("score") or 0.0,
                     elements=elements,
                     text=src.get("text", ""),
+                    ticker=src.get("ticker"),
+                    fiscal_year=src.get("fiscal_year"),
+                    period_end=src.get("period_end"),
                     section=src.get("section") or src.get("section_title"),
                     section_title=src.get("section_title"),
                     table_id=src.get("table_id"),

@@ -20,7 +20,8 @@ def format_source(index: int, chunk: dict[str, Any]) -> str:
     Format a single chunk as a numbered source block.
 
     Example output:
-        <source id="S1" doc="AAPL_10-K_2025" section="Products and Services Performance"
+        <source id="S1" doc="AAPL_10-K_2025" ticker="AAPL" fiscal_year="2025"
+                period_end="2025-09-27" section="Products and Services Performance"
                 type="table" elements="[279]" table_id="AAPL_10-K_2025_t016">
         **Table**
         | Products | 2025 | 2024 |
@@ -48,6 +49,9 @@ def format_source(index: int, chunk: dict[str, Any]) -> str:
         f'id="{source_id}"',
         f'doc="{chunk["doc_id"]}"',
     ]
+    for field in ("ticker", "fiscal_year", "period_end"):
+        if chunk.get(field) is not None:
+            attrs.append(f'{field}="{chunk[field]}"')
 
     # Add section info
     section = chunk.get("section_title") or chunk.get("section") or "Unknown"
@@ -91,6 +95,7 @@ def format_context(results: list) -> tuple[str, list[dict[str, Any]]]:
         - source_id: Prompt-level ID (S1, S2, ...)
         - chunk_id: Original chunk identifier
         - doc_id: Document identifier
+        - ticker, fiscal_year, period_end: Filing scope (None when absent)
         - section: Section name
         - section_title: Section title
         - type: Chunk type (text or table)
@@ -115,6 +120,9 @@ def format_context(results: list) -> tuple[str, list[dict[str, Any]]]:
                 "source_id": f"S{i}",
                 "chunk_id": chunk.get("chunk_id"),
                 "doc_id": chunk.get("doc_id"),
+                "ticker": chunk.get("ticker"),
+                "fiscal_year": chunk.get("fiscal_year"),
+                "period_end": chunk.get("period_end"),
                 "section": chunk.get("section"),
                 "section_title": chunk.get("section_title"),
                 "type": chunk.get("type"),

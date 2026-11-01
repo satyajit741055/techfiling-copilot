@@ -78,6 +78,10 @@ class APISettings(BaseSettings):
         default=2,
         description="Rate limit per IP per minute for /questions endpoint (expensive LLM calls)",
     )
+    RATE_LIMIT_CHAT_PER_MINUTE: int | None = Field(
+        default=None,
+        description="Rate limit per IP per minute for /chat; defaults to the questions limit",
+    )
     RATE_LIMIT_FILINGS_PER_MINUTE: int = Field(
         default=30, description="Rate limit per IP per minute for /filings endpoint"
     )
@@ -117,17 +121,20 @@ class APISettings(BaseSettings):
         "SUPABASE_JWT_SECRET",
         "SUPABASE_URL",
         "RATE_LIMIT_REDIS_URL",
+        "RATE_LIMIT_CHAT_PER_MINUTE",
         mode="before",
     )
     @classmethod
     def _empty_key_is_unset(cls, value: object) -> object:
-        """Treat empty API_ACCESS_KEY / SUPABASE_JWT_SECRET / RATE_LIMIT_REDIS_URL as not set."""
+        """Treat empty optional keys, URLs and the chat rate limit as not set."""
         if isinstance(value, str):
             return value.strip() or None
         return value
 
     @model_validator(mode="after")
     def _validate_production(self) -> "APISettings":
+        if self.RATE_LIMIT_CHAT_PER_MINUTE is None:
+            self.RATE_LIMIT_CHAT_PER_MINUTE = self.RATE_LIMIT_QUESTIONS_PER_MINUTE
         if self.ENVIRONMENT != "prod":
             return self
         problems = []

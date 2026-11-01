@@ -41,7 +41,7 @@ from __future__ import annotations
 from enum import Enum
 from functools import lru_cache
 from pathlib import Path
-from typing import Literal
+from typing import Any, Literal
 
 from pydantic import Field, field_validator, model_validator
 from pydantic_settings import BaseSettings, SettingsConfigDict
@@ -142,6 +142,39 @@ class Settings(BaseSettings):
     )
     LLM_RETRY_BACKOFF_SECONDS: float = Field(
         default=1.0, ge=0.0, description="Base delay for exponential retry backoff"
+    )
+
+    # =========================================================================
+    # AGENT CONFIGURATION
+    # =========================================================================
+    AGENT_LLM_PROVIDER: LLMProvider | None = Field(
+        default=None, description="Agent LLM provider; inherits LLM_PROVIDER when unset"
+    )
+    AGENT_LLM_MODEL: str = Field(
+        default="", description="Agent model; inherits the selected provider model when empty"
+    )
+    AGENT_MAX_TASKS: int = Field(default=10, ge=1, description="Maximum tasks per research turn")
+    AGENT_MAX_REPLANS: int = Field(default=2, ge=0, description="Maximum coverage replans")
+    AGENT_MAX_TOOL_STEPS: int = Field(default=2, ge=0, description="Worker follow-up tool cap")
+    AGENT_TASK_K: int = Field(default=5, ge=1, description="Reranked chunks per task search")
+    AGENT_MAX_CONTEXT_CHUNKS: int = Field(
+        default=24, ge=1, description="Maximum chunks passed to agent synthesis"
+    )
+    AGENT_MIN_EVIDENCE_SCORE: float | None = Field(
+        default=None, description="Optional reranker score threshold for usable evidence"
+    )
+    AGENT_RETRIEVAL_CONCURRENCY: int = Field(
+        default=2, ge=1, description="Concurrent agent retrieval operations"
+    )
+    AGENT_LLM_CONCURRENCY: int = Field(default=2, ge=1, description="Concurrent agent LLM calls")
+    AGENT_TIMEOUT_SECONDS: float = Field(
+        default=180.0, gt=0, description="Whole-turn timeout in seconds"
+    )
+    HISTORY_STORE: Literal["none", "postgres"] = Field(
+        default="none", description="Conversation history backend"
+    )
+    SUPABASE_DB_URL: str | None = Field(
+        default=None, description="Server-side Supabase Postgres pooler URL"
     )
 
     # =========================================================================
@@ -353,8 +386,10 @@ class Settings(BaseSettings):
 
     def model_for_provider(self, provider: str) -> str:
         """Model name for a provider: LLM_MODEL if set, else the provider default."""
-        if self.LLM_MODEL:
-            return self.LLM_MODEL
+        return self.LLM_MODEL or self.provider_default_model(provider)
+
+    def provider_default_model(self, provider: str) -> str:
+        """Configured default model for a provider, ignoring LLM_MODEL."""
         provider_defaults = {
             LLMProvider.OLLAMA: self.OLLAMA_MODEL,
             LLMProvider.HUGGINGFACE: self.HUGGINGFACE_MODEL,
@@ -368,6 +403,24 @@ class Settings(BaseSettings):
     def effective_model(self) -> str:
         """Get the effective LLM model name based on provider."""
         return self.model_for_provider(self.effective_llm_provider)
+
+    @property
+    def effective_agent_provider(self) -> str:
+        """Agent provider, inheriting the generation provider when unset."""
+        return (self.AGENT_LLM_PROVIDER or LLMProvider(self.effective_llm_provider)).value
+
+    @property
+    def effective_agent_model(self) -> str:
+        """Agent model, inheriting the generation model only for the same provider.
+
+        LLM_MODEL names a generation-provider model, so a different agent provider falls
+        back to its own default instead.
+        """
+        if self.AGENT_LLM_MODEL:
+            return self.AGENT_LLM_MODEL
+        if self.effective_agent_provider == self.effective_llm_provider:
+            return self.effective_model
+        return self.provider_default_model(self.effective_agent_provider)
 
     @property
     def effective_reranker(self) -> str:
@@ -392,21 +445,29 @@ class Settings(BaseSettings):
     def validate_api_keys(self) -> "Settings":
         """Validate that required API keys are present for the selected provider."""
         provider = LLMProvider(self.effective_llm_provider)
-        uses_hf_api = provider == LLMProvider.HUGGINGFACE or "huggingface_api" in (
-            self.effective_embedding_mode,
-            self.effective_reranker_mode,
+        agent_provider = LLMProvider(self.effective_agent_provider)
+        uses_hf_api = (
+            provider == LLMProvider.HUGGINGFACE
+            or agent_provider == LLMProvider.HUGGINGFACE
+            or "huggingface_api"
+            in (
+                self.effective_embedding_mode,
+                self.effective_reranker_mode,
+            )
         )
 
         if uses_hf_api and not self.HUGGINGFACE_API_KEY:
             raise ValueError(
                 "HUGGINGFACE_API_KEY is required when any model uses the Hugging Face API"
             )
-        if provider == LLMProvider.OPENAI and not self.OPENAI_API_KEY:
+        if LLMProvider.OPENAI in (provider, agent_provider) and not self.OPENAI_API_KEY:
             raise ValueError("OPENAI_API_KEY is required when using OpenAI provider")
-        elif provider == LLMProvider.ANTHROPIC and not self.ANTHROPIC_API_KEY:
+        if LLMProvider.ANTHROPIC in (provider, agent_provider) and not self.ANTHROPIC_API_KEY:
             raise ValueError("ANTHROPIC_API_KEY is required when using Anthropic provider")
-        elif provider == LLMProvider.GOOGLE and not self.GOOGLE_API_KEY:
+        if LLMProvider.GOOGLE in (provider, agent_provider) and not self.GOOGLE_API_KEY:
             raise ValueError("GOOGLE_API_KEY is required when using Google provider")
+        if self.HISTORY_STORE == "postgres" and not self.SUPABASE_DB_URL:
+            raise ValueError("SUPABASE_DB_URL is required when HISTORY_STORE=postgres")
 
         return self
 
@@ -414,12 +475,21 @@ class Settings(BaseSettings):
         "EMBEDDING_EXECUTION_MODE",
         "RERANKER_EXECUTION_MODE",
         "GENERATION_EXECUTION_MODE",
+        "AGENT_LLM_PROVIDER",
         mode="before",
     )
     @classmethod
     def blank_mode_is_unset(cls, v: str | None) -> str | None:
         """Treat an empty override (e.g. ``RERANKER_EXECUTION_MODE=``) as not set."""
         return v or None
+
+    @field_validator("AGENT_MIN_EVIDENCE_SCORE", "SUPABASE_DB_URL", mode="before")
+    @classmethod
+    def blank_optional_value_is_unset(cls, v: Any) -> Any:
+        """Treat empty or whitespace-only optional agent settings as unset."""
+        if isinstance(v, str):
+            return v.strip() or None
+        return v
 
     @field_validator("DATA_DIR", "MODEL_CACHE_DIR", "CHUNKS_DIR", mode="before")
     @classmethod
