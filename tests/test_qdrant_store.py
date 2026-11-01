@@ -349,7 +349,7 @@ def test_payload_indexes_created_once_on_server():
     client.get_collection.return_value.payload_schema = {"doc_id": object()}
     s = QdrantChunkStore("http://unused", "c", client=client)
     created = s.ensure_payload_indexes()
-    assert created == ["ticker", "form", "section", "type", "fiscal_year"]
+    assert created == ["ticker", "form", "section", "type", "table_id", "fiscal_year"]
     calls = {c.args[1]: c.args[2] for c in client.create_payload_index.call_args_list}
     assert calls["fiscal_year"] == models.PayloadSchemaType.INTEGER
     assert calls["ticker"] == models.PayloadSchemaType.KEYWORD

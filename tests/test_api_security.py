@@ -216,6 +216,7 @@ class TestReadiness:
         assert health._check_index_data().status == "ok"
 
     def test_index_data_missing(self, monkeypatch):
+        monkeypatch.setattr(health.settings, "VECTOR_STORE", "numpy")
         monkeypatch.setattr(health.settings, "RUN_DIRECTORY", "data/chunks/does-not-exist")
         assert health._check_index_data().status == "fail"
 

@@ -33,12 +33,19 @@ REQUIRED_METADATA_FIELDS = ("ticker", "fiscal_year", "form", "period_end")
 REQUIRED_STRUCTURAL_FIELDS = ("chunk_id", "doc_id", "text", "embed_text", "type")
 
 
-def validate_ingestion(doc_ids: list[str], all_chunks: list[dict]) -> None:
+def validate_ingestion(
+    doc_ids: list[str],
+    all_chunks: list[dict],
+    expected_tickers: list[str] | None = None,
+    expected_years: list[int] | None = None,
+) -> None:
     """Validate document and chunk invariants before embedding.
 
     Args:
         doc_ids: Document IDs from the current parse run.
         all_chunks: All chunks generated for the current run.
+        expected_tickers: Tickers that must each have every expected fiscal year.
+        expected_years: Fiscal years that must exist for every expected ticker.
 
     Raises:
         ValueError: If any invariant fails.
@@ -101,6 +108,20 @@ def validate_ingestion(doc_ids: list[str], all_chunks: list[dict]) -> None:
             )
         doc_keys[key] = doc_id
 
+    if (expected_tickers is None) != (expected_years is None):
+        raise ValueError("expected_tickers and expected_years must be provided together")
+    if expected_tickers is not None and expected_years is not None:
+        covered = {(str(ticker).upper(), fiscal_year) for ticker, _, fiscal_year in doc_keys}
+        expected = {
+            (ticker.strip().upper(), fiscal_year)
+            for ticker in expected_tickers
+            for fiscal_year in expected_years
+        }
+        missing_cells = sorted(expected - covered)
+        if missing_cells:
+            formatted = ", ".join(f"{ticker} FY{year}" for ticker, year in missing_cells)
+            raise ValueError(f"Missing expected ticker/fiscal-year filings: {formatted}")
+
     logger.info(f"Ingestion validation passed: {len(doc_ids)} documents, {len(all_chunks)} chunks")
 
 
@@ -118,6 +139,8 @@ def process(
     table_max_chars: int = TABLE_MAX_CHARS,
     model_cache_dir: Path = MODEL_CACHE_DIR,
     pseudo_headings: bool = True,
+    expected_tickers: list[str] | None = None,
+    expected_years: list[int] | None = None,
 ) -> Path:
     if not skip_parse:
         docs = parse_all(raw_dir, parsed_dir)
@@ -138,7 +161,7 @@ def process(
     logger.info(f"Total chunks: {len(all_chunks)}")
 
     # Validate invariants before anything is written, embedded or indexed
-    validate_ingestion(doc_ids, all_chunks)
+    validate_ingestion(doc_ids, all_chunks, expected_tickers, expected_years)
 
     run_timestamp = datetime.now().strftime("%Y-%m-%d_%H-%M-%S")
     out_dir = chunks_dir / run_timestamp
@@ -225,6 +248,34 @@ def process(
     return out_dir
 
 
+def _parse_tickers(value: str) -> list[str]:
+    tickers = [ticker.strip().upper() for ticker in value.split(",") if ticker.strip()]
+    if not tickers:
+        raise argparse.ArgumentTypeError("provide at least one comma-separated ticker")
+    return tickers
+
+
+def _parse_years(value: str) -> list[int]:
+    years: list[int] = []
+    try:
+        for item in value.split(","):
+            item = item.strip()
+            if "-" in item:
+                start, end = (int(part) for part in item.split("-", 1))
+                if start > end:
+                    raise ValueError
+                years.extend(range(start, end + 1))
+            elif item:
+                years.append(int(item))
+    except ValueError as exc:
+        raise argparse.ArgumentTypeError(
+            "use comma-separated years or inclusive ranges, e.g. 2021-2025"
+        ) from exc
+    if not years:
+        raise argparse.ArgumentTypeError("provide at least one fiscal year")
+    return sorted(set(years))
+
+
 def main() -> None:
     parser = argparse.ArgumentParser(
         description="Parse, chunk and embed 10-K filings into data/chunks/<run>/."
@@ -246,6 +297,16 @@ def main() -> None:
     parser.add_argument("--min-chars", type=int, default=MIN_CHARS)
     parser.add_argument("--table-max-chars", type=int, default=TABLE_MAX_CHARS)
     parser.add_argument(
+        "--expect-tickers",
+        type=_parse_tickers,
+        help="comma-separated tickers required in the corpus, e.g. AAPL,MSFT,TSLA",
+    )
+    parser.add_argument(
+        "--expect-years",
+        type=_parse_years,
+        help="required fiscal years, e.g. 2021-2025 or 2021,2023,2025",
+    )
+    parser.add_argument(
         "--pseudo-headings",
         action=argparse.BooleanOptionalAction,
         default=True,
@@ -253,19 +314,21 @@ def main() -> None:
     )
     args = parser.parse_args()
     process(
-        args.raw_dir,
-        args.parsed_dir,
-        args.chunks_dir,
-        args.model,
-        args.device,
-        args.batch_size,
-        args.skip_parse,
-        args.skip_embed,
-        args.max_chars,
-        args.min_chars,
-        args.table_max_chars,
-        args.model_cache_dir,
-        args.pseudo_headings,
+        raw_dir=args.raw_dir,
+        parsed_dir=args.parsed_dir,
+        chunks_dir=args.chunks_dir,
+        model_name=args.model,
+        device=args.device,
+        batch_size=args.batch_size,
+        skip_parse=args.skip_parse,
+        skip_embed=args.skip_embed,
+        max_chars=args.max_chars,
+        min_chars=args.min_chars,
+        table_max_chars=args.table_max_chars,
+        model_cache_dir=args.model_cache_dir,
+        pseudo_headings=args.pseudo_headings,
+        expected_tickers=args.expect_tickers,
+        expected_years=args.expect_years,
     )
 
 

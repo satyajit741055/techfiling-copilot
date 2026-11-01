@@ -16,7 +16,6 @@ Usage:
 
 from __future__ import annotations
 
-import logging
 import time
 from datetime import datetime
 from pathlib import Path
@@ -32,8 +31,6 @@ from .schemas import GeneratedAnswer, GenerationResult
 from .validation import parse_llm_response, validate_answer
 
 logger = get_logger(__name__)
-
-logger = logging.getLogger(__name__)
 
 
 class AnswerGenerator:

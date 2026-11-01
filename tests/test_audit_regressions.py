@@ -11,9 +11,8 @@ from bs4 import BeautifulSoup
 
 from api.rate_limit import check_rate_limit, in_memory_limiter
 from generation.validation import parse_llm_response, validate_answer
-from ingestion.chunking.chunker import chunk_document, chunk_doc_id, load_document_metadata
+from ingestion.chunking.chunker import chunk_doc_id, chunk_document, load_document_metadata
 from ingestion.chunking.embedder import build_manifest, embed_and_save
-from ingestion.processor import validate_ingestion
 from ingestion.parser.parser import (
     detect_section,
     doc_metadata,
@@ -23,6 +22,7 @@ from ingestion.parser.parser import (
     parse_table,
     score,
 )
+from ingestion.processor import validate_ingestion
 from scripts.check_coverage import EXPECTED_FILINGS, validate_corpus
 
 
@@ -707,6 +707,35 @@ def test_validate_ingestion_passes_on_multi_chunk_documents():
         "AAPL_10-K_2024", "AAPL", 2024, 3
     )
     validate_ingestion(["AAPL_10-K_2025", "AAPL_10-K_2024"], chunks)
+
+
+def test_validate_ingestion_passes_with_complete_expected_coverage():
+    chunks = _valid_chunks("AAPL_10-K_2024", "AAPL", 2024, 1) + _valid_chunks(
+        "MSFT_10-K_2024", "MSFT", 2024, 1
+    )
+    validate_ingestion(
+        ["AAPL_10-K_2024", "MSFT_10-K_2024"],
+        chunks,
+        expected_tickers=["aapl", "MSFT"],
+        expected_years=[2024],
+    )
+
+
+def test_validate_ingestion_fails_on_missing_expected_coverage():
+    chunks = _valid_chunks("AAPL_10-K_2024", "AAPL", 2024, 1)
+    with pytest.raises(ValueError, match="MSFT FY2024"):
+        validate_ingestion(
+            ["AAPL_10-K_2024"],
+            chunks,
+            expected_tickers=["AAPL", "MSFT"],
+            expected_years=[2024],
+        )
+
+
+def test_validate_ingestion_requires_both_coverage_expectations():
+    chunks = _valid_chunks("AAPL_10-K_2024", "AAPL", 2024, 1)
+    with pytest.raises(ValueError, match="must be provided together"):
+        validate_ingestion(["AAPL_10-K_2024"], chunks, expected_tickers=["AAPL"])
 
 
 def test_validate_ingestion_fails_on_duplicate_filing_key_across_documents():

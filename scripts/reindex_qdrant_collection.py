@@ -5,10 +5,11 @@ records the BM25 average chunk length it was built with in its metadata.
 
 Usage:
     uv run python scripts/reindex_qdrant_collection.py [--source NAME] [--target NAME]
-        [--avg-doc-tokens 256 | measured]
+        [--target-url URL] [--avg-doc-tokens source | 256 | measured]
 
 Defaults come from .env (QDRANT_PATH / QDRANT_URL, QDRANT_COLLECTION). The target defaults
-to a new timestamped name; it must not exist yet.
+to a new timestamped name; it must not exist yet. Use --target-url to copy from an
+embedded source store to a Qdrant server without recomputing dense embeddings.
 """
 
 from __future__ import annotations
@@ -39,20 +40,31 @@ def main() -> None:
         default=f"techfiling_{datetime.now(timezone.utc).strftime('%Y%m%dT%H%M%SZ')}",
     )
     parser.add_argument(
+        "--target-url",
+        help="write to a different Qdrant server instead of the source store",
+    )
+    parser.add_argument(
         "--avg-doc-tokens",
-        default=str(AVG_DOC_TOKENS),
-        help="BM25 avgdl: a number, or 'measured' for the mean chunk length (default: %(default)s)",
+        default="source",
+        help="BM25 avgdl: a number, 'measured' for the mean chunk length, or 'source' to keep "
+        f"the source collection's value (legacy collections: {AVG_DOC_TOKENS}) "
+        "(default: %(default)s)",
     )
     args = parser.parse_args()
 
     source = QdrantChunkStore.from_settings(settings, collection=args.source)
     if not source.exists():
         raise SystemExit(f"Source collection {args.source!r} does not exist")
-    # Share the client: an embedded on-disk store can only be opened once per process
-    target = QdrantChunkStore(
-        settings.QDRANT_URL, args.target, client=source.client, path=None
-    )
-    target.local = source.local
+    if args.target_url:
+        target = QdrantChunkStore(
+            args.target_url,
+            args.target,
+            api_key=settings.QDRANT_API_KEY,
+            timeout=settings.QDRANT_TIMEOUT,
+        )
+    else:
+        target = QdrantChunkStore(settings.QDRANT_URL, args.target, client=source.client, path=None)
+        target.local = source.local
     if target.exists():
         raise SystemExit(f"Target collection {args.target!r} already exists")
 
@@ -74,11 +86,12 @@ def main() -> None:
     order = sorted(range(len(chunks)), key=lambda i: chunks[i]["chunk_id"])
     chunks = [chunks[i] for i in order]
     matrix = np.asarray([vectors[i] for i in order], dtype=np.float32)
-    avg_doc_tokens = (
-        average_tokens([target._sparse_text(c) for c in chunks])
-        if args.avg_doc_tokens == "measured"
-        else float(args.avg_doc_tokens)
-    )
+    if args.avg_doc_tokens == "measured":
+        avg_doc_tokens = average_tokens([target._sparse_text(c) for c in chunks])
+    elif args.avg_doc_tokens == "source":
+        avg_doc_tokens = source.avg_doc_tokens()
+    else:
+        avg_doc_tokens = float(args.avg_doc_tokens)
 
     n = target.index_chunks(
         chunks,
@@ -96,6 +109,8 @@ def main() -> None:
         f"was {source.avg_doc_tokens()})\n"
         f"Set QDRANT_COLLECTION={args.target} to serve it."
     )
+    if target.client is not source.client:
+        target.client.close()
     source.client.close()
 
 

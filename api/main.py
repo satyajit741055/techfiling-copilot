@@ -106,9 +106,7 @@ SEC 10-K Document Q&A with RAG (Retrieval-Augmented Generation).
 
 ## Available Filings
 
-- Apple Inc. (AAPL) - 10-K FY2025
-- Microsoft Corporation (MSFT) - 10-K FY2026
-- Tesla, Inc. (TSLA) - 10-K FY2025
+Use `GET /filings` to list the filings currently available in the configured vector store.
 
 ## Example Question
 

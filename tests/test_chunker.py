@@ -324,6 +324,18 @@ class TestFileHelpers:
         self._write_elements(
             tmp_path, "D_10-K_2025", [_el(0, text="Body. " * 50), _el(1, text="More. " * 50)]
         )
+        (tmp_path / "D_10-K_2025.document.json").write_text(
+            json.dumps(
+                {
+                    "doc_id": "D_10-K_2025",
+                    "ticker": "D",
+                    "fiscal_year": 2025,
+                    "form": "10-K",
+                    "period_end": "2025-12-31",
+                }
+            ),
+            encoding="utf-8",
+        )
         chunks = chunk_doc_id("D_10-K_2025", tmp_path)
         out = tmp_path / "out.jsonl"
         write_chunks(chunks, out)

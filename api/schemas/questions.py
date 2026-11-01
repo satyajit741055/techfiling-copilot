@@ -281,7 +281,7 @@ class FilingInfo(BaseModel):
                 "ticker": "AAPL",
                 "form": "10-K",
                 "fiscal_year": 2025,
-                "period_end": "September 27, 2025",
+                "period_end": "2025-09-27",
             }
         }
     )

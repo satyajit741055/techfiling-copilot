@@ -24,6 +24,7 @@ PAYLOAD_INDEXES = {
     "form": models.PayloadSchemaType.KEYWORD,
     "section": models.PayloadSchemaType.KEYWORD,
     "type": models.PayloadSchemaType.KEYWORD,
+    "table_id": models.PayloadSchemaType.KEYWORD,
     "fiscal_year": models.PayloadSchemaType.INTEGER,
 }
 FILING_KEY = "filing"
