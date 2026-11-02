@@ -18,7 +18,7 @@ from langgraph.types import interrupt
 from generation.generator import AnswerGenerator
 
 from .catalog import FilingCatalog
-from .evidence import EvidenceRegistry, TurnEvidence
+from .evidence import EvidenceEntry, EvidenceRegistry, TurnEvidence
 from .llm import AgentLLM
 from .schemas import (
     Ambiguity,
@@ -29,6 +29,7 @@ from .schemas import (
     GroundedAnswer,
     GroundedClaim,
     ResearchPlan,
+    ResolvedScope,
     Source,
     SynthesisDraft,
     Task,
@@ -42,7 +43,7 @@ from .schemas import (
 from .scope import resolve_scope
 from .state import RESET, AgentState, WorkerState
 from .tools import AgentTools
-from .validation import drop_invalid_claims, validate_grounded_answer
+from .validation import drop_invalid_claims, ground_claims, validate_grounded_answer
 
 _PREVIEW_CHARS = 300
 _PENDING_STATUSES = {"pending", "missing"}
@@ -223,6 +224,7 @@ async def analyze_node(state: AgentState, deps: NodeDependencies) -> dict[str, A
         "replans": 0,
         "coverage": [],
         "draft": None,
+        "first_draft": None,
         "validation": None,
         "repairs": 0,
         "final": None,
@@ -687,16 +689,29 @@ every statement, e.g. "Apple's R&D expense was $34,550 million [S1]."
 - claims: one entry for every factual statement in the answer, with
   - text: the statement,
   - citation_ids: the [S#] ids that support it, e.g. ["S1"],
-  - excerpt: text copied exactly from one cited source (at most 300 characters; for tables, \
-copy the row),
-  - ticker and fiscal_year: the company and fiscal year of the cited source.
+  - excerpt: one passage copied exactly from one cited source (at most 300 characters; for \
+tables, copy the row); never join passages from different sources,
+  - ticker and fiscal_year: the ticker and fiscal_year attributes of the cited source.
 - calculations: only for numbers you derive (differences, growth rates): a simple arithmetic \
 expression over cited values, its result, and the cited inputs.
 
 Rules: use only facts from the sources; never mix companies or fiscal years in one claim; \
-keep units as the source states them (e.g. "$34,550 million"). If the sources do not answer \
-the question for a filing, say so for that filing. If they do not answer it at all, return \
-an empty answer, no claims and insufficient_context true."""
+for a value of a given year, cite that year's filing when it is among the sources; keep \
+units as the source states them (e.g. "$34,550 million"). Answer for every filing in scope \
+that a source covers, and say which filings the sources do not cover. Only when no source \
+answers the question for any filing, return an empty answer, no claims and \
+insufficient_context true.
+
+Example for a question across years: write one claim per fiscal year, each citing that \
+year's filing, never one claim for several years:
+{"answer": "Revenue grew from $90 million in 2024 [S1] to $100 million in 2025 [S2].", \
+"claims": [{"text": "Revenue was $90 million in 2024.", "citation_ids": ["S1"], \
+"excerpt": "Total revenues | 90 | 80", "ticker": "ABC", "fiscal_year": 2024}, \
+{"text": "Revenue was $100 million in 2025.", "citation_ids": ["S2"], \
+"excerpt": "Total revenues | 100 | 90", "ticker": "ABC", "fiscal_year": 2025}], \
+"calculations": [{"description": "Revenue change 2024 to 2025", "expression": "100 - 90", \
+"result": 10, "inputs": [{"citation_id": "S2", "value": 100}, \
+{"citation_id": "S1", "value": 90}]}], "insufficient_context": false}"""
 
 
 def _synthesis_messages(
@@ -711,7 +726,15 @@ def _synthesis_messages(
     prompt = f"Question: {state['question']}\nFilings in scope:\n{cells}\n\nSources:\n{context}"
     if validation is not None and not validation.is_valid:
         errors = "\n".join(f"- {error}" for error in validation.errors)
-        prompt += f"\n\nThe previous draft failed validation; fix these errors:\n{errors}"
+        draft = state.get("draft")
+        previous = (
+            draft.model_dump_json(include={"answer", "claims", "calculations"}) if draft else "{}"
+        )
+        prompt += (
+            f"\n\nYour previous draft:\n{previous}\n\nIt failed validation with these errors:\n"
+            f"{errors}\n\nReturn the corrected draft: keep every claim that no error names, "
+            "and fix or remove only the claims and calculations that the errors name."
+        )
     return [SystemMessage(content=SYNTHESIS_RULES), HumanMessage(content=prompt)]
 
 
@@ -751,14 +774,47 @@ async def synthesize_node(state: AgentState, deps: NodeDependencies) -> dict[str
         SynthesisDraft,
         _synthesis_messages(state, registry.format_context(), state.get("validation")),
     )
+    claims = ground_claims(synthesis.claims, registry.source_entries())
+    synthesis = synthesis.model_copy(update={"claims": claims})
     return {"draft": draft_from_synthesis(synthesis, scope.coverage)}
+
+
+def _clean_draft(
+    draft: GroundedAnswer,
+    report: ValidationReport,
+    scope: ResolvedScope,
+    entries: dict[str, EvidenceEntry],
+    catalog: FilingCatalog,
+) -> tuple[GroundedAnswer, ValidationReport]:
+    """Drop invalid claims/calculations until the draft validates or nothing more drops."""
+    dropped_claims = list(report.dropped_claims)
+    dropped_calculations = list(report.dropped_calculations)
+    for _ in range(len(draft.claims) + len(draft.calculations) + 1):
+        draft = drop_invalid_claims(draft, report, scope.coverage)
+        report = validate_grounded_answer(draft, scope, entries, catalog)
+        dropped_claims.extend(report.dropped_claims)
+        dropped_calculations.extend(report.dropped_calculations)
+        if report.is_valid or not (report.dropped_claims or report.dropped_calculations):
+            break
+    return draft, report.model_copy(
+        update={
+            "dropped_claims": list(dict.fromkeys(dropped_claims)),
+            "dropped_calculations": list(dict.fromkeys(dropped_calculations)),
+        }
+    )
+
+
+def _answered(draft: GroundedAnswer) -> tuple[int, int]:
+    return sum(cell.status == "found" for cell in draft.coverage), len(draft.claims)
 
 
 def validate_node(state: AgentState, deps: NodeDependencies) -> dict[str, Any]:
     """Validate the draft; request one repair, then drop invalid content and re-validate.
 
     ``repairs`` counts failed validations: after the first failure the graph returns to
-    ``synthesize``; after the second the draft is cleaned and the turn finalizes.
+    ``synthesize``; after the second the draft is cleaned and the turn finalizes. The
+    failed first draft is kept so a repair that answers less (small models often abstain
+    when shown errors) cannot discard its valid claims.
     """
     draft, scope = state.get("draft"), state.get("scope")
     if draft is None or scope is None:
@@ -767,25 +823,22 @@ def validate_node(state: AgentState, deps: NodeDependencies) -> dict[str, Any]:
     entries = deps.registry(state).source_entries()
     report = validate_grounded_answer(draft, scope, entries, deps.catalog)
     repairs = state.get("repairs", 0)
-    if report.is_valid or repairs < 1:
-        return {"validation": report, "repairs": repairs + (not report.is_valid)}
+    if repairs < 1:
+        if report.is_valid:
+            return {"validation": report, "repairs": repairs}
+        return {"validation": report, "repairs": repairs + 1, "first_draft": draft}
 
-    dropped_claims = list(report.dropped_claims)
-    dropped_calculations = list(report.dropped_calculations)
-    for _ in range(len(draft.claims) + len(draft.calculations) + 1):
-        draft = drop_invalid_claims(draft, report, scope.coverage)
-        report = validate_grounded_answer(draft, scope, entries, deps.catalog)
-        dropped_claims.extend(report.dropped_claims)
-        dropped_calculations.extend(report.dropped_calculations)
-        if report.is_valid or not (report.dropped_claims or report.dropped_calculations):
-            break
-    report = report.model_copy(
-        update={
-            "dropped_claims": list(dict.fromkeys(dropped_claims)),
-            "dropped_calculations": list(dict.fromkeys(dropped_calculations)),
-        }
-    )
-    return {"draft": draft, "validation": report, "repairs": repairs + 1}
+    failed = not report.is_valid
+    if failed:
+        draft, report = _clean_draft(draft, report, scope, entries, deps.catalog)
+    first = state.get("first_draft")
+    if first is not None:
+        first_report = validate_grounded_answer(first, scope, entries, deps.catalog)
+        if not first_report.is_valid:
+            first, first_report = _clean_draft(first, first_report, scope, entries, deps.catalog)
+        if first_report.is_valid and _answered(first) > _answered(draft):
+            draft, report = first, first_report
+    return {"draft": draft, "validation": report, "repairs": repairs + failed}
 
 
 def finalize_node(state: AgentState, deps: NodeDependencies) -> dict[str, Any]:

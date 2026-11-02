@@ -518,6 +518,91 @@ def test_validate_requests_repair_then_drops_and_revalidates(
     assert second["repairs"] == 2
 
 
+def test_repair_that_abstains_keeps_the_valid_claims_of_the_first_draft(
+    dependencies: NodeDependencies,
+) -> None:
+    evidence_turn(dependencies)
+    scope = research_scope(("AAPL", 2025))
+    state = {"scope": scope, "turn_id": "t1"}
+    first = validate_node(
+        {**state, "draft": draft_with_invalid_claim(), "repairs": 0}, dependencies
+    )
+    assert not first["validation"].is_valid and first["repairs"] == 1
+
+    abstain = GroundedAnswer(
+        answer=None,
+        coverage=[CoverageCell(ticker="AAPL", fiscal_year=2025, status="not_disclosed")],
+        insufficient_context=True,
+    )
+    second = validate_node({**state, **first, "draft": abstain}, dependencies)
+    assert second["validation"].is_valid, second["validation"].errors
+    assert second["validation"].dropped_claims == ["Services grew 12%."]
+    assert [claim.text for claim in second["draft"].claims] == ["Net sales were $100 million."]
+    assert second["draft"].coverage[0].status == "found"
+    assert second["draft"].answer == "Net sales were $100 million. [S1]"
+
+
+@pytest.mark.asyncio
+async def test_repair_prompt_shows_the_previous_draft(dependencies: NodeDependencies) -> None:
+    from agent.nodes import synthesize_node
+
+    dependencies.evidence.get("t1").register(
+        [chunk("AAPL_10-K_2025_c0000")], task_id="T1", tool="search_filings", scores=[0.9]
+    )
+    dependencies.llm = StubLLM([SynthesisDraft(answer="", claims=[])])  # type: ignore[assignment]
+    report = ValidationReport(is_valid=False, errors=["Claim excerpt is not verbatim: X"])
+    await synthesize_node(
+        {
+            "question": "Revenue?",
+            "scope": research_scope(("AAPL", 2025)),
+            "coverage": research_scope(("AAPL", 2025)).coverage,
+            "draft": draft_with_invalid_claim(),
+            "validation": report,
+            "turn_id": "t1",
+        },
+        dependencies,
+    )
+    prompt = dependencies.llm.messages[-1].content  # type: ignore[attr-defined]
+    assert "Claim excerpt is not verbatim: X" in prompt
+    assert "Net sales were $100 million." in prompt and "Services grew 12%." in prompt
+
+
+@pytest.mark.asyncio
+async def test_synthesis_grounds_claims_in_their_cited_filing(
+    dependencies: NodeDependencies,
+) -> None:
+    from agent.nodes import synthesize_node
+
+    dependencies.evidence.get("t1").register(
+        [chunk("AAPL_10-K_2025_c0000")], task_id="T1", tool="search_filings", scores=[0.9]
+    )
+    # A FY2025 10-K reports the prior year as a comparative column; the model tags the
+    # claim with the year of the value and stitches a second, invented passage on.
+    comparative = GroundedClaim(
+        text="Net sales were $100 million in 2024.",
+        citation_ids=["S1"],
+        excerpt="Net sales were $100 million (AAPL_10-K_2025_c0000).\n\nAny failure by",
+        ticker="AAPL",
+        fiscal_year=2024,
+    )
+    dependencies.llm = StubLLM(  # type: ignore[assignment]
+        [SynthesisDraft(answer="Net sales were $100 million in 2024 [S1].", claims=[comparative])]
+    )
+    scope = research_scope(("AAPL", 2025))
+    update = await synthesize_node(
+        {"question": "Revenue?", "scope": scope, "coverage": scope.coverage, "turn_id": "t1"},
+        dependencies,
+    )
+    claim = update["draft"].claims[0]
+    assert (claim.ticker, claim.fiscal_year) == ("AAPL", 2025)
+    assert claim.excerpt == "Net sales were $100 million (AAPL_10-K_2025_c0000)."
+    assert update["draft"].coverage[0].status == "found"
+    report = validate_node(
+        {"draft": update["draft"], "scope": scope, "turn_id": "t1"}, dependencies
+    )
+    assert report["validation"].is_valid, report["validation"].errors
+
+
 def test_coverage_and_finalize(dependencies: NodeDependencies) -> None:
     analysis = Analysis(
         intent="filing_question",

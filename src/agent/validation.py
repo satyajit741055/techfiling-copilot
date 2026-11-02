@@ -26,7 +26,10 @@ from .schemas import (
 )
 
 _CITATION = re.compile(r"\[(S\d+)]")
+_EXCERPT_BREAK = re.compile(r"\s*\n\s*")
 _CITATION_GROUP = re.compile(r"\s*\[S\d+(?:\s*,\s*S\d+)*]")
+_CITATION_RUN = re.compile(r"(?:\s*\[S\d+(?:\s*,\s*S\d+)*])+")
+_SOURCE_ID = re.compile(r"S\d+")
 _NUMBER = re.compile(r"(?<![\w.])\$?\d[\d,]*(?:\.\d+)?%?")
 _FORM_SUFFIX = re.compile(r"-[A-Za-z]")
 _UNIT_WORD = re.compile(r"\s*(?:thousand|million|billion|trillion)\b", re.IGNORECASE)
@@ -208,6 +211,80 @@ def _calculation_errors(
     return errors
 
 
+def _verbatim_in(excerpt: str, entries: Sequence[EvidenceEntry]) -> bool:
+    normalized = normalize_excerpt(excerpt)
+    return bool(normalized) and any(
+        normalized in normalize_excerpt(str(entry.chunk.get("text", ""))) for entry in entries
+    )
+
+
+def _filing(entry: EvidenceEntry) -> tuple[object, object]:
+    return entry.chunk.get("ticker"), entry.chunk.get("fiscal_year")
+
+
+def _verbatim_passage(
+    excerpt: str, numbers: set[str], entries: Sequence[EvidenceEntry]
+) -> str | None:
+    """``excerpt`` if verbatim in ``entries``, else its verbatim passage holding the most
+    claim numbers (then the longest), else ``None``."""
+    if _verbatim_in(excerpt, entries):
+        return excerpt
+    passages = [
+        passage.strip()
+        for passage in _EXCERPT_BREAK.split(excerpt)
+        if _verbatim_in(passage, entries)
+    ]
+    return max(
+        passages,
+        key=lambda passage: (len(numbers & _number_keys(passage)), len(passage)),
+        default=None,
+    )
+
+
+def ground_claims(
+    claims: Sequence[GroundedClaim], source_entries: dict[str, EvidenceEntry]
+) -> list[GroundedClaim]:
+    """Code-owned provenance for model claims, applied before validation.
+
+    Only claims whose citations all come from one filing of the claim's own company are
+    touched; a claim citing another company's filing (or several filings) is left as is,
+    so validation rejects it.
+
+    - The claim takes the cited filing's fiscal year: a prior-year column of a FY2025
+      10-K is a FY2025-filing claim.
+    - An excerpt that stitches passages together is cut to the passage that is verbatim
+      in a cited source, so the number checks only see text the source contains.
+    - An excerpt copied from a different source of the same filing (e.g. the income
+      statement instead of the cited segment table) adds that source to the citations.
+
+    Excerpts that no source of the filing contains stay unchanged and invalid.
+    """
+    grounded: list[GroundedClaim] = []
+    for claim in claims:
+        cited = [source_entries[sid] for sid in claim.citation_ids if sid in source_entries]
+        filings = {_filing(entry) for entry in cited}
+        ticker, year = next(iter(filings)) if len(filings) == 1 else (None, None)
+        if ticker != claim.ticker or year is None:
+            grounded.append(claim)
+            continue
+        update: dict[str, object] = {}
+        if int(str(year)) != claim.fiscal_year:
+            update["fiscal_year"] = int(str(year))
+        numbers = _number_keys(claim.text)
+        passage = _verbatim_passage(claim.excerpt, numbers, cited)
+        if passage is None:
+            for source_id, entry in source_entries.items():
+                if source_id in claim.citation_ids or _filing(entry) != (ticker, year):
+                    continue
+                if (passage := _verbatim_passage(claim.excerpt, numbers, [entry])) is not None:
+                    update["citation_ids"] = [*claim.citation_ids, source_id]
+                    break
+        if passage is not None and passage != claim.excerpt:
+            update["excerpt"] = passage
+        grounded.append(claim.model_copy(update=update) if update else claim)
+    return grounded
+
+
 def _claim_errors(
     claim: GroundedClaim,
     source_entries: dict[str, EvidenceEntry],
@@ -254,6 +331,37 @@ def _claim_errors(
     return errors
 
 
+def _miscited_prose(
+    text: str, claims: Sequence[GroundedClaim], calculation_results: Sequence[float]
+) -> list[str]:
+    """Prose numbers whose inline citations point at no valid claim stating them.
+
+    Each number binds to the citation run that follows it ("$100 million [S1]"); a claim
+    number cited with another claim's source ("$100 million [S2]") is reported.
+    """
+    claim_numbers = {key for claim in claims for key in _number_keys(claim.text)}
+    miscited: list[str] = []
+    start = 0
+    for run in _CITATION_RUN.finditer(text):
+        ids = list(dict.fromkeys(_SOURCE_ID.findall(run.group(0))))
+        stated = {
+            key
+            for claim in claims
+            if set(ids) & set(claim.citation_ids)
+            for key in _number_keys(claim.text)
+        }
+        miscited.extend(
+            f"{number.raw} [{', '.join(ids)}]"
+            for number in _parse_numbers(text[start : run.start()])
+            if number.financial
+            and _key(number.value) in claim_numbers
+            and _key(number.value) not in stated
+            and not _matches_result(number, calculation_results)
+        )
+        start = run.end()
+    return miscited
+
+
 def validate_grounded_answer(
     answer: GroundedAnswer,
     scope: ResolvedScope,
@@ -295,6 +403,11 @@ def validate_grounded_answer(
     if unsupported_prose:
         errors.append(
             f"Answer has numbers not backed by a valid claim: {', '.join(unsupported_prose)}"
+        )
+    miscited = _miscited_prose(answer.answer or "", valid_claims, calculation_results)
+    if miscited:
+        errors.append(
+            f"Answer cites sources that do not state these numbers: {', '.join(miscited)}"
         )
 
     required = {(cell.ticker, cell.fiscal_year) for cell in scope.coverage}

@@ -10,7 +10,12 @@ from agent.schemas import (
     GroundedClaim,
     ResolvedScope,
 )
-from agent.validation import drop_invalid_claims, normalize_excerpt, validate_grounded_answer
+from agent.validation import (
+    drop_invalid_claims,
+    ground_claims,
+    normalize_excerpt,
+    validate_grounded_answer,
+)
 
 
 def setup_context() -> tuple[FilingCatalog, ResolvedScope, EvidenceRegistry]:
@@ -79,6 +84,69 @@ def valid_answer() -> GroundedAnswer:
     )
 
 
+def test_ground_claims_never_moves_a_claim_to_another_company_or_invents_an_excerpt() -> None:
+    catalog, scope, evidence = setup_context()
+    entries = evidence.source_entries()
+    base = valid_answer().claims[0]
+    cross_company = base.model_copy(update={"ticker": "MSFT", "fiscal_year": 2024})
+    invented = base.model_copy(update={"excerpt": "Invented line\nAnother invented line"})
+    stitched = base.model_copy(
+        update={
+            "excerpt": "Revenue was $200 million in 2025.\nNet sales were $100 million in 2025."
+        }
+    )
+    grounded = ground_claims([cross_company, invented, stitched], entries)
+
+    assert (grounded[0].ticker, grounded[0].fiscal_year) == ("MSFT", 2024)
+    assert grounded[1].excerpt == invented.excerpt
+    # The passage holding the claim's number wins over the other one (from S2, not cited).
+    assert grounded[2].excerpt == "Net sales were $100 million in 2025."
+    for claim in grounded[:2]:
+        answer = valid_answer().model_copy(update={"claims": [claim]})
+        assert not validate_grounded_answer(answer, scope, entries, catalog).is_valid
+
+
+def test_ground_claims_cites_the_same_filing_source_that_holds_the_excerpt() -> None:
+    catalog, scope, _ = setup_context()
+    evidence = EvidenceRegistry()
+    filing = {"doc_id": "AAPL_10-K_2025", "ticker": "AAPL", "fiscal_year": 2025}
+    evidence.register(
+        [
+            {**filing, "chunk_id": "AAPL_10-K_2025_c0001", "text": "Total | 100 | 90"},
+            {**filing, "chunk_id": "AAPL_10-K_2025_c0009", "text": "Net sales | 100 | 90"},
+            {
+                "chunk_id": "MSFT_10-K_2025_c0001",
+                "doc_id": "MSFT_10-K_2025",
+                "ticker": "MSFT",
+                "fiscal_year": 2025,
+                "text": "Revenue | 200 | 180",
+            },
+        ],
+        task_id="T1",
+        tool="search_filings",
+        scores=[0.9, 0.8, 0.7],
+    )
+    evidence.assign_source_ids(3)
+    entries = evidence.source_entries()
+    # The model cites the segment table (S1) but copies the row from the income statement.
+    wrong_table = GroundedClaim(
+        text="Apple net sales were $100 million.",
+        citation_ids=["S1"],
+        excerpt="Net sales | 100 | 90",
+        ticker="AAPL",
+        fiscal_year=2025,
+    )
+    other_company = wrong_table.model_copy(update={"excerpt": "Revenue | 200 | 180"})
+    grounded = ground_claims([wrong_table, other_company], entries)
+
+    assert grounded[0].citation_ids == ["S1", "S2"]
+    assert grounded[1].citation_ids == ["S1"]
+    answer = valid_answer().model_copy(
+        update={"answer": "Apple net sales were $100 million [S1].", "claims": grounded[:1]}
+    )
+    assert validate_grounded_answer(answer, scope, entries, catalog).is_valid
+
+
 def test_valid_grounded_answer_passes() -> None:
     catalog, scope, evidence = setup_context()
     report = validate_grounded_answer(valid_answer(), scope, evidence.source_entries(), catalog)
@@ -95,6 +163,47 @@ def test_unknown_inline_and_claim_citations_fail() -> None:
     report = validate_grounded_answer(answer, scope, evidence.source_entries(), catalog)
     assert not report.is_valid
     assert any("unknown sources" in error for error in report.errors)
+
+
+def test_prose_number_must_be_stated_by_a_claim_citing_the_same_source() -> None:
+    catalog, _, evidence = setup_context()
+    entries = evidence.source_entries()
+    scope = ResolvedScope(
+        tickers=["AAPL", "MSFT"],
+        fiscal_years=[2025],
+        cells=[{"ticker": "AAPL", "fiscal_year": 2025}, {"ticker": "MSFT", "fiscal_year": 2025}],
+        coverage=[{"ticker": "AAPL", "fiscal_year": 2025}, {"ticker": "MSFT", "fiscal_year": 2025}],
+        route="research",
+    )
+    microsoft = GroundedClaim(
+        text="Microsoft revenue was $200 million.",
+        citation_ids=["S2"],
+        excerpt="Revenue was $200 million in 2025.",
+        ticker="MSFT",
+        fiscal_year=2025,
+    )
+    both = valid_answer().model_copy(
+        update={
+            "claims": [*valid_answer().claims, microsoft],
+            "coverage": [
+                CoverageCell(ticker="AAPL", fiscal_year=2025, status="found"),
+                CoverageCell(ticker="MSFT", fiscal_year=2025, status="found"),
+            ],
+        }
+    )
+    correct = both.model_copy(
+        update={"answer": "Apple had $100 million [S1] and Microsoft $200 million [S2][S1]."}
+    )
+    # The prose puts Apple's number next to Microsoft's source.
+    miscited = both.model_copy(
+        update={"answer": "Apple had $100 million [S1] and Microsoft $100 million [S2]."}
+    )
+
+    assert validate_grounded_answer(correct, scope, entries, catalog).is_valid
+    report = validate_grounded_answer(miscited, scope, entries, catalog)
+    assert report.errors == ["Answer cites sources that do not state these numbers: $100 [S2]"]
+    cleaned = drop_invalid_claims(miscited, report, scope.coverage)
+    assert validate_grounded_answer(cleaned, scope, entries, catalog).is_valid
 
 
 def test_uncited_nonverbatim_and_cross_scope_claims_fail() -> None:

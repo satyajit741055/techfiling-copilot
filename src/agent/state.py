@@ -50,6 +50,7 @@ class AgentState(TypedDict, total=False):
     replans: int
     coverage: list[CoverageCell]
     draft: GroundedAnswer | None
+    first_draft: GroundedAnswer | None
     validation: ValidationReport | None
     repairs: int
     final: ChatAnswer | None

@@ -311,6 +311,38 @@ async def test_replan_then_success_with_one_repair_pass() -> None:
 
 
 @pytest.mark.asyncio
+async def test_repair_that_abstains_keeps_valid_claims_from_the_first_draft() -> None:
+    partly_invalid = COMPARISON.model_copy(
+        update={
+            "claims": [
+                COMPARISON.claims[0],
+                claim("MSFT", "S2", "Microsoft revenue was $200 million.", "invented"),
+            ]
+        }
+    )
+    abstain = SynthesisDraft(answer="", claims=[], insufficient_context=True)
+    llm = ScriptedLLM(
+        {
+            Analysis: [analysis("cross_company", companies=["Apple", "Microsoft"])],
+            ResearchPlan: [plan("revenue")],
+            SynthesisDraft: [partly_invalid, abstain],
+        }
+    )
+    graph = build_graph(make_deps(llm))
+    state = await graph.ainvoke({"question": "Compare revenue", "turn_id": "t1"}, graph_config("t"))
+
+    final = state["final"]
+    assert llm.calls["SynthesisDraft"] == 2
+    assert final.is_valid, final.validation_errors
+    assert final.answer == "Apple net sales were $100 million. [S1]"
+    assert [(item.ticker, item.status) for item in final.coverage] == [
+        ("AAPL", "found"),
+        ("MSFT", "not_disclosed"),
+    ]
+    assert final.dropped_claims == ["Microsoft revenue was $200 million."]
+
+
+@pytest.mark.asyncio
 async def test_replans_exhausted_marks_not_disclosed() -> None:
     abstain = SynthesisDraft(answer="", claims=[], insufficient_context=True)
     llm = ScriptedLLM(
