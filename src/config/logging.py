@@ -20,13 +20,13 @@ Usage:
 import json
 import logging
 import sys
-from datetime import datetime
+from datetime import UTC, datetime
 from functools import lru_cache
 from logging.handlers import RotatingFileHandler
 from pathlib import Path
 from typing import Literal
 
-from .settings import settings
+from .settings import ROOT, settings
 
 LogLevel = Literal["DEBUG", "INFO", "WARNING", "ERROR", "CRITICAL"]
 
@@ -40,7 +40,7 @@ class JSONFormatter(logging.Formatter):
 
     def format(self, record: logging.LogRecord) -> str:
         log_data = {
-            "timestamp": datetime.utcnow().isoformat() + "Z",
+            "timestamp": datetime.now(UTC).isoformat().replace("+00:00", "Z"),
             "level": record.levelname,
             "logger": record.name,
             "message": record.getMessage(),
@@ -102,6 +102,8 @@ def setup_logging(
     # File handler (if configured)
     if settings.LOG_FILE:
         log_file_path = Path(settings.LOG_FILE)
+        if not log_file_path.is_absolute():
+            log_file_path = ROOT / log_file_path
         log_file_path.parent.mkdir(parents=True, exist_ok=True)
 
         file_handler = RotatingFileHandler(

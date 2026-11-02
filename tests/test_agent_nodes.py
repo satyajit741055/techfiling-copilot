@@ -305,6 +305,17 @@ def test_clarification_respects_dimension() -> None:
     assert topic.topics == ["Gross margin"]
 
 
+def test_free_text_clarification_keeps_every_named_company() -> None:
+    catalog = make_catalog(("AAPL", 2024), ("MSFT", 2024))
+    analysis = Analysis(intent="filing_question", scope="specific", question_type="trend")
+    company = Clarification(dimension="company", question="Which?")
+
+    answer = apply_clarification(analysis, company, "Apple and Microsoft for 2024", catalog)
+
+    assert [catalog.resolve_company(name) for name in answer.companies] == ["AAPL", "MSFT"]
+    assert answer.years.explicit == [2024]
+
+
 @pytest.mark.asyncio
 async def test_simple_rag_records_turn_and_withholds_invalid_answer(
     dependencies: NodeDependencies,

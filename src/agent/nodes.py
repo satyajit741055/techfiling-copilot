@@ -305,6 +305,8 @@ def apply_clarification(
     remainder = _YEAR_MENTION.sub(" ", text)
     parts = [part.strip() for part in _LIST_SEPARATOR.split(remainder) if part.strip()]
     companies = [part for part in parts if catalog.resolve_company(part)]
+    resolved = {catalog.resolve_company(part) for part in companies}
+    companies += [ticker for ticker in catalog.find_companies(text) if ticker not in resolved]
     if clarification.dimension == "company":
         if text.casefold() == "all":
             companies = catalog.tickers

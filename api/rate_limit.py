@@ -19,6 +19,7 @@ import threading
 import time
 from collections import defaultdict
 from typing import Callable, Literal
+from urllib.parse import urlsplit, urlunsplit
 
 from fastapi import HTTPException, Request, status
 from limits import RateLimitItemPerSecond
@@ -126,6 +127,15 @@ in_memory_limiter = InMemoryRateLimiter()
 # =============================================================================
 
 
+def _redacted(url: str) -> str:
+    """URL without its password (redis://:secret@host -> redis://:***@host)."""
+    parts = urlsplit(url)
+    if not parts.password:
+        return url
+    netloc = parts.netloc.replace(f":{parts.password}@", ":***@", 1)
+    return urlunsplit(parts._replace(netloc=netloc))
+
+
 def get_redis_storage():
     """
     Get Redis storage URL or None for in-memory fallback.
@@ -143,7 +153,7 @@ def get_redis_storage():
 
         client = redis.from_url(redis_url)
         client.ping()
-        logger.info(f"Rate limiting using Redis at {redis_url}")
+        logger.info(f"Rate limiting using Redis at {_redacted(redis_url)}")
         return redis_url
     except Exception as e:
         logger.warning(

@@ -69,7 +69,9 @@ def validate_ingestion(
             raise ValueError(f"Chunk {cid} has non-integer fiscal_year: {fy!r}")
 
     # chunk_id uniqueness (primary key)
-    chunk_duplicates = sorted(c for c, n in Counter(c["chunk_id"] for c in all_chunks).items() if n > 1)
+    chunk_duplicates = sorted(
+        c for c, n in Counter(c["chunk_id"] for c in all_chunks).items() if n > 1
+    )
     if chunk_duplicates:
         raise ValueError(f"Duplicate chunk IDs: {', '.join(chunk_duplicates[:20])}")
 
@@ -82,7 +84,9 @@ def validate_ingestion(
         raise ValueError(f"Documents with no chunks: {', '.join(sorted(missing_chunks))}")
     unknown_docs = set(by_doc) - set(doc_ids)
     if unknown_docs:
-        raise ValueError(f"Chunks for documents not in current run: {', '.join(sorted(unknown_docs))}")
+        raise ValueError(
+            f"Chunks for documents not in current run: {', '.join(sorted(unknown_docs))}"
+        )
 
     doc_keys: dict[tuple, str] = {}
     for doc_id in doc_ids:
@@ -97,7 +101,9 @@ def validate_ingestion(
         # Filing metadata must be identical on every chunk of a document
         metas = {tuple(c[f] for f in REQUIRED_METADATA_FIELDS) for c in doc_chunks}
         if len(metas) > 1:
-            raise ValueError(f"Inconsistent filing metadata across chunks of {doc_id}: {sorted(metas)}")
+            raise ValueError(
+                f"Inconsistent filing metadata across chunks of {doc_id}: {sorted(metas)}"
+            )
 
         # (ticker, form, fiscal_year) must identify exactly one document
         first = doc_chunks[0]
@@ -218,9 +224,7 @@ def process(
 
         # Verify point count matches chunk count
         if n != len(all_chunks):
-            raise ValueError(
-                f"Qdrant point count {n} does not match chunk count {len(all_chunks)}"
-            )
+            raise ValueError(f"Qdrant point count {n} does not match chunk count {len(all_chunks)}")
 
         # Verify all filings appear in list_filings
         filings = store.list_filings()
@@ -291,7 +295,9 @@ def main() -> None:
         "--skip-parse", action="store_true", help="reuse existing data/parsed/*.elements.jsonl"
     )
     parser.add_argument(
-        "--skip-embed", action="store_true", help="skip embedding and Qdrant indexing (chunk-only run)"
+        "--skip-embed",
+        action="store_true",
+        help="skip embedding and Qdrant indexing (chunk-only run)",
     )
     parser.add_argument("--max-chars", type=int, default=MAX_CHARS)
     parser.add_argument("--min-chars", type=int, default=MIN_CHARS)

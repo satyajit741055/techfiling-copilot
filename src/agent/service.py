@@ -83,6 +83,7 @@ class _Run:
     replans: int = 0
     repairs: int = 0
     usage: Usage = field(default_factory=Usage)
+    totals_done: bool = False
 
     def elapsed_ms(self) -> int:
         return int((time.perf_counter() - self.started) * 1000)
@@ -384,7 +385,14 @@ class AgentService:
         return events
 
     def _totals(self, run: _Run, usage: UsageCallback) -> None:
-        """LLM usage from the callback plus the single-filing generator's own counts."""
+        """LLM usage from the callback plus the single-filing generator's own counts.
+
+        Runs once per turn: afterwards ``run.final.usage`` already holds the totals, so a
+        second pass (stream closed after the answer) would count the callback twice.
+        """
+        if run.totals_done:
+            return
+        run.totals_done = True
         own = run.final.usage if run.final is not None else Usage()
         prompt = usage.prompt_tokens + own.prompt_tokens
         completion = usage.completion_tokens + own.completion_tokens

@@ -168,9 +168,7 @@ def main() -> None:
         with connection:
             tables = {
                 row[0]
-                for row in connection.execute(
-                    "SELECT name FROM sqlite_master WHERE type = 'table'"
-                )
+                for row in connection.execute("SELECT name FROM sqlite_master WHERE type = 'table'")
             }
             if TABLE_NAME not in tables:
                 raise SystemExit(f"Expected table {TABLE_NAME!r} was not found in {database}")
@@ -237,7 +235,9 @@ def main() -> None:
         json.dump(summary, summary_file, ensure_ascii=False, indent=2)
         summary_file.write("\n")
 
-    print(f"Scanned {summary['rows_scanned']:,} rows; found {summary['matching_points']:,} matches.")
+    print(
+        f"Scanned {summary['rows_scanned']:,} rows; found {summary['matching_points']:,} matches."
+    )
     print(f"Exported {summary['exported_points']:,} points to {points_path}")
     print(f"Wrote statistics to {summary_path}")
 

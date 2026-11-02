@@ -218,7 +218,9 @@ def inline_run_text(node, container) -> str:
         i -= 1
     while j + 1 < len(siblings) and inline(siblings[j + 1]):
         j += 1
-    return "".join(s.get_text("") if hasattr(s, "get_text") else str(s) for s in siblings[i : j + 1])
+    return "".join(
+        s.get_text("") if hasattr(s, "get_text") else str(s) for s in siblings[i : j + 1]
+    )
 
 
 def check_facts(soup, parsed, top_n: int):
@@ -625,9 +627,7 @@ def check_document(html_path: Path, parsed_dir: Path, doc_id: str, top_n: int) -
 
 def validate_corpus(raw_paths: list[Path], metadata: list[dict]) -> list[str]:
     errors = []
-    expected_files = {
-        f"{ticker}_10-K_{year}.html" for ticker, year in EXPECTED_FILINGS
-    }
+    expected_files = {f"{ticker}_10-K_{year}.html" for ticker, year in EXPECTED_FILINGS}
     raw_files = {path.name for path in raw_paths}
     missing_raw = sorted(expected_files - raw_files)
     extra_raw = sorted(raw_files - expected_files)

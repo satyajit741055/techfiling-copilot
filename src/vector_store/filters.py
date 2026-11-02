@@ -78,7 +78,7 @@ def to_qdrant_filter(filters: Mapping[str, Any] | None) -> models.Filter | None:
     """Qdrant ``Filter`` for already-merged ``filters`` (``None`` when there are none)."""
     if not filters:
         return None
-    conditions = []
+    conditions: list[models.Condition] = []
     for key, value in filters.items():
         if isinstance(value, dict):
             conditions.append(models.FieldCondition(key=key, range=models.Range(**value)))

@@ -375,6 +375,31 @@ async def test_consumer_closing_the_stream_cancels_the_graph() -> None:
 
 
 @pytest.mark.asyncio
+async def test_closing_the_stream_after_the_answer_does_not_double_count_usage() -> None:
+    reply = AIMessage(
+        content='{"intent": "greeting", "scope": "specific", "question_type": "qualitative"}',
+        usage_metadata={"input_tokens": 7, "output_tokens": 3, "total_tokens": 10},
+    )
+    service = make_service(ScriptedLLM({}))
+    service.graph = build_graph(make_deps(AgentLLM(GenericFakeChatModel(messages=iter([reply])))))
+    stream = service.stream(turn(message="Hi"))
+    async for event in stream:
+        if event.event == "answer":
+            sent = event.data["usage"]
+            break
+    await stream.aclose()
+
+    (metric,) = service.writer.records  # type: ignore[union-attr]
+    assert metric.status == "cancelled"
+    assert (metric.prompt_tokens, metric.completion_tokens, metric.llm_calls) == (
+        sent["prompt_tokens"],
+        sent["completion_tokens"],
+        sent["llm_calls"],
+    )
+    assert metric.prompt_tokens == 7
+
+
+@pytest.mark.asyncio
 async def test_second_message_on_a_busy_thread_is_rejected() -> None:
     llm = SlowLLM()
     service = make_service(llm, timeout=0.3)

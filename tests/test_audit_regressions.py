@@ -302,9 +302,7 @@ def test_processor_uses_current_run_doc_ids(tmp_path):
         "period_end": "2024-12-31",
         "source_file": "OLD_10-K_2024.html",
     }
-    (parsed_dir / "OLD_10-K_2024.document.json").write_text(
-        json.dumps(stale_doc), encoding="utf-8"
-    )
+    (parsed_dir / "OLD_10-K_2024.document.json").write_text(json.dumps(stale_doc), encoding="utf-8")
     (parsed_dir / "OLD_10-K_2024.elements.jsonl").write_text(
         '{"doc_id":"OLD_10-K_2024","order":0,"type":"paragraph","text":"Stale content"}',
         encoding="utf-8",
@@ -341,9 +339,7 @@ def test_load_document_metadata(tmp_path):
         "period_end": "2025-09-27",
         "source_file": "AAPL_10-K_2025.html",
     }
-    (parsed_dir / "AAPL_10-K_2025.document.json").write_text(
-        json.dumps(metadata), encoding="utf-8"
-    )
+    (parsed_dir / "AAPL_10-K_2025.document.json").write_text(json.dumps(metadata), encoding="utf-8")
 
     loaded = load_document_metadata("AAPL_10-K_2025", parsed_dir)
     assert loaded["ticker"] == "AAPL"
@@ -373,9 +369,7 @@ def test_load_document_metadata_fails_on_doc_id_mismatch(tmp_path):
         "fiscal_year": 2025,
         "period_end": "2025-09-27",
     }
-    (parsed_dir / "AAPL_10-K_2025.document.json").write_text(
-        json.dumps(metadata), encoding="utf-8"
-    )
+    (parsed_dir / "AAPL_10-K_2025.document.json").write_text(json.dumps(metadata), encoding="utf-8")
 
     with pytest.raises(ValueError, match="Internal doc_id mismatch"):
         load_document_metadata("AAPL_10-K_2025", parsed_dir)
@@ -392,9 +386,7 @@ def test_load_document_metadata_fails_on_missing_fields(tmp_path):
         "form": "10-K",
         # Missing fiscal_year and period_end
     }
-    (parsed_dir / "AAPL_10-K_2025.document.json").write_text(
-        json.dumps(metadata), encoding="utf-8"
-    )
+    (parsed_dir / "AAPL_10-K_2025.document.json").write_text(json.dumps(metadata), encoding="utf-8")
 
     with pytest.raises(ValueError, match="Missing required metadata fields"):
         load_document_metadata("AAPL_10-K_2025", parsed_dir)
@@ -413,9 +405,7 @@ def test_chunk_doc_id_stamps_metadata_on_chunks(tmp_path):
         "fiscal_year": 2025,
         "period_end": "2025-12-31",
     }
-    (parsed_dir / "TEST_10-K_2025.document.json").write_text(
-        json.dumps(metadata), encoding="utf-8"
-    )
+    (parsed_dir / "TEST_10-K_2025.document.json").write_text(json.dumps(metadata), encoding="utf-8")
 
     # Write elements
     elements = [
@@ -464,9 +454,7 @@ def test_chunk_doc_id_preserves_chunk_boundaries_and_embed_text(tmp_path):
         "fiscal_year": 2025,
         "period_end": "2025-12-31",
     }
-    (parsed_dir / "TEST_10-K_2025.document.json").write_text(
-        json.dumps(metadata), encoding="utf-8"
-    )
+    (parsed_dir / "TEST_10-K_2025.document.json").write_text(json.dumps(metadata), encoding="utf-8")
 
     elements = [
         {
@@ -774,14 +762,18 @@ def test_processor_skip_embed_generates_chunks_only(tmp_path):
     chunks_dir.mkdir()
 
     # Create a valid filing
-    html = """<html><body>
+    html = (
+        """<html><body>
       <ix:nonnumeric name="dei:EntityRegistrantName">Test Inc.</ix:nonnumeric>
       <ix:nonnumeric name="dei:TradingSymbol">TEST</ix:nonnumeric>
       <ix:nonnumeric name="dei:DocumentType">10-K</ix:nonnumeric>
       <ix:nonnumeric name="dei:DocumentFiscalYearFocus">2025</ix:nonnumeric>
       <ix:nonnumeric name="dei:DocumentPeriodEndDate">2025-12-31</ix:nonnumeric>
-      <p>""" + ("Test content. " * 50) + """</p>
+      <p>"""
+        + ("Test content. " * 50)
+        + """</p>
     </body></html>"""
+    )
     (raw_dir / "TEST_10-K_2025.html").write_text(html, encoding="utf-8")
 
     # Process with skip-embed
@@ -830,9 +822,7 @@ def test_build_manifest_includes_corpus_metadata(tmp_path):
             "period_end": f"{year}-12-31",
             "source_file": f"{doc_id}.html",
         }
-        (parsed_dir / f"{doc_id}.document.json").write_text(
-            json.dumps(metadata), encoding="utf-8"
-        )
+        (parsed_dir / f"{doc_id}.document.json").write_text(json.dumps(metadata), encoding="utf-8")
 
     # Create chunks with metadata
     chunks = [

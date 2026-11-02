@@ -448,7 +448,7 @@ class QdrantChunkStore:
         check_group_by(group_by, merged, groups)
         if group_size < 1 or group_limit < 1:
             raise ValueError("group_size and group_limit must be at least 1")
-        tuning = {
+        tuning: dict[str, Any] = {
             "mode": mode,
             "dense_k": dense_k,
             "sparse_k": sparse_k,

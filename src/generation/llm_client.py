@@ -210,7 +210,7 @@ class LLMClient:
         )
 
         return LLMResponse(
-            content=response.choices[0].message.content,
+            content=response.choices[0].message.content or "",
             model=self.model,
             prompt_tokens=response.usage.prompt_tokens,
             completion_tokens=response.usage.completion_tokens,

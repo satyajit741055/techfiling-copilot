@@ -143,8 +143,7 @@ def download_filings(
         for filing in filings:
             accession_path = filing["accession_number"].replace("-", "")
             source_url = (
-                f"{SEC_ARCHIVES_URL}/{int(cik)}/{accession_path}/"
-                f"{filing['primary_document']}"
+                f"{SEC_ARCHIVES_URL}/{int(cik)}/{accession_path}/{filing['primary_document']}"
             )
             local_path = output_dir / f"{ticker}_10-K_{filing['fiscal_year']}.html"
             status = "skipped"

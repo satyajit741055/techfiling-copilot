@@ -32,7 +32,10 @@ def main() -> None:
     parser.add_argument("run_directory", nargs="?", type=Path, default=settings.get_run_directory())
     parser.add_argument("--url", default=settings.QDRANT_URL)
     parser.add_argument(
-        "--path", type=Path, default=settings.QDRANT_PATH, help="embedded on-disk store (overrides --url)"
+        "--path",
+        type=Path,
+        default=settings.QDRANT_PATH,
+        help="embedded on-disk store (overrides --url)",
     )
     parser.add_argument("--collection", default=settings.QDRANT_COLLECTION)
     parser.add_argument(

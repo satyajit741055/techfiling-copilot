@@ -12,6 +12,7 @@ import json
 from collections import Counter
 from datetime import datetime
 from pathlib import Path
+from typing import Any
 
 import numpy as np
 import pandas as pd
@@ -204,7 +205,7 @@ def build_manifest(
     min_chars = chunking_config["min_chars"]
     doc_ids = list(dict.fromkeys(c["doc_id"] for c in chunks))
 
-    manifest = {
+    manifest: dict[str, Any] = {
         "run_timestamp": run_timestamp,
         "output_directory": output_directory,
         "chunking_config": chunking_config,

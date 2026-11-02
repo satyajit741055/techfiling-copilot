@@ -68,7 +68,9 @@ UNITS_ONLY_RE = re.compile(
 MAGNITUDES = {"thousand": 1e3, "million": 1e6, "billion": 1e9, "trillion": 1e12}
 MAGNITUDE_RE = re.compile(r"(thousand|million|billion|trillion)s?$", re.I)
 PAGE_NUM_RE = re.compile(r"^(?:page\s*)?(?:\d{1,3}|[ivxlc]{1,6})$|^[-–—]\s*\d{1,3}\s*[-–—]$", re.I)
-FOOTNOTE_MARKER_RE = re.compile(r"^(?:\(\s*(?:[a-z]|\d{1,2}|[ivx]{1,4})\s*\)|[*†‡§]+|\d{1,2})$", re.I)
+FOOTNOTE_MARKER_RE = re.compile(
+    r"^(?:\(\s*(?:[a-z]|\d{1,2}|[ivx]{1,4})\s*\)|[*†‡§]+|\d{1,2})$", re.I
+)
 FOOTNOTE_MIN_LEN = 40
 TOC_ROW_RE = re.compile(r"^(?:part\s+(?:iv|i{1,3})\b|item\s+\d{1,2}[a-c]?\b)", re.I)
 TOC_MIN_ROWS = 5
@@ -253,9 +255,7 @@ def doc_metadata(soup: BeautifulSoup, path: Path) -> dict:
     if form != "10-K":
         raise ValueError(f"{path.name}: expected DEI DocumentType '10-K', got {form!r}")
     if not fiscal_year_text.isdigit():
-        raise ValueError(
-            f"{path.name}: invalid DEI DocumentFiscalYearFocus {fiscal_year_text!r}"
-        )
+        raise ValueError(f"{path.name}: invalid DEI DocumentFiscalYearFocus {fiscal_year_text!r}")
     period_end = normalize_dei_date(period_end, path)
     fiscal_year = int(fiscal_year_text)
     return {
@@ -817,9 +817,10 @@ def is_header_value(v: Cell) -> bool:
     if v.ctype != "TEXT":
         return True
     # "2019 (4)": a year carrying a footnote marker
-    return bool(UNITS_ONLY_RE.match(v.text)) or cell_type(
-        FOOTNOTE_RE.sub("", v.text).strip()
-    ) in ("YEAR", "DATE")
+    return bool(UNITS_ONLY_RE.match(v.text)) or cell_type(FOOTNOTE_RE.sub("", v.text).strip()) in (
+        "YEAR",
+        "DATE",
+    )
 
 
 def build_rows(data_rows, groups):
