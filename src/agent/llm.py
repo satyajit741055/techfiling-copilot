@@ -4,6 +4,7 @@ from __future__ import annotations
 
 import asyncio
 import json
+import logging
 from collections.abc import Sequence
 from typing import Any, TypeVar
 
@@ -17,6 +18,8 @@ from config.settings import Settings, settings
 from generation.validation import _extract_json_object
 
 SchemaT = TypeVar("SchemaT", bound=BaseModel)
+
+logger = logging.getLogger(__name__)
 
 
 def get_chat_model(role: str = "agent", config: Settings | None = None) -> BaseChatModel:
@@ -76,6 +79,10 @@ class AgentLLM:
                 result = await self.model.with_structured_output(schema).ainvoke(list(messages))
             return result if isinstance(result, schema) else schema.model_validate(result)
         except Exception as first_error:
+            logger.warning(
+                f"{schema.__name__}: structured output failed "
+                f"({type(first_error).__name__}: {str(first_error)[:300]}); retrying as plain JSON"
+            )
             response = await self.invoke(messages)
             data = _extract_json_object(_content_text(response))
             if data is not None:

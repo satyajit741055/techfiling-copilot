@@ -303,3 +303,29 @@ class TestAnswerBatch:
         assert [r["status"] for r in rows] == ["success", "error"]
         assert rows[0]["generated_answer"] == "$391 billion" and rows[0]["is_valid"]
         assert rows[1]["error"] == "retriever failed" and rows[1]["id"] == "q2"
+
+
+def test_traced_answer_records_retrieval_hits_and_the_llm_exchange():
+    from observability.tracing import tracing
+
+    events: list[tuple[str, str, dict]] = []
+    retriever = FakeRetriever([SearchResult(0.9, _chunk(0)), SearchResult(0.4, _chunk(1))])
+    with tracing(lambda kind, summary, **data: events.append((kind, summary, data))):
+        _generator(FakeLLM(GOOD), retriever).answer("Revenue?", filters={"ticker": "AAPL"})
+
+    (retrieval, _, hits), (llm, summary, exchange) = events
+    assert retrieval == "retrieval" and hits["filters"] == {"ticker": "AAPL"}
+    assert [(hit["chunk_id"], hit["score"]) for hit in hits["hits"]] == [
+        ("AAPL_10-K_2025_c0000", 0.9),
+        ("AAPL_10-K_2025_c0001", 0.4),
+    ]
+    assert llm == "generator_llm" and "valid=True" in summary
+    assert "Revenue?" in exchange["user_prompt"] and exchange["raw_response"] == GOOD
+    assert exchange["usage"] == {"input_tokens": 11, "output_tokens": 7}
+
+
+def test_generator_does_not_trace_outside_a_traced_turn():
+    from observability.tracing import tracing_enabled
+
+    assert not tracing_enabled()
+    _generator(FakeLLM(GOOD)).generate("Q?", [SearchResult(0.9, _chunk(0))])

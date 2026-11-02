@@ -170,6 +170,16 @@ class Settings(BaseSettings):
     AGENT_TIMEOUT_SECONDS: float = Field(
         default=180.0, gt=0, description="Whole-turn timeout in seconds"
     )
+    AGENT_TRACE: Literal["off", "errors", "all"] = Field(
+        default="off",
+        description="Call-by-call debug trace of /chat turns (prompts, raw outputs, "
+        "retrieval hits, node updates, decisions). 'all': one log line per event and a "
+        "JSON file per turn; 'errors': JSON only for failed, invalid or empty turns "
+        "(production); true/false mean all/off",
+    )
+    AGENT_TRACE_DIR: str = Field(
+        default="logs/agent_traces", description="Directory for agent trace JSON files"
+    )
     HISTORY_STORE: Literal["none", "postgres"] = Field(
         default="none", description="Conversation history backend"
     )
@@ -506,6 +516,17 @@ class Settings(BaseSettings):
         if isinstance(v, str):
             return v.strip() or None
         return v
+
+    @field_validator("AGENT_TRACE", mode="before")
+    @classmethod
+    def trace_mode(cls, v: Any) -> Any:
+        """Accept booleans: true/1/yes/on -> all, false/0/no/off/blank -> off."""
+        text = str(v).strip().lower()
+        if text in {"true", "1", "yes", "on"}:
+            return "all"
+        if text in {"false", "0", "no", ""}:
+            return "off"
+        return text
 
     @field_validator("DATA_DIR", "MODEL_CACHE_DIR", "CHUNKS_DIR", mode="before")
     @classmethod

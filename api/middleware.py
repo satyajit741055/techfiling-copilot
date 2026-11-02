@@ -5,12 +5,15 @@ Custom middleware for request tracking, correlation IDs, and logging.
 """
 
 import logging
+import time
 import uuid
 from typing import Callable
 
 from fastapi import Request, Response
 from starlette.concurrency import run_in_threadpool
 from starlette.middleware.base import BaseHTTPMiddleware
+
+from config.logging import log_context
 
 logger = logging.getLogger(__name__)
 
@@ -31,41 +34,47 @@ class CorrelationIDMiddleware(BaseHTTPMiddleware):
 
         # Add to request state
         request.state.correlation_id = correlation_id
+        started = time.perf_counter()
 
-        # Log request with correlation ID
-        logger.info(
-            "Request started",
-            extra={
-                "correlation_id": correlation_id,
-                "method": request.method,
-                "path": request.url.path,
-                "client_host": request.client.host if request.client else None,
-            },
-        )
+        # Every log line of this request (including the streamed /chat body and its
+        # retrieval threads) carries the correlation id.
+        with log_context(request_id=correlation_id):
+            logger.info(
+                f"{request.method} {request.url.path} started",
+                extra={
+                    "correlation_id": correlation_id,
+                    "method": request.method,
+                    "path": request.url.path,
+                    "client_host": request.client.host if request.client else None,
+                },
+            )
 
-        # Process request
-        response = await call_next(request)
+            # Process request
+            response = await call_next(request)
+            duration_ms = round((time.perf_counter() - started) * 1000, 1)
 
-        # Add correlation ID to response headers
-        response.headers["X-Correlation-ID"] = correlation_id
+            # Add correlation ID to response headers
+            response.headers["X-Correlation-ID"] = correlation_id
 
-        # Expose the caller's remaining quota (set by the rate limit dependency)
-        rate_limit = getattr(request.state, "rate_limit", None)
-        if rate_limit:
-            response.headers["X-RateLimit-Limit"] = str(rate_limit["limit"])
-            response.headers["X-RateLimit-Remaining"] = str(max(0, rate_limit["remaining"]))
-            response.headers["X-RateLimit-Reset"] = str(rate_limit["reset"])
+            # Expose the caller's remaining quota (set by the rate limit dependency)
+            rate_limit = getattr(request.state, "rate_limit", None)
+            if rate_limit:
+                response.headers["X-RateLimit-Limit"] = str(rate_limit["limit"])
+                response.headers["X-RateLimit-Remaining"] = str(max(0, rate_limit["remaining"]))
+                response.headers["X-RateLimit-Reset"] = str(rate_limit["reset"])
 
-        # Log response with correlation ID
-        logger.info(
-            "Request completed",
-            extra={
-                "correlation_id": correlation_id,
-                "method": request.method,
-                "path": request.url.path,
-                "status_code": response.status_code,
-            },
-        )
+            # Log response with correlation ID. For streamed responses (/chat) this is when
+            # the headers are sent; the turn's own summary line marks its end.
+            logger.info(
+                f"{request.method} {request.url.path} -> {response.status_code} ({duration_ms} ms)",
+                extra={
+                    "correlation_id": correlation_id,
+                    "method": request.method,
+                    "path": request.url.path,
+                    "status_code": response.status_code,
+                    "duration_ms": duration_ms,
+                },
+            )
 
         return response
 

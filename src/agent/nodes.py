@@ -16,6 +16,7 @@ from langgraph.config import get_stream_writer
 from langgraph.types import interrupt
 
 from generation.generator import AnswerGenerator
+from observability.tracing import trace_event, tracing_enabled
 
 from .catalog import FilingCatalog
 from .evidence import EvidenceEntry, EvidenceRegistry, TurnEvidence
@@ -211,10 +212,22 @@ async def analyze_node(state: AgentState, deps: NodeDependencies) -> dict[str, A
     # Without a turn id every turn would share the "" evidence registry.
     turn_id = _turn_id(state) or uuid.uuid4().hex
     deps.evidence.release(turn_id)
-    analysis = await deps.llm.structured(Analysis, _analysis_messages(state, deps.catalog))
+    raw = await deps.llm.structured(Analysis, _analysis_messages(state, deps.catalog))
     analysis = _ground_analysis(
-        analysis, state["question"], deps.catalog, has_history=bool(state.get("turns"))
+        raw, state["question"], deps.catalog, has_history=bool(state.get("turns"))
     )
+    if changed := {
+        name: {"model": getattr(raw, name), "code": getattr(analysis, name)}
+        for name in Analysis.model_fields
+        if getattr(raw, name) != getattr(analysis, name)
+    }:
+        trace_event(
+            "decision",
+            f"decision analyze: code corrected {sorted(changed)}",
+            node="analyze",
+            decision="ground_analysis",
+            changes=changed,
+        )
     return {
         "turn_id": turn_id,
         "analysis": analysis,
@@ -769,14 +782,65 @@ async def synthesize_node(state: AgentState, deps: NodeDependencies) -> dict[str
         raise ValueError("synthesize requires resolved scope")
     _step("synthesize", "Writing answer", "Repair pass" if state.get("validation") else None)
     registry = deps.registry(state)
-    registry.assign_source_ids(deps.max_context_chunks)
+    registered = registry.entries()
+    sources = registry.assign_source_ids(deps.max_context_chunks)
+    if tracing_enabled() and not state.get("validation"):
+        _trace_context(sources, registered)
     synthesis = await deps.llm.structured(
         SynthesisDraft,
         _synthesis_messages(state, registry.format_context(), state.get("validation")),
     )
     claims = ground_claims(synthesis.claims, registry.source_entries())
+    if changes := [
+        {"index": index, "model": before, "code": after}
+        for index, (before, after) in enumerate(zip(synthesis.claims, claims))
+        if before != after
+    ]:
+        trace_event(
+            "decision",
+            f"decision synthesize: code grounded {len(changes)} of {len(claims)} claims "
+            "(fiscal year / excerpt / citations)",
+            node="synthesize",
+            decision="ground_claims",
+            changes=changes,
+        )
     synthesis = synthesis.model_copy(update={"claims": claims})
     return {"draft": draft_from_synthesis(synthesis, scope.coverage)}
+
+
+def _trace_context(sources: Sequence[Source], registered: Mapping[str, EvidenceEntry]) -> None:
+    """Which evidence the context budget kept (as S#) and which it dropped."""
+    kept = {source.chunk_id for source in sources}
+    dropped = [
+        {"chunk_id": chunk_id, "score": entry.best_score}
+        for chunk_id, entry in registered.items()
+        if chunk_id not in kept
+    ]
+    trace_event(
+        "decision",
+        f"decision synthesize: context has {len(sources)} sources from {len(registered)} chunks, "
+        f"dropped {len(dropped)}",
+        node="synthesize",
+        decision="context_selection",
+        sources=[
+            {
+                "source_id": source.source_id,
+                "chunk_id": source.chunk_id,
+                "ticker": source.ticker,
+                "fiscal_year": source.fiscal_year,
+                "section": source.section,
+                "table_id": source.table_id,
+                "score": registered[source.chunk_id].best_score
+                if source.chunk_id in registered
+                else None,
+                "tasks": sorted({item.task_id for item in registered[source.chunk_id].provenance})
+                if source.chunk_id in registered
+                else [],
+            }
+            for source in sources
+        ],
+        dropped=dropped,
+    )
 
 
 def _clean_draft(
@@ -826,18 +890,39 @@ def validate_node(state: AgentState, deps: NodeDependencies) -> dict[str, Any]:
     if repairs < 1:
         if report.is_valid:
             return {"validation": report, "repairs": repairs}
+        trace_event(
+            "decision",
+            f"decision validate: {len(report.errors)} error(s), requesting a repair pass",
+            node="validate",
+            decision="request_repair",
+            errors=report.errors,
+        )
         return {"validation": report, "repairs": repairs + 1, "first_draft": draft}
 
     failed = not report.is_valid
     if failed:
         draft, report = _clean_draft(draft, report, scope, entries, deps.catalog)
+    kept = "repair"
     first = state.get("first_draft")
     if first is not None:
         first_report = validate_grounded_answer(first, scope, entries, deps.catalog)
         if not first_report.is_valid:
             first, first_report = _clean_draft(first, first_report, scope, entries, deps.catalog)
         if first_report.is_valid and _answered(first) > _answered(draft):
-            draft, report = first, first_report
+            draft, report, kept = first, first_report, "first_draft"
+    trace_event(
+        "decision",
+        f"decision validate: kept the {kept} (found cells, claims)={_answered(draft)} "
+        f"valid={report.is_valid} dropped={len(report.dropped_claims)} claim(s)",
+        node="validate",
+        decision="final_draft",
+        kept=kept,
+        repair_failed_validation=failed,
+        answered=_answered(draft),
+        dropped_claims=report.dropped_claims,
+        dropped_calculations=report.dropped_calculations,
+        errors=report.errors,
+    )
     return {"draft": draft, "validation": report, "repairs": repairs + failed}
 
 

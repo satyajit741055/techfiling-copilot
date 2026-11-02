@@ -8,6 +8,7 @@ from __future__ import annotations
 
 import asyncio
 import json
+import logging
 import uuid
 from typing import Any
 
@@ -416,6 +417,180 @@ async def test_nothing_is_saved_without_a_history_owner() -> None:
     service = make_service(ScriptedLLM({Analysis: [GREETING]}))
     await collect(service, ChatTurn(thread_id=uuid.uuid4(), owner="local", message="Hi"))
     assert service.history.records == []  # type: ignore[attr-defined]
+
+
+# =============================================================================
+# SERVICE: TRACE (AGENT_TRACE)
+# =============================================================================
+
+
+def read_trace(directory: Any) -> dict[str, Any]:
+    (path,) = directory.glob("*.json")
+    return json.loads(path.read_text(encoding="utf-8"))
+
+
+def kinds(trace: dict[str, Any], kind: str) -> list[dict[str, Any]]:
+    return [event for event in trace["events"] if event["kind"] == kind]
+
+
+@pytest.mark.asyncio
+async def test_trace_records_steps_tools_and_node_updates_of_a_research_turn(
+    tmp_path, caplog
+) -> None:
+    llm = ScriptedLLM(
+        {
+            Analysis: [analysis("cross_company", companies=["Apple", "Microsoft"])],
+            ResearchPlan: [plan("revenue")],
+            SynthesisDraft: [COMPARISON],
+        }
+    )
+    service = make_service(llm)
+    service.trace_dir = tmp_path
+    with caplog.at_level(logging.INFO, logger="agent.trace"):
+        await collect(service, turn(message="Compare revenue", request_id="corr-7"))
+
+    trace = read_trace(tmp_path)
+    assert trace["question"] == "Compare revenue" and trace["request_id"] == "corr-7"
+    assert trace["summary"]["status"] == "success" and trace["summary"]["final"]["is_valid"]
+    tools = kinds(trace, "tool")
+    assert sorted(tool["ticker"] for tool in tools) == ["AAPL", "MSFT"]
+    assert all(tool["args"]["query"] for tool in tools)
+    nodes = [event["node"] for event in kinds(trace, "node")]
+    assert nodes[:3] == ["analyze", "resolve_scope", "plan"] and nodes[-1] == "finalize"
+    synthesize = next(event for event in kinds(trace, "node") if event["node"] == "synthesize")
+    assert synthesize["update"]["draft"]["claims"]
+    assert [event["seq"] for event in trace["events"]] == list(range(1, len(trace["events"]) + 1))
+    assert any("retrieval T1 search_filings" in record.message for record in caplog.records)
+    assert any("written to" in record.message for record in caplog.records)
+
+    # Retrieval detail: every hit with its filing and reranker score, plus timing.
+    retrievals = kinds(trace, "retrieval")
+    assert sorted(event["task_id"] for event in retrievals) == ["T1", "T2"]
+    hit = retrievals[0]["hits"][0]
+    assert hit["score"] == 0.9 and hit["chunk_id"].endswith("_c0000") and hit["fiscal_year"]
+    assert retrievals[0]["seconds"] >= 0 and retrievals[0]["filters"]["ticker"]
+
+    # Code decisions: which evidence became S1/S2 for synthesis.
+    (context,) = [e for e in kinds(trace, "decision") if e["decision"] == "context_selection"]
+    assert [source["source_id"] for source in context["sources"]] == ["S1", "S2"]
+    assert context["dropped"] == []
+
+    # Around the agent: the request, what the client received, history and metrics.
+    (request,) = kinds(trace, "request")
+    assert request["message"] == "Compare revenue" and request["request"] == "message"
+    assert [event["event"] for event in kinds(trace, "sent")] == ["answer", "done"]
+    assert kinds(trace, "history")[0]["saved"] is True and kinds(trace, "metrics")
+
+
+@pytest.mark.asyncio
+async def test_trace_records_each_llm_call_with_node_prompt_and_raw_output(tmp_path) -> None:
+    reply = AIMessage(
+        content='{"intent": "greeting", "scope": "specific", "question_type": "qualitative"}',
+        usage_metadata={"input_tokens": 7, "output_tokens": 3, "total_tokens": 10},
+    )
+    service = make_service(ScriptedLLM({}))
+    service.graph = build_graph(  # type: ignore[arg-type]
+        make_deps(AgentLLM(GenericFakeChatModel(messages=iter([reply] * 3))))
+    )
+    service.trace_dir = tmp_path
+    await collect(service, turn(message="Hi"))
+
+    trace = read_trace(tmp_path)
+    start, end = kinds(trace, "llm_start")[0], kinds(trace, "llm_end")[0]
+    assert (start["node"], start["call"]) == ("analyze", 1)
+    assert start["messages"][-1]["role"] == "human"
+    assert start["messages"][-1]["content"].endswith("Question: Hi")
+    assert start["messages"][0]["role"] == "system" and "Indexed filings" in str(start["messages"])
+    assert (end["node"], end["call"]) == ("analyze", 1) and '"greeting"' in end["output"]
+    assert end["usage"]["input_tokens"] == 7 and end["seconds"] >= 0
+
+
+@pytest.mark.asyncio
+async def test_failed_turn_still_writes_its_trace_with_the_traceback(tmp_path) -> None:
+    service = make_service(ScriptedLLM({}))  # no scripted Analysis -> KeyError in analyze
+    service.trace_dir = tmp_path
+    await collect(service, turn(message="Apple revenue?"))
+
+    trace = read_trace(tmp_path)
+    assert (trace["summary"]["status"], trace["summary"]["error_type"]) == ("error", "KeyError")
+    (error,) = kinds(trace, "error")
+    assert error["error"].startswith("KeyError") and "Traceback" in error["traceback"]
+    assert kinds(trace, "sent")[0]["data"]["code"] == "agent_error"
+
+
+@pytest.mark.asyncio
+async def test_errors_mode_writes_traces_only_for_turns_that_need_attention(tmp_path) -> None:
+    service = make_service(ScriptedLLM({Analysis: [GREETING]}))
+    service.trace_dir, service.trace_mode = tmp_path, "errors"
+    await collect(service, turn(message="Hi"))
+    assert not list(tmp_path.glob("*.json"))
+
+    service = make_service(ScriptedLLM({}))  # fails in analyze
+    service.trace_dir, service.trace_mode = tmp_path, "errors"
+    await collect(service, turn(message="Apple revenue?"))
+    assert read_trace(tmp_path)["summary"]["status"] == "error"
+
+
+@pytest.mark.asyncio
+async def test_rejected_turn_is_traced_and_logged(tmp_path, caplog) -> None:
+    service = make_service(ScriptedLLM({}))
+    service.trace_dir = tmp_path
+    with caplog.at_level(logging.INFO, logger="agent.service"):
+        await collect(service, turn(option_id="opt_1"))  # nothing pending to resume
+
+    trace = read_trace(tmp_path)
+    assert trace["summary"]["error_code"] == "clarification_expired"
+    assert trace["turn_id"] is None and "_req-" in next(tmp_path.glob("*.json")).name
+    assert kinds(trace, "request")[0]["rejected"] == "clarification_expired"
+    finished = [r.message for r in caplog.records if r.message.startswith("Chat turn finished")]
+    assert finished and "error=clarification_expired" in finished[0]
+
+
+@pytest.mark.asyncio
+async def test_every_log_line_of_a_turn_carries_its_ids() -> None:
+    from config.logging import LogContextFilter, log_context
+
+    service = make_service(ScriptedLLM({Analysis: [GREETING]}))
+    handler = logging.Handler()
+    handler.addFilter(LogContextFilter())
+    records: list[logging.LogRecord] = []
+    handler.emit = records.append  # type: ignore[method-assign]
+    logging.getLogger("agent").addHandler(handler)
+    try:
+        with log_context(request_id="req-12345678-abcd"):
+            events = await collect(service, turn(message="Hi"))
+    finally:
+        logging.getLogger("agent").removeHandler(handler)
+
+    turn_id = only(events, "thread")[0]["turn_id"]
+    (finished,) = [r for r in records if r.getMessage().startswith("Chat turn finished")]
+    assert (finished.request_id, finished.turn_id) == ("req-12345678-abcd", turn_id)  # type: ignore[attr-defined]
+    assert finished.log_ctx == f"[req=req-1234 turn={turn_id[:8]}] "  # type: ignore[attr-defined]
+
+
+def test_json_log_lines_include_correlation_ids_and_extra_fields() -> None:
+    from config.logging import JSONFormatter, LogContextFilter, log_context
+
+    record = logging.LogRecord("api.middleware", logging.INFO, "x.py", 1, "POST /chat", (), None)
+    record.status_code = 200
+    with log_context(request_id="r1", turn_id="t1"):
+        LogContextFilter().filter(record)
+    line = json.loads(JSONFormatter().format(record))
+    assert (line["request_id"], line["turn_id"], line["status_code"]) == ("r1", "t1", 200)
+    assert "log_ctx" not in line and "thread_id" not in line
+
+
+def test_agent_trace_accepts_modes_and_booleans() -> None:
+    from config.settings import Settings
+
+    assert [
+        Settings(AGENT_TRACE=value).AGENT_TRACE for value in ("true", "false", "errors", "")
+    ] == [  # type: ignore[arg-type]
+        "all",
+        "off",
+        "errors",
+        "off",
+    ]
 
 
 # =============================================================================

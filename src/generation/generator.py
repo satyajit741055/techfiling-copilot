@@ -22,6 +22,7 @@ from pathlib import Path
 from typing import Any
 
 from config.logging import get_logger
+from observability.tracing import trace_event, trace_retrieval
 
 from .config import GenerationConfig
 from .context import format_context
@@ -217,7 +218,20 @@ class AnswerGenerator:
             results = [result for hits in grouped.values() for result in hits]
         else:
             results = self.retriever.search(question, k=context_k, **scope)
-        logger.info(f"Retrieved {len(results)} chunks in {time.perf_counter() - start:.2f}s")
+        seconds = time.perf_counter() - start
+        logger.info(f"Retrieved {len(results)} chunks in {seconds:.2f}s")
+        trace_retrieval(
+            f"generator q={question!r}",
+            [result.chunk for result in results],
+            [result.score for result in results],
+            seconds,
+            tool="generator.retrieve",
+            query=question,
+            doc_id=doc_id,
+            filters=filters,
+            group_by=group_by,
+            context_k=context_k,
+        )
         for i, result in enumerate(results, start=1):
             chunk = result.chunk
             logger.info(
@@ -323,6 +337,22 @@ class AnswerGenerator:
             logger.info("Validation: PASSED")
         else:
             logger.warning(f"Validation: FAILED - {answer.validation_errors}")
+        trace_event(
+            "generator_llm",
+            f"generator LLM {self.llm_client.provider}/{self.llm_client.model} "
+            f"{llm_response.latency_seconds:.1f}s tokens={llm_response.prompt_tokens}/"
+            f"{llm_response.completion_tokens} attempts={llm_attempts} valid={answer.is_valid}",
+            system_prompt=self.system_prompt,
+            user_prompt=user_prompt,
+            raw_response=llm_response.content,
+            answer=answer,
+            sources=sources,
+            seconds=llm_response.latency_seconds,
+            usage={
+                "input_tokens": llm_response.prompt_tokens,
+                "output_tokens": llm_response.completion_tokens,
+            },
+        )
         logger.info("=== GENERATION COMPLETE ===")
 
         return GenerationResult(

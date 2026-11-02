@@ -2,12 +2,14 @@
 
 from __future__ import annotations
 
+import time
 from collections.abc import Sequence
 from typing import Any, Literal
 
 from langchain_core.tools import StructuredTool
 from pydantic import Field, ValidationInfo, field_validator, model_validator
 
+from observability.tracing import trace_retrieval
 from retriever.qdrant_retriever import QdrantRetrieverWithReranker
 from vector_store import QdrantChunkStore, neighbor_ids
 
@@ -118,6 +120,16 @@ class AgentTools:
         if scores is None and anchors:
             anchor = self.evidence.anchor_score(anchors)
             scores = [anchor] * len(chunks)
+        if tool != "search_filings":
+            # Reads inherit the score of the chunk they expand (search traces itself).
+            trace_retrieval(
+                f"{task.task_id} {tool} anchors={list(anchors)[:3]}",
+                chunks,
+                scores,
+                task_id=task.task_id,
+                tool=tool,
+                anchors=list(anchors),
+            )
         return self.evidence.register(
             chunks,
             task_id=task.task_id,
@@ -150,6 +162,7 @@ class AgentTools:
                 error="Requested scope is outside the worker task",
             )
             return ToolOutput(step=step)
+        started = time.perf_counter()
         if args.group_by:
             groups = years if args.group_by == "fiscal_year" else None
             group_filters = dict(filters)
@@ -167,6 +180,19 @@ class AgentTools:
             results = self.retriever.search(args.query, k=args.k, filters=filters)
         chunks = [dict(result.chunk) for result in results]
         scores = [float(result.score) for result in results]
+        trace_retrieval(
+            f"{task.task_id} search_filings {','.join(tickers)} FY{years} q={args.query!r}",
+            chunks,
+            scores,
+            time.perf_counter() - started,
+            task_id=task.task_id,
+            tool="search_filings",
+            query=args.query,
+            filters=filters,
+            k=args.k,
+            group_by=args.group_by,
+            scope_clamped=clamped,
+        )
         chunk_ids = self._register(task, "search_filings", chunks, scores)
         return ToolOutput(
             chunks=chunks,
