@@ -28,6 +28,7 @@ def _clean_env(monkeypatch):
         "HISTORY_STORE",
         "HISTORY_DB_URL",
         "SUPABASE_DB_URL",
+        "AGENT_CHECKPOINTER",
     ):
         monkeypatch.delenv(key, raising=False)
 
@@ -119,6 +120,15 @@ def test_history_db_url_falls_back_to_supabase_name():
         make_settings(HISTORY_STORE="postgres", HISTORY_DB_URL="postgresql://h").HISTORY_STORE
         == "postgres"
     )
+
+
+def test_agent_checkpointer_defaults_to_memory_and_postgres_needs_a_url():
+    assert make_settings().AGENT_CHECKPOINTER == "memory"
+    assert make_settings(AGENT_CHECKPOINTER=" ").AGENT_CHECKPOINTER == "memory"
+    with pytest.raises(ValueError, match="AGENT_CHECKPOINTER=postgres"):
+        make_settings(AGENT_CHECKPOINTER="postgres")
+    s = make_settings(AGENT_CHECKPOINTER="Postgres", SUPABASE_DB_URL="postgresql://s")
+    assert s.AGENT_CHECKPOINTER == "postgres" and s.HISTORY_DB_URL == "postgresql://s"
 
 
 # ----------------------------------------------------------------------------- factory

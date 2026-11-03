@@ -270,6 +270,9 @@ class AgentService:
             self._sent(run, done)
             self._finish(turn, run)
             yield done
+            if run.graph_ran and run.clarification is None:
+                # Still holding the thread lock, so no new turn races the prune.
+                await self._prune(key)
         finally:
             if locked:
                 self._active.discard(key)
@@ -292,7 +295,7 @@ class AgentService:
         values = snapshot.values or {}
         pending = snapshot.interrupts
         if not pending:
-            # MemorySaver is lost on restart, and a newer message replaces the pause.
+            # A newer message replaces the pause; with MemorySaver a restart also loses it.
             run.fail("clarification_expired")
             return None
         run.turn_id, run.question = values.get("turn_id"), str(values.get("question") or "")
@@ -319,8 +322,11 @@ class AgentService:
             sink = run.trace.add if run.trace is not None else None
             try:
                 with tracing(sink):
+                    # durability="exit": one checkpoint write when the run ends (answer,
+                    # error or interrupt) instead of one per step; turns never resume
+                    # mid-run, so per-step checkpoints would only add database round-trips.
                     async for item in self.graph.astream(
-                        graph_input, config, stream_mode=["updates", "custom"]
+                        graph_input, config, stream_mode=["updates", "custom"], durability="exit"
                     ):
                         queue.put_nowait(item)
             except Exception as error:
@@ -445,6 +451,22 @@ class AgentService:
             tool_calls=own.tool_calls if run.final is not None else run.tool_events,
             cost_usd=round(cost, 8),
         )
+
+    async def _prune(self, key: str) -> None:
+        """Keep only the thread's latest checkpoint; it alone carries the follow-up context.
+
+        Best-effort: a failure is logged and never affects the turn. Savers without
+        pruning (MemorySaver) are skipped.
+        """
+        checkpointer = getattr(self.graph, "checkpointer", None)
+        if not isinstance(checkpointer, BaseCheckpointSaver):
+            return
+        try:
+            await checkpointer.aprune([key], strategy="keep_latest")
+        except NotImplementedError:
+            return
+        except Exception as error:
+            logger.warning(f"Checkpoint prune failed: {type(error).__name__}: {error}")
 
     async def _persist(self, turn: ChatTurn, run: _Run) -> None:
         if turn.history_user is None or not self.history.enabled or not run.question:

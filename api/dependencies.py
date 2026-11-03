@@ -23,6 +23,7 @@ from persistence import HistoryStore, NullHistoryStore, create_history_store
 if TYPE_CHECKING:
     from agent.service import AgentService
     from generation import AnswerGenerator
+    from persistence import ThreadedPostgresSaver
 
 # Configure logging
 logger = logging.getLogger(__name__)
@@ -37,6 +38,7 @@ _rag_service: RAGService | None = None
 _filings: list[dict] | None = None
 _history_store: HistoryStore = NullHistoryStore()
 _agent_service: "AgentService | None" = None
+_checkpointer: "ThreadedPostgresSaver | None" = None
 
 
 # =============================================================================
@@ -166,33 +168,49 @@ def init_agent() -> None:
     Build the research agent for /chat on the generator's already-loaded retriever and
     reranker (no second model load). Run after init_generator and init_history_store.
 
-    A failure (e.g. VECTOR_STORE is not qdrant) disables /chat with a 503 instead of
-    stopping the API; /questions is unaffected.
+    A failure (e.g. VECTOR_STORE is not qdrant, or AGENT_CHECKPOINTER=postgres and the
+    database is unreachable) disables /chat with a 503 instead of stopping the API;
+    /questions is unaffected. There is no fallback to the in-memory checkpointer: it would
+    silently lose pauses and follow-up context on restart.
     """
-    global _agent_service
+    global _agent_service, _checkpointer
+    from agent.graph import checkpoint_serializer
     from agent.service import AgentService
+    from config.settings import settings
     from observability import QueryTracker
+    from persistence import create_checkpointer
 
     try:
+        if settings.AGENT_CHECKPOINTER == "postgres":
+            # Settings validation guarantees the URL when AGENT_CHECKPOINTER=postgres.
+            _checkpointer = create_checkpointer(
+                settings.HISTORY_DB_URL or "", checkpoint_serializer()
+            )
+            _checkpointer.open()
         _agent_service = AgentService.from_generator(
             get_generator(),
             get_filings(),
             history=_history_store,
             writer=QueryTracker.from_settings().writer,
+            checkpointer=_checkpointer,
         )
     except Exception as e:
-        _agent_service = None
+        shutdown_agent()
         logger.error(f"Research chat DISABLED: {type(e).__name__}: {e}")
         return
     logger.info(
         f"Research chat ready: {_agent_service.provider}/{_agent_service.model}, "
-        f"{len(_agent_service.catalog.filings())} filings"
+        f"{len(_agent_service.catalog.filings())} filings, "
+        f"checkpointer={settings.AGENT_CHECKPOINTER}"
     )
 
 
 def shutdown_agent() -> None:
-    global _agent_service
+    global _agent_service, _checkpointer
     _agent_service = None
+    if _checkpointer is not None:
+        _checkpointer.close()
+        _checkpointer = None
 
 
 # =============================================================================

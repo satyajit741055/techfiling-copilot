@@ -37,6 +37,7 @@ def clean_env(monkeypatch):
         "RATE_LIMIT_QUESTIONS_PER_MINUTE",
         "RATE_LIMIT_FILINGS_PER_MINUTE",
         "RATE_LIMIT_GLOBAL_PER_MINUTE",
+        "HISTORY_DEV_USER_ID",
     ):
         monkeypatch.delenv(name, raising=False)
 

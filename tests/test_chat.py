@@ -612,6 +612,8 @@ def parse_sse(text: str) -> list[tuple[str, Any]]:
 @pytest.fixture
 def client(monkeypatch):
     monkeypatch.setattr(api_settings, "API_ACCESS_KEY", None)
+    # Independent of a local .env that enables history for development.
+    monkeypatch.setattr(api_settings, "HISTORY_DEV_USER_ID", None)
     try:
         yield TestClient(app)
     finally:

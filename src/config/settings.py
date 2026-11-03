@@ -192,6 +192,11 @@ class Settings(BaseSettings):
     HISTORY_DB_POOL_SIZE: int = Field(
         default=5, ge=1, le=50, description="Maximum history database connections"
     )
+    AGENT_CHECKPOINTER: Literal["memory", "postgres"] = Field(
+        default="memory",
+        description="Research-chat graph state (clarification pauses, follow-up context). "
+        "'memory' is lost on restart; 'postgres' keeps it in HISTORY_DB_URL",
+    )
 
     # =========================================================================
     # OBSERVABILITY (latency / cost / reliability records)
@@ -494,6 +499,10 @@ class Settings(BaseSettings):
             raise ValueError(
                 "HISTORY_DB_URL (or SUPABASE_DB_URL) is required when HISTORY_STORE=postgres"
             )
+        if self.AGENT_CHECKPOINTER == "postgres" and not self.HISTORY_DB_URL:
+            raise ValueError(
+                "HISTORY_DB_URL (or SUPABASE_DB_URL) is required when AGENT_CHECKPOINTER=postgres"
+            )
 
         return self
 
@@ -527,6 +536,12 @@ class Settings(BaseSettings):
         if text in {"false", "0", "no", ""}:
             return "off"
         return text
+
+    @field_validator("AGENT_CHECKPOINTER", mode="before")
+    @classmethod
+    def checkpointer_kind(cls, v: Any) -> Any:
+        """Blank means the default in-memory checkpointer."""
+        return str(v).strip().lower() or "memory"
 
     @field_validator("DATA_DIR", "MODEL_CACHE_DIR", "CHUNKS_DIR", mode="before")
     @classmethod
