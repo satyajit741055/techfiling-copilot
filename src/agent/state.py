@@ -8,8 +8,10 @@ from typing import Annotated, TypedDict
 
 from .schemas import (
     Analysis,
+    Calculation,
     ChatAnswer,
     CoverageCell,
+    FactValue,
     GroundedAnswer,
     ResolvedScope,
     Task,
@@ -49,6 +51,9 @@ class AgentState(TypedDict, total=False):
     results: Annotated[list[TaskResult], merge_or_reset]
     replans: int
     coverage: list[CoverageCell]
+    facts: list[FactValue]
+    # Code-computed over reported figures; inputs cite chunk ids until synthesis assigns S#.
+    fact_calculations: list[Calculation]
     draft: GroundedAnswer | None
     first_draft: GroundedAnswer | None
     validation: ValidationReport | None

@@ -10,7 +10,7 @@ import json
 import logging
 import sys
 from pathlib import Path
-from typing import TYPE_CHECKING
+from typing import TYPE_CHECKING, Any
 
 # Add src to path for imports
 ROOT = Path(__file__).resolve().parents[1]
@@ -22,6 +22,7 @@ from persistence import HistoryStore, NullHistoryStore, create_history_store
 
 if TYPE_CHECKING:
     from agent.service import AgentService
+    from facts.store import FactsStore
     from generation import AnswerGenerator
     from persistence import ThreadedPostgresSaver
 
@@ -163,6 +164,35 @@ def shutdown_history_store() -> None:
     _history_store = NullHistoryStore()
 
 
+def _load_facts_store(settings: Any) -> "FactsStore | None":
+    """FACTS_STORE=postgres: the financial_facts table as an in-memory store.
+
+    Fails open: any problem logs a WARNING and returns None, so research chat answers
+    numbers from retrieval only (as with FACTS_STORE=off) instead of being disabled.
+    """
+    if settings.FACTS_STORE != "postgres":
+        return None
+    from facts.store import FactsStore
+    from persistence.facts import read_facts
+    from persistence.history import _error_summary
+
+    try:
+        records, load = read_facts(settings.HISTORY_DB_URL or "")
+    except Exception as e:
+        logger.warning(f"Facts store DISABLED: {_error_summary(e)}")
+        return None
+    if load is None or not records:
+        logger.warning("Facts store DISABLED: financial_facts is empty (run scripts/load_facts.py)")
+        return None
+    if load.collection != settings.QDRANT_COLLECTION:
+        logger.warning(
+            f"Facts store DISABLED: facts were linked to collection {load.collection!r}, "
+            f"the API uses {settings.QDRANT_COLLECTION!r} (re-run scripts/load_facts.py)"
+        )
+        return None
+    return FactsStore(records, load.collection)
+
+
 def init_agent() -> None:
     """
     Build the research agent for /chat on the generator's already-loaded retriever and
@@ -187,21 +217,24 @@ def init_agent() -> None:
                 settings.HISTORY_DB_URL or "", checkpoint_serializer()
             )
             _checkpointer.open()
+        facts = _load_facts_store(settings)
         _agent_service = AgentService.from_generator(
             get_generator(),
             get_filings(),
             history=_history_store,
             writer=QueryTracker.from_settings().writer,
             checkpointer=_checkpointer,
+            facts=facts,
         )
     except Exception as e:
         shutdown_agent()
         logger.error(f"Research chat DISABLED: {type(e).__name__}: {e}")
         return
+    facts_text = f"postgres ({len(facts):,} facts, {facts.linked:,} citable)" if facts else "off"
     logger.info(
         f"Research chat ready: {_agent_service.provider}/{_agent_service.model}, "
         f"{len(_agent_service.catalog.filings())} filings, "
-        f"checkpointer={settings.AGENT_CHECKPOINTER}"
+        f"checkpointer={settings.AGENT_CHECKPOINTER}, facts={facts_text}"
     )
 
 

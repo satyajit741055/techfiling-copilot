@@ -15,6 +15,10 @@ from langchain_core.messages import BaseMessage, HumanMessage, SystemMessage
 from langgraph.config import get_stream_writer
 from langgraph.types import interrupt
 
+from facts.calculator import CalcInput, CalcResult, cagr_pct, change, growth_pct, margin_pct
+from facts.metrics import company_words, match_metrics, scan_question
+from facts.metrics import metric as get_metric
+from facts.store import FactLookup, FactsStore
 from generation.generator import AnswerGenerator
 from observability.tracing import trace_event, tracing_enabled
 
@@ -24,9 +28,12 @@ from .llm import AgentLLM
 from .schemas import (
     Ambiguity,
     Analysis,
+    Calculation,
+    CalculationInput,
     ChatAnswer,
     Clarification,
     CoverageCell,
+    FactValue,
     GroundedAnswer,
     GroundedClaim,
     ResearchPlan,
@@ -44,7 +51,12 @@ from .schemas import (
 from .scope import resolve_scope
 from .state import RESET, AgentState, WorkerState
 from .tools import AgentTools
-from .validation import drop_invalid_claims, ground_claims, validate_grounded_answer
+from .validation import (
+    drop_invalid_claims,
+    ground_claims,
+    ground_computed_claims,
+    validate_grounded_answer,
+)
 
 _PREVIEW_CHARS = 300
 _PENDING_STATUSES = {"pending", "missing"}
@@ -59,6 +71,7 @@ class NodeDependencies:
     tools: AgentTools
     evidence: TurnEvidence = field(default_factory=TurnEvidence)
     generator: AnswerGenerator | None = None
+    facts: FactsStore | None = None
     max_tasks: int = 10
     max_replans: int = 2
     max_tool_steps: int = 2
@@ -236,6 +249,8 @@ async def analyze_node(state: AgentState, deps: NodeDependencies) -> dict[str, A
         "results": RESET,
         "replans": 0,
         "coverage": [],
+        "facts": [],
+        "fact_calculations": [],
         "draft": None,
         "first_draft": None,
         "validation": None,
@@ -428,6 +443,271 @@ async def simple_rag_node(state: AgentState, deps: NodeDependencies) -> dict[str
         answer=final.answer or "",
     )
     return {"coverage": coverage, "final": final, "turns": [turn]}
+
+
+_NO_FACTS_TYPES = {"qualitative", "qualitative_change"}
+_GROWTH_CUE = re.compile(
+    r"\b(?:grow|grew|grown|growth|changed?|changes|increased?|decreased?|declined?|rise|rose|"
+    r"fell|trend|cagr|compound|yoy|year[- ]over[- ]year)\b",
+    re.IGNORECASE,
+)
+_CAGR_CUE = re.compile(r"\b(?:cagr|compound(?:ed)?\s+annual|annual(?:ized)?\s+growth)", re.I)
+_MARGIN_CUE = re.compile(r"\bmargins?\b", re.IGNORECASE)
+_PERCENT_OPS = {"growth_pct", "cagr_pct", "margin_pct"}
+
+
+def _fact_value(found: FactLookup) -> FactValue:
+    record, restated = found.record, found.restated
+    return FactValue(
+        metric=found.metric.key,
+        label=found.metric.label,
+        concept=record.concept,
+        ticker=record.ticker,
+        fiscal_year=record.fiscal_year,
+        shown=record.shown,
+        value=record.value,
+        unit=record.unit,
+        scale=record.scale,
+        chunk_id=record.chunk_id or "",
+        excerpt=record.excerpt or "",
+        restated_shown=restated.shown if restated else None,
+        restated_in=restated.filing_fiscal_year if restated else None,
+    )
+
+
+def _calc_input(fact: FactValue) -> CalcInput:
+    return CalcInput(
+        f"{fact.ticker} FY{fact.fiscal_year} {fact.label}",
+        fact.shown,
+        fact.chunk_id,
+        signed=-fact.shown if fact.value < 0 else None,
+    )
+
+
+def _comparable(left: FactValue, right: FactValue) -> bool:
+    return (left.unit, left.scale) == (right.unit, right.scale)
+
+
+def _fact_calculations(
+    facts: Sequence[FactValue], growth: bool, cagr: bool, margin: bool
+) -> list[CalcResult]:
+    """Year-over-year change/growth, CAGR and margins over the looked-up figures."""
+    results: list[CalcResult] = []
+    series: dict[tuple[str, str], list[FactValue]] = {}
+    for fact in facts:
+        series.setdefault((fact.ticker, fact.metric), []).append(fact)
+    for (ticker, _), values in series.items():
+        values.sort(key=lambda item: item.fiscal_year)
+        label = values[0].label
+        if growth:
+            for old, new in itertools.pairwise(values):
+                if not _comparable(old, new):
+                    continue
+                span = f"FY{old.fiscal_year} to FY{new.fiscal_year}"
+                results.append(
+                    change(_calc_input(old), _calc_input(new), f"{ticker} {label} change {span}")
+                )
+                if pct := growth_pct(
+                    _calc_input(old), _calc_input(new), f"{ticker} {label} growth % {span}"
+                ):
+                    results.append(pct)
+        first, last = values[0], values[-1]
+        years = last.fiscal_year - first.fiscal_year
+        if (cagr or (growth and len(values) >= 3)) and years >= 1 and _comparable(first, last):
+            description = f"{ticker} {label} CAGR % FY{first.fiscal_year} to FY{last.fiscal_year}"
+            if rate := cagr_pct(_calc_input(first), _calc_input(last), years, description):
+                results.append(rate)
+    if margin:
+        revenue = {
+            (fact.ticker, fact.fiscal_year): fact for fact in facts if fact.metric == "revenue"
+        }
+        for fact in facts:
+            whole = revenue.get((fact.ticker, fact.fiscal_year))
+            if fact.metric == "revenue" or whole is None or not _comparable(fact, whole):
+                continue
+            description = f"{fact.ticker} FY{fact.fiscal_year} {fact.label} as % of revenue"
+            if pct := margin_pct(_calc_input(fact), _calc_input(whole), description):
+                results.append(pct)
+    return results
+
+
+def _calculation(result: CalcResult) -> Calculation:
+    """A calculation whose inputs cite chunk ids; synthesis maps them to source ids."""
+    return Calculation(
+        description=result.description,
+        expression=result.expression,
+        result=result.result,
+        inputs=[
+            CalculationInput(value=item.number, citation_id=item.chunk_id) for item in result.inputs
+        ],
+    )
+
+
+async def lookup_facts_node(state: AgentState, deps: NodeDependencies) -> dict[str, Any]:
+    """Answer the numeric part of a question from reported XBRL figures.
+
+    Metrics come from the analysis topics (curated aliases only), or from the question text
+    when the analysis has no topics and the question asks only for metrics. Each figure's
+    table-row chunk is pinned into the turn's evidence, so the answer cites it like any source. A
+    cell counts as found only when every asked metric has a figure and the question asks
+    nothing else; found cells skip the planner and workers. Single-filing questions use
+    the figures only when they answer the whole question, otherwise ``simple_rag`` runs
+    as before.
+    """
+    scope, analysis = state.get("scope"), state.get("analysis")
+    if deps.facts is None or scope is None or analysis is None:
+        return {}
+    question = state["question"]
+    ignore = company_words(
+        *analysis.companies,
+        *scope.tickers,
+        *(deps.catalog.company_name(ticker) for ticker in scope.tickers),
+    )
+    # Small analyze models often leave topics empty; then the question text is scanned.
+    match = (
+        match_metrics(analysis.topics, ignore)
+        if analysis.topics
+        else scan_question(question, ignore)
+    )
+    if analysis.question_type in _NO_FACTS_TYPES or not match.metrics:
+        return {}
+    margin = match.margin or bool(_MARGIN_CUE.search(question))
+    metrics = list(match.metrics)
+    if margin and get_metric("revenue") not in metrics:
+        metrics.append(get_metric("revenue"))
+    numeric_only = not match.unmatched
+    if scope.route == "simple_rag" and not numeric_only:
+        return {}
+
+    lookups = {
+        (cell.ticker, cell.fiscal_year, metric.key): deps.facts.lookup(
+            cell.ticker, cell.fiscal_year, metric
+        )
+        for cell in scope.cells
+        for metric in metrics
+    }
+    chunk_ids = sorted(
+        {hit.record.chunk_id for hit in lookups.values() if hit and hit.record.chunk_id}
+    )
+    chunks = await deps.retrieve(deps.tools.store.get_chunks, chunk_ids) if chunk_ids else []
+    available = {str(chunk.get("chunk_id")) for chunk in chunks}
+    facts = {
+        key: _fact_value(hit)
+        for key, hit in lookups.items()
+        if hit is not None and hit.record.chunk_id in available
+    }
+    complete = {
+        (cell.ticker, cell.fiscal_year)
+        for cell in scope.cells
+        if numeric_only
+        and all((cell.ticker, cell.fiscal_year, metric.key) in facts for metric in metrics)
+    }
+    missing = [
+        f"{ticker} FY{year} {key}"
+        for (ticker, year, key) in lookups
+        if (ticker, year, key) not in facts
+    ]
+    single_unanswered = scope.route == "simple_rag" and not complete
+    trace_event(
+        "decision",
+        f"decision lookup_facts: {len(facts)} of {len(lookups)} figures, "
+        f"{len(complete)} of {len(scope.cells)} cells answered"
+        + (", single filing falls back to simple_rag" if single_unanswered else ""),
+        node="lookup_facts",
+        decision="facts_lookup",
+        metrics=[metric.key for metric in metrics],
+        unmatched_topics=match.unmatched,
+        found=[fact.model_dump() for fact in facts.values()],
+        missing=missing,
+        restated=[
+            f"{fact.ticker} FY{fact.fiscal_year} {fact.metric}"
+            for fact in facts.values()
+            if fact.restated_in is not None
+        ],
+    )
+    if not facts or single_unanswered:
+        return {}
+
+    _step(
+        "lookup_facts",
+        "Looking up reported figures",
+        f"{len(facts)} of {len(lookups)} figures found",
+    )
+    deps.registry(state).register(
+        [
+            chunk
+            for chunk in chunks
+            if str(chunk.get("chunk_id")) in {f.chunk_id for f in facts.values()}
+        ],
+        task_id="facts",
+        tool="query_financials",
+        sub_question="Reported figures",
+        pinned=True,
+    )
+    results: list[TaskResult] = []
+    for index, cell in enumerate(scope.cells, start=1):
+        steps = []
+        for metric in metrics:
+            fact = facts.get((cell.ticker, cell.fiscal_year, metric.key))
+            step = ToolStep(
+                tool="query_financials",
+                args={"metric": metric.key, "ticker": cell.ticker, "fiscal_year": cell.fiscal_year},
+                chunk_ids=[fact.chunk_id] if fact else [],
+                error=None if fact else "No reported figure",
+            )
+            steps.append(step)
+            emit(
+                {
+                    "type": "tool",
+                    "task_id": f"F{index}",
+                    "tool": step.tool,
+                    "args": step.args,
+                    "n_results": len(step.chunk_ids),
+                    "ticker": cell.ticker,
+                    "fiscal_year": cell.fiscal_year,
+                    "fiscal_years": [],
+                    "error": step.error,
+                }
+            )
+        cell_chunks = list(dict.fromkeys(chunk for step in steps for chunk in step.chunk_ids))
+        results.append(
+            TaskResult(
+                task_id=f"F{index}",
+                ticker=cell.ticker,
+                fiscal_year=cell.fiscal_year,
+                sub_question=", ".join(metric.label for metric in metrics),
+                chunk_ids=cell_chunks,
+                status="found" if (cell.ticker, cell.fiscal_year) in complete else "missing",
+                trajectory=steps,
+            )
+        )
+    calculations = _fact_calculations(
+        list(facts.values()),
+        growth=match.growth or bool(_GROWTH_CUE.search(question)),
+        cagr=bool(_CAGR_CUE.search(question)),
+        margin=margin,
+    )
+    coverage = [
+        cell.model_copy(update={"status": "found"})
+        if (cell.ticker, cell.fiscal_year) in complete
+        else cell
+        for cell in state.get("coverage") or scope.coverage
+    ]
+    return {
+        "facts": list(facts.values()),
+        "fact_calculations": [_calculation(result) for result in calculations],
+        "results": results,
+        "coverage": coverage,
+    }
+
+
+def route_after_facts(state: AgentState) -> str:
+    """Synthesize directly when reported figures answer every searchable cell."""
+    scope = state.get("scope")
+    searchable = [cell for cell in state.get("coverage") or [] if cell.status != "not_in_corpus"]
+    if searchable and all(cell.status == "found" for cell in searchable):
+        return "synthesize"
+    return "simple_rag" if scope is not None and scope.route == "simple_rag" else "plan"
 
 
 def _plan_messages(
@@ -727,8 +1007,83 @@ year's filing, never one claim for several years:
 {"citation_id": "S1", "value": 90}]}], "insufficient_context": false}"""
 
 
+def _shown(value: float) -> str:
+    return f"{value:,.0f}" if float(value).is_integer() else f"{value:,.2f}"
+
+
+def _unit_label(fact: FactValue) -> str:
+    scale = {3: "thousands", 6: "millions", 9: "billions"}.get(fact.scale)
+    if fact.unit == "USD/share":
+        return "USD per share"
+    if fact.unit == "shares":
+        return f"{scale} of shares" if scale else "shares"
+    return f"{fact.unit} {scale}" if scale else fact.unit
+
+
+def _figures_text(
+    facts: Sequence[FactValue], calculations: Sequence[Calculation], source_ids: Mapping[str, str]
+) -> str:
+    """Prompt block listing reported figures and code-computed values with their S# ids."""
+    lines = []
+    for fact in sorted(facts, key=lambda item: (item.ticker, item.metric, item.fiscal_year)):
+        source_id = source_ids.get(fact.chunk_id)
+        if source_id is None:
+            continue
+        sign = "-" if fact.value < 0 else ""
+        restated = (
+            f" (the FY{fact.restated_in} 10-K later reports {_shown(fact.restated_shown)} "
+            "for this period)"
+            if fact.restated_in is not None and fact.restated_shown is not None
+            else ""
+        )
+        lines.append(
+            f"- {fact.ticker} FY{fact.fiscal_year} {fact.label}: {sign}{_shown(fact.shown)} "
+            f'({_unit_label(fact)}) [{source_id}], row: "{fact.excerpt}"{restated}'
+        )
+    if not lines:
+        return ""
+    text = (
+        "Reported figures (from the filings' XBRL data; each is the value for the stated "
+        "fiscal year, taken from that year's 10-K). Use them for these numbers, cite the "
+        "given source and copy its row as the excerpt:\n" + "\n".join(lines)
+    )
+    computed = [
+        f"- {calculation.description} = {_shown(round(calculation.result, 2))}"
+        + ("%" if "%" in calculation.description else "")
+        + f" [{', '.join(dict.fromkeys(item.citation_id for item in calculation.inputs))}]"
+        for calculation in calculations
+    ]
+    if computed:
+        text += (
+            "\n\nComputed values (verified by code and added to the answer's calculations; "
+            "quote them, do not recompute them):\n" + "\n".join(computed)
+        )
+    return text
+
+
+def _mapped_calculations(
+    calculations: Sequence[Calculation], source_ids: Mapping[str, str]
+) -> list[Calculation]:
+    """Code calculations with chunk-id inputs mapped to S#; dropped if an input has no S#."""
+    mapped = []
+    for calculation in calculations:
+        ids = [source_ids.get(item.citation_id) for item in calculation.inputs]
+        if all(ids):
+            mapped.append(
+                calculation.model_copy(
+                    update={
+                        "inputs": [
+                            item.model_copy(update={"citation_id": source_id})
+                            for item, source_id in zip(calculation.inputs, ids)
+                        ]
+                    }
+                )
+            )
+    return mapped
+
+
 def _synthesis_messages(
-    state: AgentState, context: str, validation: ValidationReport | None
+    state: AgentState, context: str, validation: ValidationReport | None, figures: str = ""
 ) -> list[BaseMessage]:
     cells = "\n".join(
         f"- {cell.ticker} FY{cell.fiscal_year}"
@@ -736,7 +1091,10 @@ def _synthesis_messages(
         + (" (no relevant passage found)" if cell.status == "not_disclosed" else "")
         for cell in state.get("coverage", [])
     )
-    prompt = f"Question: {state['question']}\nFilings in scope:\n{cells}\n\nSources:\n{context}"
+    prompt = f"Question: {state['question']}\nFilings in scope:\n{cells}\n\n"
+    if figures:
+        prompt += f"{figures}\n\n"
+    prompt += f"Sources:\n{context}"
     if validation is not None and not validation.is_valid:
         errors = "\n".join(f"- {error}" for error in validation.errors)
         draft = state.get("draft")
@@ -786,11 +1144,24 @@ async def synthesize_node(state: AgentState, deps: NodeDependencies) -> dict[str
     sources = registry.assign_source_ids(deps.max_context_chunks)
     if tracing_enabled() and not state.get("validation"):
         _trace_context(sources, registered)
+    source_ids = {source.chunk_id: source.source_id for source in sources}
+    calculations = _mapped_calculations(state.get("fact_calculations") or [], source_ids)
+    figures = _figures_text(state.get("facts") or [], calculations, source_ids)
     synthesis = await deps.llm.structured(
         SynthesisDraft,
-        _synthesis_messages(state, registry.format_context(), state.get("validation")),
+        _synthesis_messages(state, registry.format_context(), state.get("validation"), figures),
     )
+    if calculations:
+        expressions = {calculation.expression for calculation in calculations}
+        synthesis = synthesis.model_copy(
+            update={
+                "calculations": calculations
+                + [item for item in synthesis.calculations if item.expression not in expressions]
+            }
+        )
     claims = ground_claims(synthesis.claims, registry.source_entries())
+    if calculations:
+        claims = ground_computed_claims(claims, calculations, registry.source_entries())
     if changes := [
         {"index": index, "model": before, "code": after}
         for index, (before, after) in enumerate(zip(synthesis.claims, claims))
@@ -849,13 +1220,14 @@ def _clean_draft(
     scope: ResolvedScope,
     entries: dict[str, EvidenceEntry],
     catalog: FilingCatalog,
+    facts: FactsStore | None = None,
 ) -> tuple[GroundedAnswer, ValidationReport]:
     """Drop invalid claims/calculations until the draft validates or nothing more drops."""
     dropped_claims = list(report.dropped_claims)
     dropped_calculations = list(report.dropped_calculations)
     for _ in range(len(draft.claims) + len(draft.calculations) + 1):
         draft = drop_invalid_claims(draft, report, scope.coverage)
-        report = validate_grounded_answer(draft, scope, entries, catalog)
+        report = validate_grounded_answer(draft, scope, entries, catalog, facts)
         dropped_claims.extend(report.dropped_claims)
         dropped_calculations.extend(report.dropped_calculations)
         if report.is_valid or not (report.dropped_claims or report.dropped_calculations):
@@ -885,7 +1257,7 @@ def validate_node(state: AgentState, deps: NodeDependencies) -> dict[str, Any]:
         raise ValueError("validate requires a draft and scope")
     _step("validate", "Verifying citations")
     entries = deps.registry(state).source_entries()
-    report = validate_grounded_answer(draft, scope, entries, deps.catalog)
+    report = validate_grounded_answer(draft, scope, entries, deps.catalog, deps.facts)
     repairs = state.get("repairs", 0)
     if repairs < 1:
         if report.is_valid:
@@ -901,13 +1273,15 @@ def validate_node(state: AgentState, deps: NodeDependencies) -> dict[str, Any]:
 
     failed = not report.is_valid
     if failed:
-        draft, report = _clean_draft(draft, report, scope, entries, deps.catalog)
+        draft, report = _clean_draft(draft, report, scope, entries, deps.catalog, deps.facts)
     kept = "repair"
     first = state.get("first_draft")
     if first is not None:
-        first_report = validate_grounded_answer(first, scope, entries, deps.catalog)
+        first_report = validate_grounded_answer(first, scope, entries, deps.catalog, deps.facts)
         if not first_report.is_valid:
-            first, first_report = _clean_draft(first, first_report, scope, entries, deps.catalog)
+            first, first_report = _clean_draft(
+                first, first_report, scope, entries, deps.catalog, deps.facts
+            )
         if first_report.is_valid and _answered(first) > _answered(draft):
             draft, report, kept = first, first_report, "first_draft"
     trace_event(

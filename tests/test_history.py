@@ -36,6 +36,7 @@ from persistence.history import TITLE_CHARS, _error_summary, thread_title, with_
 from persistence.migrations import apply_migrations, migration_files
 
 DEV_USER = uuid.UUID("11111111-1111-4111-8111-111111111111")
+PORTABLE_MIGRATIONS = ["migrations/001_threads_messages.sql", "migrations/002_financial_facts.sql"]
 OTHER_USER = uuid.UUID("22222222-2222-4222-8222-222222222222")
 THREAD = uuid.UUID("33333333-3333-4333-8333-333333333333")
 NOW = datetime(2026, 1, 2, tzinfo=timezone.utc)
@@ -192,10 +193,12 @@ def test_history_user_id_uses_dev_user_without_auth_and_jwt_subject_with_auth(mo
 
 def test_migration_files_portable_first_supabase_only_on_request():
     portable = [name for name, _ in migration_files()]
-    assert portable == ["migrations/001_threads_messages.sql"]
+    assert portable == PORTABLE_MIGRATIONS
     with_rls = [name for name, _ in migration_files(include_supabase=True)]
     assert with_rls == portable + ["supabase/001_rls.sql"]
-    assert "auth.uid()" not in migration_files()[0][1].read_text(encoding="utf-8")
+    assert all(
+        "auth.uid()" not in path.read_text(encoding="utf-8") for _, path in migration_files()
+    )
 
 
 def test_apply_migrations_requires_autocommit():
@@ -355,7 +358,7 @@ def _migrate(conninfo: str) -> list[str]:
 @pytest.fixture
 def live_store():
     with _temp_schema() as conninfo:
-        assert _migrate(conninfo) == ["migrations/001_threads_messages.sql"]
+        assert _migrate(conninfo) == PORTABLE_MIGRATIONS
         assert _migrate(conninfo) == []  # second run is a no-op
         store = PostgresHistoryStore(conninfo, max_size=2)
         store.open()
@@ -369,7 +372,7 @@ def live_store():
 def test_live_concurrent_migration_runs_apply_each_file_once():
     with _temp_schema() as conninfo, ThreadPoolExecutor(max_workers=4) as pool:
         runs = list(pool.map(_migrate, [conninfo] * 4))
-    assert sorted(name for run in runs for name in run) == ["migrations/001_threads_messages.sql"]
+    assert sorted(name for run in runs for name in run) == PORTABLE_MIGRATIONS
 
 
 @live

@@ -12,11 +12,14 @@ from collections.abc import Callable, Sequence
 from dataclasses import dataclass
 from decimal import Decimal, InvalidOperation
 
+from facts.records import FactRecord
+from facts.store import FactsStore
 from generation.validation import normalize_to_millions
 
 from .catalog import FilingCatalog
 from .evidence import EvidenceEntry
 from .schemas import (
+    MAX_EXCERPT_CHARS,
     Calculation,
     CoverageCell,
     GroundedAnswer,
@@ -37,6 +40,10 @@ _UNIT_LABEL = re.compile(r"\b(thousand|million|billion)s?\b", re.IGNORECASE)
 _TRANSLATION = str.maketrans({"“": '"', "”": '"', "‘": "'", "’": "'", "–": "-", "—": "-"})
 _EXPRESSION_TRANSLATION = str.maketrans(
     {"×": "*", "÷": "/", "−": "-", "$": None, ",": None, "%": None}
+)
+_PRIOR_YEAR = re.compile(
+    r"\b(?:prior|previous|preceding)\s+(?:fiscal\s+)?year\b|\byear\s+(?:earlier|before)\b",
+    re.IGNORECASE,
 )
 _FINAL_STATUSES = {"found", "not_disclosed", "not_in_corpus"}
 _SCALE_CONSTANTS = (100.0, 1_000.0, 1_000_000.0, 1_000_000_000.0)
@@ -146,22 +153,56 @@ def _matches_result(number: _Number, results: Sequence[float]) -> bool:
     )
 
 
+def _is_constant(node: ast.AST) -> bool:
+    return (
+        isinstance(node, ast.Constant)
+        and isinstance(node.value, (int, float))
+        and not isinstance(node.value, bool)
+    )
+
+
+def _is_one(node: ast.AST) -> bool:
+    return _is_constant(node) and float(node.value) == 1.0  # type: ignore[attr-defined]
+
+
 def _evaluate(expression: str) -> tuple[float | None, list[float]]:
-    """Evaluate ``+ - * /`` arithmetic over numeric literals; ``None`` if anything else."""
+    """Evaluate ``+ - * /`` arithmetic over numeric literals; ``None`` if anything else.
+
+    Growth rates (CAGR) also allow ``(a / b) ** (1 / n) - 1``: a power of a positive base
+    whose exponent is a constant fraction of at most 1 in size. Literals inside the
+    exponent and the ``1`` subtracted from the power are structural, not cited values.
+    """
     literals: list[float] = []
 
+    def constant(node: ast.AST) -> float:
+        """Exponents: constants and ``/`` between constants only; not recorded as literals."""
+        if _is_constant(node):
+            return float(node.value)  # type: ignore[attr-defined]
+        if isinstance(node, ast.BinOp) and isinstance(node.op, ast.Div):
+            return constant(node.left) / constant(node.right)
+        raise ValueError("unsupported exponent")
+
     def visit(node: ast.AST) -> float:
-        if (
-            isinstance(node, ast.Constant)
-            and isinstance(node.value, (int, float))
-            and not isinstance(node.value, bool)
-        ):
-            value = float(node.value)
+        if _is_constant(node):
+            value = float(node.value)  # type: ignore[attr-defined]
             literals.append(abs(value))
             return value
         if isinstance(node, ast.UnaryOp) and isinstance(node.op, (ast.UAdd, ast.USub)):
             operand = visit(node.operand)
             return -operand if isinstance(node.op, ast.USub) else operand
+        if isinstance(node, ast.BinOp) and isinstance(node.op, ast.Pow):
+            base, exponent = visit(node.left), constant(node.right)
+            if base <= 0 or not 0 < abs(exponent) <= 1:
+                raise ValueError("unsupported power")
+            return float(base**exponent)
+        if (
+            isinstance(node, ast.BinOp)
+            and isinstance(node.op, (ast.Add, ast.Sub))
+            and isinstance(node.left, ast.BinOp)
+            and isinstance(node.left.op, ast.Pow)
+            and _is_one(node.right)
+        ):
+            return _OPERATORS[type(node.op)](visit(node.left), 1.0)
         if isinstance(node, ast.BinOp) and type(node.op) in _OPERATORS:
             return _OPERATORS[type(node.op)](visit(node.left), visit(node.right))
         raise ValueError("unsupported expression")
@@ -285,10 +326,127 @@ def ground_claims(
     return grounded
 
 
+def _names_year(text: str, year: int, claim_year: int) -> bool:
+    """Whether ``text`` says which fiscal year a figure belongs to ("2023", "FY23",
+    "prior year" for the year before the filing's)."""
+    if re.search(rf"(?<!\d){year}(?!\d)|\bFY\s?'?{year % 100:02d}\b", text, re.IGNORECASE):
+        return True
+    return year == claim_year - 1 and bool(_PRIOR_YEAR.search(text))
+
+
+def _fact_matches(number: _Number, record: FactRecord) -> bool:
+    """A claim number equals a fact as printed, or (with a scale word) its true value."""
+    if "%" in number.raw:
+        return False
+    if _key(number.value) == _key(record.shown):
+        return True
+    claimed = number.millions() if number.unit else None
+    value = abs(record.value) / 1_000_000
+    return (
+        claimed is not None
+        and abs(claimed[0] - value) <= min(claimed[1], _MAX_ROUNDING * value) + 1e-9
+    )
+
+
+def _period_errors(
+    claim: GroundedClaim, entries: Sequence[EvidenceEntry], facts: FactsStore
+) -> list[str]:
+    """Claim numbers read from another fiscal year's column of a cited table.
+
+    A FY2024 10-K table also prints FY2023 and FY2022 columns; a claim about FY2024 that
+    states the FY2023 value is rejected unless the claim names that year.
+    """
+    records = [
+        record
+        for entry in entries
+        for record in facts.facts_in_chunk(str(entry.chunk.get("chunk_id", "")))
+    ]
+    if not records:
+        return []
+    errors: list[str] = []
+    for number in _parse_numbers(claim.text):
+        matching = [record for record in records if _fact_matches(number, record)]
+        if not matching or any(record.fiscal_year == claim.fiscal_year for record in matching):
+            continue
+        years = sorted({record.fiscal_year for record in matching})
+        if any(_names_year(claim.text, year, claim.fiscal_year) for year in years):
+            continue
+        errors.append(
+            f"Claim uses the FY{years[-1]} column of the FY{claim.fiscal_year} filing "
+            f"({number.raw}) without naming that year: {claim.text}"
+        )
+    return errors
+
+
+def _row_with(text: str, value: float) -> str | None:
+    """The line of ``text`` (a table row, pipes trimmed) that prints ``value``."""
+    for line in text.splitlines():
+        if _key(value) in _number_keys(line):
+            return line.strip().strip("|").strip()[:MAX_EXCERPT_CHARS]
+    return None
+
+
+def ground_computed_claims(
+    claims: Sequence[GroundedClaim],
+    calculations: Sequence[Calculation],
+    source_entries: dict[str, EvidenceEntry],
+) -> list[GroundedClaim]:
+    """Cite code-computed values to the table row they were computed from.
+
+    A claim that states a code calculation's result ("CAGR of 21.98%") often copies its
+    excerpt from the prompt's computed-values list, which no source contains, or cites
+    every input filing at once (a claim may cite only one filing). When either happens
+    and a claim number equals the result of one of ``calculations`` (code-owned, inputs
+    already verified), the claim cites the calculation's latest input of the claim's
+    company instead, with that input's row as the excerpt. The calculation itself is
+    still validated against all of its inputs.
+    """
+    grounded: list[GroundedClaim] = []
+    for claim in claims:
+        cited = [source_entries[sid] for sid in claim.citation_ids if sid in source_entries]
+        numbers = _parse_numbers(claim.text)
+        calculation = next(
+            (
+                item
+                for item in calculations
+                if any(_matches_result(number, [item.result]) for number in numbers)
+            ),
+            None,
+        )
+        one_filing = len({_filing(entry) for entry in cited}) == 1
+        if calculation is None or (one_filing and _verbatim_in(claim.excerpt, cited)):
+            grounded.append(claim)
+            continue
+        inputs = [
+            (item, source_entries[item.citation_id])
+            for item in calculation.inputs
+            if item.citation_id in source_entries
+            and source_entries[item.citation_id].chunk.get("ticker") == claim.ticker
+        ]
+        latest = max(
+            inputs, key=lambda pair: int(pair[1].chunk.get("fiscal_year") or 0), default=None
+        )
+        row = _row_with(str(latest[1].chunk.get("text", "")), latest[0].value) if latest else None
+        if latest is None or row is None:
+            grounded.append(claim)
+            continue
+        grounded.append(
+            claim.model_copy(
+                update={
+                    "citation_ids": [latest[0].citation_id],
+                    "excerpt": row,
+                    "fiscal_year": int(latest[1].chunk.get("fiscal_year") or claim.fiscal_year),
+                }
+            )
+        )
+    return grounded
+
+
 def _claim_errors(
     claim: GroundedClaim,
     source_entries: dict[str, EvidenceEntry],
     calculation_results: Sequence[float],
+    facts: FactsStore | None = None,
 ) -> list[str]:
     errors: list[str] = []
     if not claim.citation_ids:
@@ -328,6 +486,8 @@ def _claim_errors(
     ]
     if unsupported:
         errors.append(f"Claim has unsupported numbers ({', '.join(unsupported)}): {claim.text}")
+    if facts is not None and not wrong_scope:
+        errors.extend(_period_errors(claim, valid_entries, facts))
     return errors
 
 
@@ -367,7 +527,10 @@ def validate_grounded_answer(
     scope: ResolvedScope,
     source_entries: dict[str, EvidenceEntry],
     catalog: FilingCatalog,
+    facts: FactsStore | None = None,
 ) -> ValidationReport:
+    """Check citations, numbers, calculations and coverage; with ``facts``, also reject
+    numbers taken from another fiscal year's column of a cited table."""
     errors: list[str] = []
     inline_ids = set(_CITATION.findall(answer.answer or ""))
     unknown_inline = sorted(inline_ids - set(source_entries))
@@ -386,7 +549,7 @@ def validate_grounded_answer(
 
     invalid_claims: list[str] = []
     for claim in answer.claims:
-        claim_errors = _claim_errors(claim, source_entries, calculation_results)
+        claim_errors = _claim_errors(claim, source_entries, calculation_results, facts)
         if claim_errors:
             errors.extend(claim_errors)
             invalid_claims.append(claim.text)

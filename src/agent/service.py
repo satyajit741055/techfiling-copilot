@@ -26,6 +26,7 @@ from langgraph.types import Command
 
 from config.logging import bind_log_context, reset_log_context
 from config.settings import ROOT, Settings, settings
+from facts.store import FactsStore
 from observability import AgentRecord, JsonlMetricsWriter, compute_cost
 from observability.records import is_timeout_error, utc_now_iso
 from observability.tracing import tracing
@@ -148,6 +149,7 @@ class AgentService:
         writer: JsonlMetricsWriter | None = None,
         config: Settings | None = None,
         checkpointer: BaseCheckpointSaver[Any] | None = None,
+        facts: FactsStore | None = None,
     ) -> AgentService:
         """Build the agent on the generator's already-loaded retriever and reranker."""
         from retriever.qdrant_retriever import QdrantRetrieverWithReranker
@@ -163,6 +165,7 @@ class AgentService:
             llm=AgentLLM(get_chat_model(config=config), config.AGENT_LLM_CONCURRENCY),
             tools=tools,
             generator=generator,
+            facts=facts,
             max_tasks=config.AGENT_MAX_TASKS,
             max_replans=config.AGENT_MAX_REPLANS,
             max_tool_steps=config.AGENT_MAX_TOOL_STEPS,

@@ -31,6 +31,8 @@ class EvidenceEntry:
     provenance: list[Provenance] = field(default_factory=list)
     best_score: float | None = None
     source_id: str | None = None
+    # Rows holding reported figures (facts store): always kept in the synthesis context.
+    pinned: bool = False
 
 
 class EvidenceRegistry:
@@ -69,6 +71,7 @@ class EvidenceRegistry:
         tool: str,
         scores: Iterable[float | None] | None = None,
         sub_question: str = "",
+        pinned: bool = False,
     ) -> list[str]:
         chunk_list = [dict(chunk) for chunk in chunks]
         score_list = list(scores) if scores is not None else [None] * len(chunk_list)
@@ -84,6 +87,7 @@ class EvidenceRegistry:
                 chunk_id = str(chunk["chunk_id"])
                 entry = self._entries.setdefault(chunk_id, EvidenceEntry(chunk=chunk))
                 entry.provenance.append(Provenance(task_id, tool, rank, score, sub_question))
+                entry.pinned |= pinned
                 if score is not None and (entry.best_score is None or score > entry.best_score):
                     entry.best_score = score
                 registered.append(chunk_id)
@@ -160,7 +164,8 @@ class EvidenceRegistry:
         return sorted(best[:limit], key=self._document_order)
 
     def _select(self, max_chunks: int) -> list[list[EvidenceEntry]]:
-        """Context budget: the best group of every cell first, then whole groups by score.
+        """Context budget: pinned entries (reported-figure rows) always, then the best group
+        of every remaining cell, then whole groups by score.
 
         Returns groups in source-id order (cell, sub-question, score), each group in
         document order so neighbours and table parts stay together.
@@ -170,13 +175,21 @@ class EvidenceRegistry:
         groups = sorted(self._groups(), key=self._group_priority)
         if sum(map(len, groups)) <= max_chunks:
             return groups
-        selected: dict[int, list[EvidenceEntry]] = {}
-        used = 0
-        cells: set[tuple[str, int]] = set()
-        cells_left = len({self._cell(group[0]) for group in groups})
+        # Pinned entries never count against the budget's trimming; their unpinned group
+        # neighbours compete like any other evidence (dropped here when over budget).
+        selected: dict[int, list[EvidenceEntry]] = {
+            index: [entry for entry in group if entry.pinned]
+            for index, group in enumerate(groups)
+            if any(entry.pinned for entry in group)
+        }
+        used = sum(map(len, selected.values()))
+        cells = {self._cell(group[0]) for group in selected.values()}
+        cells_left = len({self._cell(group[0]) for group in groups} - cells)
         for index, group in enumerate(groups):
+            if index in selected:
+                continue
             cell = self._cell(group[0])
-            if cell in cells or used == max_chunks:
+            if cell in cells or used >= max_chunks:
                 continue
             cells.add(cell)
             cells_left -= 1

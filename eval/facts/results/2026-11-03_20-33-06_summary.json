@@ -1,0 +1,36 @@
+{
+  "off": {
+    "model": "qwen2.5-7b-instruct:latest",
+    "questions": 30,
+    "graded": 29,
+    "exact_match": 0.724,
+    "fact_recall": 0.828,
+    "wrong_period_rate": 0.0,
+    "forbidden_violations": 0,
+    "invalid_answers": 1,
+    "dropped_claims": 1,
+    "abstained": 1,
+    "errors": 0,
+    "facts_used": 0,
+    "mean_llm_calls": 3.77,
+    "mean_searches": 3.9,
+    "median_latency_seconds": 9.5
+  },
+  "postgres": {
+    "model": "qwen2.5-7b-instruct:latest",
+    "questions": 30,
+    "graded": 29,
+    "exact_match": 1.0,
+    "fact_recall": 1.0,
+    "wrong_period_rate": 0.0,
+    "forbidden_violations": 0,
+    "invalid_answers": 0,
+    "dropped_claims": 0,
+    "abstained": 0,
+    "errors": 0,
+    "facts_used": 27,
+    "mean_llm_calls": 2.0,
+    "mean_searches": 0.0,
+    "median_latency_seconds": 10.3
+  }
+}

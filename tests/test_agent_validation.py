@@ -277,6 +277,25 @@ def test_calculation_result_and_literals_are_verified() -> None:
     assert any("not simple arithmetic" in error for error in arithmetic_report.errors)
 
 
+def test_growth_rate_powers_are_allowed_only_with_constant_fractional_exponents() -> None:
+    catalog, scope, evidence = setup_context()
+    entries = evidence.source_entries()
+    cagr = ((200 / 100) ** (1 / 3) - 1) * 100
+
+    def report(expression: str, result: float) -> list[str]:
+        answer = valid_answer().model_copy(
+            update={"calculations": [ratio_calculation(expression=expression, result=result)]}
+        )
+        return validate_grounded_answer(answer, scope, entries, catalog).errors
+
+    assert report("((200 / 100) ** (1 / 3) - 1) * 100", cagr) == []
+    assert any("not simple arithmetic" in error for error in report("100 ** 200", 0))
+    assert any("not simple arithmetic" in error for error in report("(200 / 100) ** 3", 8))
+    assert any("not simple arithmetic" in error for error in report("(-200 / 100) ** 0.5", 0))
+    # A constant other than the structural 1 next to the power is still an uncited value.
+    assert any("uncited values (2)" in error for error in report("(200 / 100) ** 0.5 - 2", -0.58))
+
+
 def test_number_parsing_ignores_forms_and_year_ranges_and_handles_millions() -> None:
     catalog, scope, _ = setup_context()
     evidence = EvidenceRegistry()

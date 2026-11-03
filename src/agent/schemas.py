@@ -176,6 +176,24 @@ class Calculation(AgentModel):
     inputs: list[CalculationInput] = Field(default_factory=list)
 
 
+class FactValue(AgentModel):
+    """A reported XBRL figure for one company and fiscal year, as printed in its 10-K row."""
+
+    metric: str
+    label: str
+    concept: str
+    ticker: str
+    fiscal_year: int
+    shown: float
+    value: float
+    unit: str
+    scale: int
+    chunk_id: str
+    excerpt: str
+    restated_shown: float | None = None
+    restated_in: int | None = None
+
+
 class SynthesisDraft(AgentModel):
     """What the synthesis LLM returns. ``answer`` and ``claims`` are required so that
     schema-constrained decoding cannot skip them; coverage is derived by code from the

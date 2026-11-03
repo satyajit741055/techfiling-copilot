@@ -19,6 +19,7 @@ NODE_LABELS = {
     "onboard": "Overview",
     "clarify": "Clarification applied",
     "simple_rag": "Single-filing answer",
+    "lookup_facts": "Reported figures checked",
     "plan": "Searches planned",
     "execute": "Search finished",
     "check_coverage": "Coverage checked",
@@ -51,6 +52,9 @@ def completed_detail(node: str, update: Any) -> str | None:
         )
     if node == "plan":
         return f"{len(update.get('tasks') or [])} searches"
+    if node == "lookup_facts":
+        facts = update.get("facts") or []
+        return f"{len(facts)} figure(s)" if facts else "none used"
     if node == "validate" and (report := update.get("validation")) is not None:
         return "valid" if report.is_valid else f"{len(report.errors)} issue(s)"
     return None

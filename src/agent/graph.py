@@ -2,6 +2,7 @@
 
 from __future__ import annotations
 
+from collections.abc import Hashable
 from functools import partial
 from typing import Any
 
@@ -22,10 +23,12 @@ from .nodes import (
     clarify_node,
     execute_node,
     finalize_node,
+    lookup_facts_node,
     onboard_node,
     plan_node,
     refuse_node,
     resolve_scope_node,
+    route_after_facts,
     simple_rag_node,
     synthesize_node,
     validate_node,
@@ -112,7 +115,19 @@ def build_graph(
 
     graph.add_edge(START, "analyze")
     graph.add_edge("analyze", "resolve_scope")
-    graph.add_conditional_edges("resolve_scope", route_after_scope, list(_SCOPE_ROUTES.values()))
+    if deps.facts is None:
+        graph.add_conditional_edges(
+            "resolve_scope", route_after_scope, list(_SCOPE_ROUTES.values())
+        )
+    else:
+        # Filing questions look up reported figures first (facts store configured only).
+        graph.add_node("lookup_facts", partial(lookup_facts_node, deps=deps))
+        targets: dict[Hashable, str] = {target: target for target in _SCOPE_ROUTES.values()}
+        targets.update(simple_rag="lookup_facts", plan="lookup_facts")
+        graph.add_conditional_edges("resolve_scope", route_after_scope, targets)
+        graph.add_conditional_edges(
+            "lookup_facts", route_after_facts, ["synthesize", "simple_rag", "plan"]
+        )
     graph.add_edge("clarify", "resolve_scope")
     for terminal in ("refuse", "onboard", "simple_rag", "finalize"):
         graph.add_edge(terminal, END)

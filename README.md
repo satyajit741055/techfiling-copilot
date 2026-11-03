@@ -8,6 +8,7 @@ A production-ready research assistant that helps equity analysts extract insight
 
 - **Research Chat (LangGraph agent)**: multi-company, multi-year questions across all indexed filings, with live progress steps, clarifying questions, a coverage table and validated multi-source citations
 - **Grounded Answers**: Every answer is backed by explicit citations from the filing
+- **Numbers from reported figures**: financial metrics come from the filings' XBRL facts (as reported in each year's own 10-K), cited to their table row; growth, CAGR and margins are computed by code and re-checked
 - **Citation Traceability**: Click any citation to view the exact source passage
 - **Hybrid Retrieval**: BM25 + Dense embeddings + Cross-encoder reranking for high-quality results
 - **Scalable Vector Store**: default in-process NumPy index, or Qdrant (dense + sparse hybrid search with server-side RRF fusion) via `VECTOR_STORE=qdrant`
@@ -256,9 +257,10 @@ The stream emits `thread`, then `step` / `tool` progress events, then `answer` o
 - **Understand the question.** The agent works out the companies, years and topic, then resolves them against the indexed filings. When no year is given it uses the latest one and says so.
 - **Route it.** Single-filing questions use the `/questions` pipeline. Multi-company or multi-year questions run one worker per company and year in parallel. Each worker can search, read neighbouring chunks or read a whole table, and stays inside its own filing.
 - **Clarify or refuse.** It asks one clarifying question when the company is missing. It refuses companies that aren't indexed, general-knowledge questions and investment advice, and replies with an example list of questions instead.
-- **Validate the answer.** Each claim must cite a source, quote it word for word and match its numbers; claims that fail are dropped. When nothing valid remains, the answer abstains and shows which filings were covered.
+- **Look up reported figures** (`FACTS_STORE=postgres`). Questions about curated metrics (revenue, net income, R&D, EPS, cash flow, assets, …; ~25 in `src/facts/metrics.py`) get the value from the filings' XBRL facts. Each figure's table row is pinned into the sources, and growth %, CAGR and margins are computed in code. When the figures answer the whole question, the planner and searches are skipped; anything else (risk factors, segments such as "iPhone revenue") still goes through retrieval.
+- **Validate the answer.** Each claim must cite a source, quote it word for word and match its numbers; claims that fail are dropped. With the facts store on, a number taken from another year's column of a cited table (e.g. the FY2023 column of a FY2024 10-K) is rejected unless the claim names that year. When nothing valid remains, the answer abstains and shows which filings were covered.
 
-Settings are the `AGENT_*` variables in `.env.example`. With `AGENT_CHECKPOINTER=postgres` the conversation state (pending clarifications, follow-up context) is stored in Postgres (`HISTORY_DB_URL`) and survives restarts; the default `memory` loses it on restart. The browser UI is the **Research chat** mode (default); **Single filing** keeps the original workspace. Smoke test against the local stack: `uv run python scripts/agent_smoke.py`. To debug a turn call by call, set `AGENT_TRACE=all` (local) or `errors` (production): turns are saved as JSON in `logs/agent_traces/` (prompts, raw model outputs, retrieval hits with scores, node updates, code decisions, errors, what the client received). Every log line carries `[req=… turn=…]` ids (or `request_id`/`turn_id` fields with `LOG_FORMAT=json`), and each turn ends with one `Chat turn finished` summary line that links its trace file.
+Settings are the `AGENT_*` variables in `.env.example`. The facts store reads the `financial_facts` table from `HISTORY_DB_URL` at startup; fill it after each ingestion run with `uv run python scripts/load_facts.py` (it links facts to the chunk run of `QDRANT_COLLECTION`). An empty table, an unreachable database or facts linked to another collection log a warning and the agent runs without facts. With `AGENT_CHECKPOINTER=postgres` the conversation state (pending clarifications, follow-up context) is stored in Postgres (`HISTORY_DB_URL`) and survives restarts; the default `memory` loses it on restart. The browser UI is the **Research chat** mode (default); **Single filing** keeps the original workspace. Smoke test against the local stack: `uv run python scripts/agent_smoke.py`. To debug a turn call by call, set `AGENT_TRACE=all` (local) or `errors` (production): turns are saved as JSON in `logs/agent_traces/` (prompts, raw model outputs, retrieval hits with scores, node updates, code decisions, errors, what the client received). Every log line carries `[req=… turn=…]` ids (or `request_id`/`turn_id` fields with `LOG_FORMAT=json`), and each turn ends with one `Chat turn finished` summary line that links its trace file.
 
 ## Project Structure
 
@@ -277,7 +279,10 @@ techfiling-copilot/
 │   └── services/          # Business logic
 │
 ├── src/                    # RAG pipeline
+│   ├── agent/             # LangGraph research agent (nodes, tools, validation)
 │   ├── config/            # Centralized settings
+│   ├── facts/             # XBRL facts: build, curated metrics, in-memory store, calculator
+│   ├── persistence/       # Postgres: history, checkpoints, financial facts
 │   ├── generation/        # LLM generation & prompts
 │   ├── ingestion/         # Document parsing & chunking
 │   ├── model_runtime/     # Local vs Hugging Face API backends (embed/rerank/generate)
@@ -410,6 +415,15 @@ uv run python eval/deepEval/full_pipeline_eval.py --judge-model gpt-4o --verbose
 # Compare runs
 uv run python eval/deepEval/full_pipeline_eval.py --compare
 ```
+
+#### Numeric Accuracy (Facts Store)
+
+```bash
+# 30 numeric questions (eval/facts/numeric_golden.jsonl), research chat with facts off and on
+HF_HUB_OFFLINE=1 uv run python scripts/numeric_eval.py [--facts off|postgres|both] [--only id,id]
+```
+
+The question set is generated from the facts table by `uv run python scripts/build_numeric_golden.py` (expected values, table rows and other-year columns). The eval reports exact match, wrong-period rate (another year's column stated instead of the asked year), invalid answers, LLM calls, searches and latency; results go to `eval/facts/results/`. Latest run (local Qwen2.5-7B): exact match 72.4% with facts off vs 100% with facts on, 3.8 vs 2.0 LLM calls per question, and multi-filing numeric answers in ~20 s instead of ~70–100 s.
 
 #### Run All Evaluations
 

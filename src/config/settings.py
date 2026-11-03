@@ -197,6 +197,12 @@ class Settings(BaseSettings):
         description="Research-chat graph state (clarification pauses, follow-up context). "
         "'memory' is lost on restart; 'postgres' keeps it in HISTORY_DB_URL",
     )
+    FACTS_STORE: Literal["off", "postgres"] = Field(
+        default="off",
+        description="Reported XBRL figures for numeric answers. 'postgres' loads the "
+        "financial_facts table from HISTORY_DB_URL at startup (fill it with "
+        "scripts/load_facts.py); 'off' answers numbers from retrieval only",
+    )
 
     # =========================================================================
     # OBSERVABILITY (latency / cost / reliability records)
@@ -503,6 +509,10 @@ class Settings(BaseSettings):
             raise ValueError(
                 "HISTORY_DB_URL (or SUPABASE_DB_URL) is required when AGENT_CHECKPOINTER=postgres"
             )
+        if self.FACTS_STORE == "postgres" and not self.HISTORY_DB_URL:
+            raise ValueError(
+                "HISTORY_DB_URL (or SUPABASE_DB_URL) is required when FACTS_STORE=postgres"
+            )
 
         return self
 
@@ -542,6 +552,12 @@ class Settings(BaseSettings):
     def checkpointer_kind(cls, v: Any) -> Any:
         """Blank means the default in-memory checkpointer."""
         return str(v).strip().lower() or "memory"
+
+    @field_validator("FACTS_STORE", mode="before")
+    @classmethod
+    def facts_store_kind(cls, v: Any) -> Any:
+        """Blank means off."""
+        return str(v).strip().lower() or "off"
 
     @field_validator("DATA_DIR", "MODEL_CACHE_DIR", "CHUNKS_DIR", mode="before")
     @classmethod
